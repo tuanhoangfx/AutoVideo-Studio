@@ -10,6 +10,9 @@ import * as api from '@/lib/api';
 import type { Job, SubtitleStyle, ExportPreset } from '@/lib/api';
 import { useAutoSave, loadDraft, clearDraft, timeAgo, type DraftState } from '@/lib/autosave';
 import {
+  saveImages, loadImages, saveBgm, loadBgm, clearAllFiles, summarizeFiles,
+} from '@/lib/draft-files';
+import {
   ProjectTabs,
   ImageLibrary,
   ScriptPanel,
@@ -57,7 +60,9 @@ export default function StudioPage() {
   const [allSettingsOpen, setAllSettingsOpen] = useState(false);
   const [exportExpanded, setExportExpanded] = useState(false);
   const [draftAvailable, setDraftAvailable] = useState<DraftState | null>(null);
+  const [draftFilesSummary, setDraftFilesSummary] = useState<{ images: number; bgm: boolean }>({ images: 0, bgm: false });
   const [hydrated, setHydrated] = useState(false);
+  const [filesSavedAt, setFilesSavedAt] = useState<number | null>(null);
 
   /* ─── Connect server + load jobs ─── */
   useEffect(() => {
@@ -72,13 +77,21 @@ export default function StudioPage() {
     })();
   }, []);
 
-  /* ─── Detect localStorage draft on mount ─── */
+  /* ─── Detect draft (localStorage + IDB) on mount ─── */
   useEffect(() => {
-    const draft = loadDraft();
-    if (draft && draft.lines.length > 0) {
-      setDraftAvailable(draft);
-    }
-    setHydrated(true);
+    (async () => {
+      const draft = loadDraft();
+      try {
+        const summary = await summarizeFiles();
+        setDraftFilesSummary(summary);
+        if ((draft && draft.lines.length > 0) || summary.images > 0 || summary.bgm) {
+          setDraftAvailable(draft ?? null);
+        }
+      } catch {
+        if (draft && draft.lines.length > 0) setDraftAvailable(draft);
+      }
+      setHydrated(true);
+    })();
   }, []);
 
   /* ─── Auto-save debounced 2s ─── */
@@ -101,25 +114,74 @@ export default function StudioPage() {
   // Only autosave AFTER initial hydration (avoid overwriting good draft with empty state).
   const savedAt = useAutoSave(hydrated ? draftState : ({ ...draftState, lines: lines } as DraftState));
 
+  /* ─── Auto-save image blobs + BGM to IndexedDB (debounced 2s) ─── */
+  useEffect(() => {
+    if (!hydrated) return;
+    // Skip if user is currently looking at restore banner — they haven't applied yet.
+    if (draftAvailable) return;
+    const id = setTimeout(async () => {
+      try {
+        await saveImages(images.map((im) => im.file));
+        setFilesSavedAt(Date.now());
+      } catch (e) {
+        console.warn('[idb] saveImages failed:', e);
+      }
+    }, 2000);
+    return () => clearTimeout(id);
+  }, [images, hydrated, draftAvailable]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (draftAvailable) return;
+    const id = setTimeout(async () => {
+      try {
+        await saveBgm(bgm);
+        setFilesSavedAt(Date.now());
+      } catch (e) {
+        console.warn('[idb] saveBgm failed:', e);
+      }
+    }, 2000);
+    return () => clearTimeout(id);
+  }, [bgm, hydrated, draftAvailable]);
+
   /* Restore actions */
-  const applyDraft = useCallback(() => {
+  const applyDraft = useCallback(async () => {
     const d = draftAvailable;
-    if (!d) return;
-    setTopic(d.topic);
-    setLines(d.lines);
-    setVoice(d.voice);
-    setRate(d.rate);
-    setAspect(d.aspect);
-    setFps(d.fps);
-    setBgmVolume(d.bgmVolume);
-    setSubtitleStyle(d.subtitleStyle);
-    setPresetId(d.presetId);
+    if (d) {
+      setTopic(d.topic);
+      setLines(d.lines);
+      setVoice(d.voice);
+      setRate(d.rate);
+      setAspect(d.aspect);
+      setFps(d.fps);
+      setBgmVolume(d.bgmVolume);
+      setSubtitleStyle(d.subtitleStyle);
+      setPresetId(d.presetId);
+    }
+    // Restore images + bgm from IDB
+    try {
+      const restoredFiles = await loadImages();
+      if (restoredFiles.length > 0) {
+        const libItems: LibraryImage[] = restoredFiles.map((f) => ({
+          file: f,
+          url: URL.createObjectURL(f),
+          used: false,
+        }));
+        setImages(libItems);
+      }
+      const restoredBgm = await loadBgm();
+      if (restoredBgm) setBgm(restoredBgm);
+    } catch (e) {
+      console.warn('[restore] IDB load failed:', e);
+    }
     setDraftAvailable(null);
   }, [draftAvailable]);
 
-  const discardDraft = useCallback(() => {
+  const discardDraft = useCallback(async () => {
     clearDraft();
+    try { await clearAllFiles(); } catch {}
     setDraftAvailable(null);
+    setDraftFilesSummary({ images: 0, bgm: false });
   }, []);
 
   /* ─── Poll active job ─── */
@@ -243,6 +305,7 @@ export default function StudioPage() {
     images.forEach((im) => URL.revokeObjectURL(im.url));
     setImages([]); setLines([]); setTopic(''); setBgm(null); setActiveJobId(null);
     clearDraft();
+    clearAllFiles().catch(() => {});
   }, [images]);
   const pickPreset = useCallback((p: ExportPreset) => {
     setPresetId(p.id); setAspect(p.aspect); setFps(p.fps);
@@ -272,17 +335,22 @@ export default function StudioPage() {
 
   return (
     <>
-      {/* Restore draft banner */}
-      {draftAvailable && (
+      {/* Restore draft banner — gate behind hydrated to avoid SSR mismatch */}
+      {hydrated && draftAvailable !== null && (
         <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-4 py-2.5 text-[11px]">
           <Save size={14} className="shrink-0 text-[var(--accent-2)]" />
           <div className="flex-1">
             <div className="font-medium text-white">
-              Có draft cũ ({draftAvailable.lines.length} scenes · {draftAvailable.imagesCount} ảnh)
+              Phục hồi session cũ
+              {draftAvailable && ` · ${draftAvailable.lines.length} scenes`}
+              {draftFilesSummary.images > 0 && ` · ${draftFilesSummary.images} ảnh`}
+              {draftFilesSummary.bgm && ' · BGM'}
             </div>
             <div className="text-[10px] text-[var(--muted)]">
-              Lưu lần cuối: {new Date(draftAvailable.savedAt).toLocaleString('vi-VN')} ·
-              Ảnh + BGM cần upload lại (file không persist được)
+              {draftAvailable && (
+                <>Lưu lần cuối: {new Date(draftAvailable.savedAt).toLocaleString('vi-VN')} · </>
+              )}
+              Tất cả ảnh + BGM khôi phục đầy đủ (IndexedDB)
             </div>
           </div>
           <button
@@ -322,7 +390,9 @@ export default function StudioPage() {
             />
           </div>
           <div className="flex items-center gap-2 border-l border-[var(--border-subtle)] px-3">
-            <SaveIndicator savedAt={savedAt} />
+            {hydrated && (
+              <SaveIndicator savedAt={Math.max(savedAt ?? 0, filesSavedAt ?? 0) || null} />
+            )}
             <button
               onClick={() => setAllSettingsOpen(true)}
               className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-[var(--muted)] hover:bg-white/[.04] hover:text-white transition"

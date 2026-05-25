@@ -15,7 +15,7 @@ Tool tự ghép video từ **ảnh upload có sẵn** + AI gen script + giọng 
 - **Sequence preview client-side INLINE**: nút "Preview" → canvas hiển thị THẲNG trong preview card (không modal). Fetch tất cả TTS song song, decode AudioContext, sequence playback. Compact transport bar dưới canvas (Play/Pause/Stop/Replay + progress + scene indicator). ~3-5s loading vs 30s render
 - **Canvas crossfade 0.4s**: match ffmpeg `compose.py transition=0.4`. Trong fade zone draw current scene fading + next scene fading-in (globalAlpha blend). Caption cũng crossfade. Cảm giác mượt như render thật
 - **All-direct panels**: Voice / Subtitle / BGM / Export hiển thị **trực tiếp** right column 3-col (4 cards stacked) — không cần mở modal cho mỗi setting. Modal "All settings" chỉ là backup khi user muốn focus mode
-- **Auto-save localStorage**: state (script, voice, rate, aspect, fps, bgmVolume, subtitleStyle, presetId) lưu debounced 2s vào `p0021:studio:draft:v1`. Mount → banner "Phục hồi / Bỏ qua" nếu có draft cũ. Live indicator "saved 12s trước" ở top bar. Files (images, BGM) KHÔNG persist được — user re-upload
+- **Auto-save localStorage + IndexedDB**: text metadata (script, voice, rate, aspect, fps, bgmVolume, subtitleStyle, presetId) lưu debounced 2s vào localStorage `p0021:studio:draft:v1`. **Image Files + BGM lưu vào IndexedDB** (DB `p0021-studio`, store `files`, keys `image:NNN` + `bgm`) — full session persist, ảnh + BGM khôi phục đầy đủ sau reload không cần re-upload. Banner "Phục hồi / Bỏ qua" hiện khi có draft. Live indicator "saved Xs trước" ở top bar
 - Local + Cloud-ready (Docker)
 
 ## Tech stack
