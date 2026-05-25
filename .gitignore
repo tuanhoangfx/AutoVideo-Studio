@@ -1,0 +1,35 @@
+# Root .gitignore for P0021-AutoVideo-Studio
+# Specific per-folder ignores live in app/.gitignore and worker/.gitignore.
+
+# Node
+node_modules/
+.next/
+.next-verify/
+*.tsbuildinfo
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Worker storage (jobs, preview cache, test assets)
+worker/storage/jobs/
+worker/storage/preview/
+worker/storage/test-assets/*.mp3
+worker/storage/test-assets/*.mp4
+
+# Env + secrets
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

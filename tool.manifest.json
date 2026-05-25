@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "code": "P0021",
+  "id": "autovideo-studio",
+  "aliases": [
+    "P0021",
+    "AutoVideo",
+    "AVS",
+    "Video Studio"
+  ],
+  "name": "AutoVideo Studio",
+  "type": "Web",
+  "owner": "Tool",
+  "status": "Experimental",
+  "summary": "Auto-gen video: LLM script → ảnh (gen SD/DALL-E hoặc upload) → TTS (edge-tts VN) → subtitle (whisper) → Ken Burns + transition → MP4. Next.js UI + Python FastAPI worker.",
+  "stack": [
+    "Next.js 14",
+    "React 18",
+    "TypeScript",
+    "Tailwind",
+    "Python 3.11",
+    "FastAPI",
+    "FFmpeg",
+    "MoviePy",
+    "edge-tts",
+    "Whisper",
+    "Stable Diffusion"
+  ],
+  "features": [
+    "Tạo script từ topic bằng LLM (Gemini/OpenAI/Ollama)",
+    "2 nguồn ảnh: auto-gen (SD/DALL-E/Flux) hoặc upload sẵn",
+    "TTS tiếng Việt qua edge-tts (free, giọng Hoài My/Nam Minh)",
+    "Subtitle auto-align bằng Whisper word-level",
+    "Hiệu ứng Ken Burns (zoom/pan), fade, slide transitions",
+    "Khớp frame với voice timing (mỗi scene = câu thoại + ảnh + duration)",
+    "Background music + auto-duck dưới voice",
+    "Render MP4 1080x1920 (Shorts) / 1920x1080 (landscape)",
+    "Batch job queue, preview player trước khi render"
+  ],
+  "commands": {
+    "dev": "cd app && pnpm dev",
+    "build": "cd app && pnpm build",
+    "start": "cd app && pnpm start",
+    "lint": "cd app && pnpm lint",
+    "typecheck": "cd app && pnpm typecheck",
+    "worker:install": "cd worker && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
+    "worker:dev": "cd worker && .venv/Scripts/uvicorn main:app --reload --port 8021"
+  },
+  "docs": {
+    "readme": "README.md",
+    "claude": "CLAUDE.md",
+    "architecture": "docs/ARCHITECTURE.md"
+  },
+  "github": {
+    "repo": "tuanhoangfx/AutoVideo-Studio",
+    "branch": "main",
+    "manifestPath": "tool.manifest.json"
+  },
+  "deployTarget": "vercel",
+  "release": {
+    "version": "0.1.0",
+    "readiness": []
+  },
+  "health": {
+    "status": "Experimental",
+    "note": "Bootstrap stage — design preview trước, chưa wire worker. Cần Python 3.11 + ffmpeg trong PATH."
+  },
+  "urls": {
+    "local": "http://127.0.0.1:3000",
+    "localSetupAt": "2026-05-25T17:36:41.786Z"
+  },
+  "designDecision": {
+    "chosen": "S2 Workspace Tabs",
+    "previousChoice": "R4 Studio Hero (deprecated khi user yêu cầu multi-project + đầy đủ chức năng 1 màn)",
+    "muse": "Chrome tabs + 3-pane editor",
+    "route": "/studio",
+    "components": "src/components/studio/",
+    "decidedAt": "2026-05-26",
+    "rationale": "User chốt S2 vì: tabs Chrome-style cho multi-project song song, 3-pane body cover Library/Preview+Script/Properties, keyframe timeline full-width bottom — hiển thị MỌI chức năng trong 1 màn."
+  },
+  "functional": {
+    "status": "v0.3 working",
+    "version": "0.3.0",
+    "worker": "edge-tts + imageio-ffmpeg + FastAPI · port 8021 · persistent JSON",
+    "frontend": "Next.js 14 client component · port 3021",
+    "smokeTestAt": "2026-05-26T01:30:00Z",
+    "smokeTestResult": "2 scenes 9:16 → 216KB MP4 với CapCut word-by-word subtitle burned-in"
+  },
+  "v03Bundle": {
+    "A1_bgm": "BGM upload + sidechaincompress auto-duck (~-12dB)",
+    "A2_subtitle_line": "1 line cả câu, ASS burned-in",
+    "A4_export_presets": "TikTok/Reels/Shorts/YouTube/Square 1-click",
+    "B3_capcut_word": "Per-word events từ edge-tts WordBoundary + pop animation (\\fscx scale)",
+    "persist_jobs": "storage/jobs/<id>/job.json survives worker restart",
+    "inline_video_preview": "VideoPreview component khi status=done"
+  },
+  "v031Features": {
+    "hub_theme": "Cloned P0004 indigo tokens + utility classes (.hub-card, .btn-primary, .modal-panel)",
+    "single_screen": "3-pane layout: Library | Preview+Script | Voice+Subtitle+BGM+Export (4 panels direct, no modals)",
+    "voice_preview": "▸ nghe thử voice + rate trước khi render (cached SHA-1)",
+    "per_scene_preview": "▸ trên mỗi line ScriptPanel — nghe đúng câu thoại đang chỉnh",
+    "sequence_preview_inline": "Preview client-side hiển thị THẲNG trong khung chính (no modal). Web Audio + canvas Ken Burns",
+    "canvas_crossfade": "0.4s blend giữa scenes match ffmpeg render compose.py transition",
+    "all_settings_modal": "Backup modal cho focus mode khi cần — Voice/Subtitle/BGM/Export đã visible direct"
+  },
+  "nextActions": [
+    "Wire Gemini API key vào worker (env GEMINI_API_KEY) cho script gen quality cao",
+    "Thêm video player <video src=workerUrl/jobs/{id}/output> để preview MP4 inline",
+    "Background music track (upload MP3, auto-duck under voice)",
+    "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
+    "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
+  ],
+  "manifestUpdatedAt": "2026-05-25T17:36:41.786Z"
+}

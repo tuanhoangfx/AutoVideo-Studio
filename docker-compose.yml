@@ -1,0 +1,25 @@
+# Local docker-compose — chạy worker + (optional) frontend.
+# Usage:
+#   docker compose up worker            # chỉ worker
+#   docker compose up                   # tất cả
+
+services:
+  worker:
+    build: ./worker
+    ports:
+      - "8021:8021"
+    volumes:
+      - ./worker/storage:/app/storage
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    restart: unless-stopped
+
+  # Frontend Next.js — dev only. Production khuyến nghị deploy Vercel.
+  # web:
+  #   build: ./app
+  #   ports:
+  #     - "3021:3021"
+  #   environment:
+  #     - NEXT_PUBLIC_WORKER_URL=http://worker:8021
+  #   depends_on:
+  #     - worker

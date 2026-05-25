@@ -1,0 +1,22 @@
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.12
+
+# Image + ffmpeg (binary bundled, no system ffmpeg needed)
+Pillow==10.4.0
+imageio-ffmpeg==0.5.1
+
+# TTS — primary edge-tts (free, neural VN voices), fallback gTTS (Google Translate TTS)
+# Note: edge-tts có thể bị Microsoft 403 (rate-limit IP / token rotation) — gTTS đảm bảo pipeline không break.
+edge-tts==7.2.8
+gTTS==2.5.4
+mutagen==1.47.0
+
+# LLM (optional — gen script khi user provide GEMINI_API_KEY)
+google-generativeai==0.8.3
+
+# Notes:
+# - moviepy/whisper REMOVED: dùng ffmpeg trực tiếp + duration đo từ MP3 metadata.
+# - SD/torch SKIPPED: design lock = upload-only, không gen ảnh AI.
