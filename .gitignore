@@ -15,8 +15,14 @@ __pycache__/
 # Worker storage (jobs, preview cache, test assets)
 worker/storage/jobs/
 worker/storage/preview/
+worker/storage/smoke/
+worker/storage/smoke_images/
 worker/storage/test-assets/*.mp3
 worker/storage/test-assets/*.mp4
+worker/storage/test-assets/*.jpg
+
+# Reference repos (cloned for inspiration, not part of project)
+_reference/
 
 # Env + secrets
 .env
