@@ -44,7 +44,8 @@
     "lint": "cd app && pnpm lint",
     "typecheck": "cd app && pnpm typecheck",
     "worker:install": "cd worker && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
-    "worker:dev": "cd worker && .venv/Scripts/uvicorn main:app --reload --port 8021"
+    "worker:dev": "cd worker && .venv/Scripts/uvicorn main:app --reload --port 8021",
+    "worker:public": "powershell -ExecutionPolicy Bypass -File scripts/start-public-worker.ps1"
   },
   "docs": {
     "readme": "README.md",
@@ -78,12 +79,12 @@
     "note": "Frontend deployed to Vercel and production env points to the VPS worker path. Custom domain is added in Vercel and waits for DNS A record at Tino."
   },
   "urls": {
-    "local": "http://localhost:3021/studio",
+    "local": "http://127.0.0.1:3000",
     "app": "https://p0021-autovideo-studio.vercel.app",
     "custom": "https://p0021.infix1.io.vn",
     "customStatus": "pending-dns",
     "worker": "https://zaloai.infix1.io.vn/p0021-worker",
-    "localSetupAt": "2026-05-25T17:36:41.786Z",
+    "localSetupAt": "2026-05-26T22:26:45.091Z",
     "appSetupAt": "2026-05-26T15:12:00.000+07:00"
   },
   "designDecision": {
@@ -127,5 +128,5 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-05-26T15:12:00.000+07:00"
+  "manifestUpdatedAt": "2026-05-26T22:26:45.091Z"
 }

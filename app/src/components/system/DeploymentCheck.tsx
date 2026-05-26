@@ -60,7 +60,7 @@ export function DeploymentCheck() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-3">
+      <div className="mt-4 grid gap-2 md:grid-cols-4">
         <CheckCard
           icon={<Cloud size={16} />}
           title="Frontend"
@@ -74,6 +74,13 @@ export function DeploymentCheck() {
           value={api.WORKER_URL || 'Not configured'}
           ok={workerOk}
           detail={workerOk ? `${info?.jobs ?? 0} jobs · ${info?.concurrent_limit ?? 0} concurrent renders` : error || 'Offline'}
+        />
+        <CheckCard
+          icon={<Server size={16} />}
+          title="Worker Mode"
+          value={workerMode(api.WORKER_URL)}
+          ok={workerOk}
+          detail={workerModeDetail(api.WORKER_URL)}
         />
         <CheckCard
           icon={<Database size={16} />}
@@ -148,4 +155,21 @@ function missingDetail(storage: WorkerInfo['storage']) {
 
 function isLocalWorkerUrl(url: string) {
   return /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url);
+}
+
+function workerMode(url: string) {
+  if (!url) return 'Offline';
+  if (isLocalWorkerUrl(url)) return 'Local';
+  if (/trycloudflare\.com/i.test(url)) return 'Tunnel';
+  if (/zaloai\.infix1\.io\.vn/i.test(url)) return 'VPS';
+  return 'Public';
+}
+
+function workerModeDetail(url: string) {
+  const mode = workerMode(url);
+  if (mode === 'Tunnel') return 'Cloudflare Tunnel is forwarding public traffic to this machine.';
+  if (mode === 'Local') return 'Only this machine can use Export & Download.';
+  if (mode === 'VPS') return 'Dedicated VPS worker endpoint.';
+  if (mode === 'Public') return 'Public worker URL configured.';
+  return 'Set NEXT_PUBLIC_WORKER_URL and redeploy.';
 }

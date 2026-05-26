@@ -13,6 +13,7 @@ __pycache__/
 *.pyc
 
 # Worker storage (jobs, preview cache, test assets)
+.runtime/
 worker/storage/jobs/
 worker/storage/preview/
 worker/storage/smoke/

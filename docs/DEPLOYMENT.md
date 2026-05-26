@@ -40,6 +40,24 @@ SUPABASE_STORAGE_PREFIX=p0021-exports
 
 The service role key must stay on the worker. Never expose it through `NEXT_PUBLIC_*`.
 
+## Free Public Worker From Your PC
+
+For a no-cost setup that other people can use while your PC is on:
+
+```powershell
+.\scripts\start-public-worker.ps1
+```
+
+The script will:
+
+- start the FastAPI worker on `127.0.0.1:8021`
+- start a Cloudflare Quick Tunnel to expose it as `https://*.trycloudflare.com`
+- set Vercel `NEXT_PUBLIC_WORKER_URL` to that tunnel URL
+- deploy the Vercel frontend to production
+
+Keep the script running while other users are rendering. Quick Tunnel URLs are temporary,
+so run the script again whenever the tunnel changes.
+
 ## Health Check
 
 Open `System > Overview` and review `Deployment Check`.
@@ -47,4 +65,5 @@ It verifies:
 
 - Frontend runtime
 - Worker reachability
+- Worker mode: `Local`, `Tunnel`, `VPS`, `Public`, or `Offline`
 - Output storage backend and missing env values
