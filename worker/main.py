@@ -6,7 +6,7 @@ Endpoints:
     GET    /jobs/{id}            — get status + progress
     GET    /jobs/{id}/output     — download MP4
     POST   /jobs/{id}/cancel
-    GET    /voices               — list Vietnamese voices
+    GET    /voices               — list Studio-supported voices
 
 Multi-job: ThreadPoolExecutor (default 2 concurrent renders).
 

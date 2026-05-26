@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Sparkles, Settings2, Music, Subtitles, Smartphone,
+  Sparkles, Music, Subtitles, Smartphone,
   Folder, FileText, ChevronRight, PlayCircle, Mic2,
-  Save, Trash2,
+  Save,
 } from 'lucide-react';
 import * as api from '@/lib/api';
 import type { Job, SubtitleStyle, ExportPreset } from '@/lib/api';
@@ -20,12 +20,14 @@ import {
   BGMPanel,
   SubtitlePanel,
   ExportPresets,
-  Modal,
   VoiceSelector,
+  VOICE_OPTIONS,
   SequencePreview,
+  AudioPreview,
   type LibraryImage,
   type ScriptLine,
   type Effect,
+  type SequenceTiming,
 } from '@/components/studio';
 
 type Aspect = '9:16' | '16:9' | '1:1';
@@ -57,7 +59,8 @@ export default function StudioPage() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [previewMode, setPreviewMode] = useState<'static' | 'sequence'>('static');
-  const [allSettingsOpen, setAllSettingsOpen] = useState(false);
+  const [previewPlayhead, setPreviewPlayhead] = useState(0);
+  const [sequenceTiming, setSequenceTiming] = useState<SequenceTiming | null>(null);
   const [exportExpanded, setExportExpanded] = useState(false);
   const [draftAvailable, setDraftAvailable] = useState<DraftState | null>(null);
   const [draftFilesSummary, setDraftFilesSummary] = useState<{ images: number; bgm: boolean }>({ images: 0, bgm: false });
@@ -300,10 +303,12 @@ export default function StudioPage() {
   const switchJob = useCallback((id: string) => {
     setActiveJobId(id);
     setPreviewMode('static');
+    setPreviewPlayhead(0);
   }, []);
   const newProject = useCallback(() => {
     images.forEach((im) => URL.revokeObjectURL(im.url));
     setImages([]); setLines([]); setTopic(''); setBgm(null); setActiveJobId(null);
+    setPreviewMode('static'); setPreviewPlayhead(0); setSequenceTiming(null);
     clearDraft();
     clearAllFiles().catch(() => {});
   }, [images]);
@@ -319,6 +324,11 @@ export default function StudioPage() {
       : null;
   const canRender = lines.length > 0 && images.length > 0 && !rendering && serverOk !== false;
   const activePreset = api.EXPORT_PRESETS.find((p) => p.id === presetId);
+  const selectedVoice = VOICE_OPTIONS.find((v) => v.id === voice) ?? VOICE_OPTIONS[0];
+  const voicePreviewText =
+    selectedLine?.text.trim() ||
+    topic.trim() ||
+    'Xin chào, đây là bản nghe thử giọng đọc trong AutoVideo Studio.';
 
   const sequenceScenes = useMemo(
     () =>
@@ -332,6 +342,19 @@ export default function StudioPage() {
     [lines, images]
   );
   const canPreview = sequenceScenes.length > 0 && serverOk !== false;
+
+  useEffect(() => {
+    setPreviewPlayhead(0);
+    setSequenceTiming(null);
+  }, [sequenceScenes, voice, rate]);
+
+  const handlePreviewProgress = useCallback((elapsedSec: number) => {
+    setPreviewPlayhead(elapsedSec);
+  }, []);
+
+  const handlePreviewTiming = useCallback((timing: SequenceTiming) => {
+    setSequenceTiming(timing);
+  }, []);
 
   return (
     <>
@@ -393,14 +416,6 @@ export default function StudioPage() {
             {hydrated && (
               <SaveIndicator savedAt={Math.max(savedAt ?? 0, filesSavedAt ?? 0) || null} />
             )}
-            <button
-              onClick={() => setAllSettingsOpen(true)}
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-[var(--muted)] hover:bg-white/[.04] hover:text-white transition"
-              title="Mở tất cả settings trong 1 modal"
-            >
-              <Settings2 size={13} className="text-[var(--accent-2)]" />
-              All settings
-            </button>
             <button
               onClick={() => setPreviewMode('sequence')}
               disabled={!canPreview}
@@ -486,6 +501,8 @@ export default function StudioPage() {
                 rate={rate}
                 aspect={aspect}
                 onClose={() => setPreviewMode('static')}
+                onProgress={handlePreviewProgress}
+                onTimingReady={handlePreviewTiming}
               />
             ) : (
               <div
@@ -524,7 +541,40 @@ export default function StudioPage() {
                 ) : (
                   <div className="text-center text-[var(--muted)]">
                     <PlayCircle size={28} className="mx-auto opacity-40" />
-                    <div className="mt-1.5 text-sm">Upload ảnh → gen script → bấm Preview</div>
+                    <div className="mt-1.5 text-sm">Upload ảnh → gen script → preview ngay tại đây</div>
+                  </div>
+                )}
+                <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[10px] text-white/80 backdrop-blur">
+                  <Mic2 size={12} className="text-[var(--accent-2)]" />
+                  <span className="font-semibold">{selectedVoice.label}</span>
+                  <span className="font-mono text-white/45">{selectedVoice.locale}</span>
+                  <span className="text-white/45">{rate}</span>
+                </div>
+                <div className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 backdrop-blur">
+                  <AudioPreview
+                    src={api.voicePreviewUrl(voicePreviewText, voice, rate)}
+                    label="Nghe giọng"
+                    compact
+                  />
+                </div>
+                {(!currentJob || currentJob.status === 'done' || currentJob.status === 'error') && (
+                  <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-2 py-1.5 backdrop-blur">
+                      <button
+                        onClick={() => setPreviewMode('sequence')}
+                        disabled={!canPreview}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:brightness-110 disabled:opacity-30"
+                      >
+                        <PlayCircle size={12} /> Preview video
+                      </button>
+                      <button
+                        onClick={startRender}
+                        disabled={!canRender}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-30"
+                      >
+                        <Sparkles size={12} /> Render MP4
+                      </button>
+                    </div>
                   </div>
                 )}
                 {currentJob && currentJob.status !== 'done' && currentJob.status !== 'error' && (
@@ -597,7 +647,13 @@ export default function StudioPage() {
           <div className="hub-card">
             <PanelHead icon={<Mic2 size={13} />} title="Giọng đọc" compact />
             <div className="p-2">
-              <VoiceSelector voice={voice} onVoice={setVoice} rate={rate} onRate={setRate} />
+              <VoiceSelector
+                voice={voice}
+                onVoice={setVoice}
+                rate={rate}
+                onRate={setRate}
+                previewText={voicePreviewText}
+              />
             </div>
           </div>
 
@@ -692,30 +748,12 @@ export default function StudioPage() {
           selectedIndex={selectedScene}
           onSelectScene={setSelectedScene}
           onChangeEffect={changeEffect}
+          playheadSec={previewPlayhead}
+          audioDurations={sequenceTiming?.durations}
+          waveforms={sequenceTiming?.waveforms}
         />
       </div>
 
-      {/* ─── ALL-IN-ONE SETTINGS MODAL (backup, mở khi cần full focus) ─── */}
-      <Modal open={allSettingsOpen} onClose={() => setAllSettingsOpen(false)} title="⚙ Tất cả settings" size="lg">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <SettingSection title="📱 Export preset">
-              <ExportPresets activeId={presetId} onPick={pickPreset} />
-            </SettingSection>
-            <SettingSection title="💬 Phụ đề">
-              <SubtitlePanel value={subtitleStyle} onChange={setSubtitleStyle} />
-            </SettingSection>
-          </div>
-          <div className="space-y-3">
-            <SettingSection title="🎤 Giọng đọc">
-              <VoiceSelector voice={voice} onVoice={setVoice} rate={rate} onRate={setRate} />
-            </SettingSection>
-            <SettingSection title="🎵 BGM">
-              <BGMPanel bgm={bgm} onSet={setBgm} onClear={() => setBgm(null)} volume={bgmVolume} onVolume={setBgmVolume} />
-            </SettingSection>
-          </div>
-        </div>
-      </Modal>
     </>
   );
 }
@@ -765,11 +803,3 @@ function SaveIndicator({ savedAt }: { savedAt: number | null }) {
   );
 }
 
-function SettingSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--panel-2)]/50 p-3">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{title}</div>
-      {children}
-    </div>
-  );
-}

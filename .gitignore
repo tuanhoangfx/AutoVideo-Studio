@@ -28,6 +28,8 @@ _reference/
 .env
 .env.local
 .env*.local
+.vercel/
+app/.vercel/
 
 # OS
 .DS_Store

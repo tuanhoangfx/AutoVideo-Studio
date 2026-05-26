@@ -24,6 +24,12 @@ export type SequenceScene = {
   effect?: string;
 };
 
+export type SequenceTiming = {
+  durations: number[];
+  waveforms: number[][];
+  total: number;
+};
+
 type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
 
 const EFFECTS_CYCLE = ['zoom_in', 'pan_right', 'zoom_out', 'pan_left'];
@@ -37,15 +43,20 @@ export function SequencePreview({
   rate,
   aspect,
   onClose,
+  onProgress,
+  onTimingReady,
 }: {
   scenes: SequenceScene[];
   voice: string;
   rate: string;
   aspect: '9:16' | '16:9' | '1:1';
   onClose?: () => void;
+  onProgress?: (elapsedSec: number) => void;
+  onTimingReady?: (timing: SequenceTiming) => void;
 }) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [loadProgress, setLoadProgress] = useState({ done: 0, total: scenes.length });
   const [currentScene, setCurrentScene] = useState(0);
   const [elapsed, setElapsed] = useState(0);
@@ -60,6 +71,9 @@ export function SequencePreview({
   const totalRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const pausedAtRef = useRef<number>(0);
+  const drawFrameRef = useRef<(e: number) => void>(() => {});
+  const loopRef = useRef<() => void>(() => {});
+  const lastProgressEmitRef = useRef(-1);
 
   /** Internal aspect-driven canvas resolution. Display element scales via CSS. */
   const canvasSize = useMemo<[number, number]>(() => {
@@ -72,6 +86,7 @@ export function SequencePreview({
   const preload = useCallback(async () => {
     setStatus('loading');
     setError(null);
+    setWarnings([]);
     setLoadProgress({ done: 0, total: scenes.length });
     try {
       const ctx =
@@ -79,18 +94,28 @@ export function SequencePreview({
         new (window.AudioContext || (window as any).webkitAudioContext)();
       ctxRef.current = ctx;
 
+      const nextWarnings: string[] = [];
       const buffers = await Promise.all(
-        scenes.map(async (s) => {
+        scenes.map(async (s, i) => {
           const url = voicePreviewUrl(s.text, voice, rate);
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`tts ${resp.status} for "${s.text.slice(0, 30)}…"`);
-          const ab = await resp.arrayBuffer();
-          const buf = await ctx.decodeAudioData(ab);
-          setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
-          return buf;
+          try {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`tts ${resp.status}`);
+            const ab = await resp.arrayBuffer();
+            const buf = await ctx.decodeAudioData(ab);
+            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+            return buf;
+          } catch {
+            nextWarnings.push(`Scene ${i + 1}: voice preview lỗi, dùng timing ước lượng.`);
+            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+            return makeSilentBuffer(ctx, estimateDurationSec(s.text));
+          }
         })
       );
       buffersRef.current = buffers;
+      setWarnings(nextWarnings);
+      const durations = buffers.map((b) => b.duration);
+      const waveforms = buffers.map((b) => bufferToWaveform(b, 40));
 
       const images = await Promise.all(
         scenes.map(
@@ -115,9 +140,12 @@ export function SequencePreview({
       sceneStartsRef.current = starts;
       totalRef.current = cum;
       pausedAtRef.current = 0;
+      lastProgressEmitRef.current = -1;
+      onProgress?.(0);
+      onTimingReady?.({ durations, waveforms, total: cum });
 
       // First frame so users see something immediately
-      requestAnimationFrame(() => drawFrame(0));
+      requestAnimationFrame(() => drawFrameRef.current(0));
 
       setStatus('ready');
     } catch (e: any) {
@@ -125,7 +153,7 @@ export function SequencePreview({
       setStatus('error');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenes, voice, rate]);
+  }, [onProgress, onTimingReady, scenes, voice, rate]);
 
   // ─── Play / Pause / Stop ────────────────────────────────────────────
   const play = useCallback(() => {
@@ -159,7 +187,7 @@ export function SequencePreview({
     });
 
     setStatus('playing');
-    loop();
+    loopRef.current();
   }, []);
 
   const pause = useCallback(() => {
@@ -185,9 +213,11 @@ export function SequencePreview({
     rafRef.current = null;
     setElapsed(0);
     setCurrentScene(0);
+    lastProgressEmitRef.current = -1;
+    onProgress?.(0);
     setStatus('ready');
-    requestAnimationFrame(() => drawFrame(0));
-  }, []);
+    requestAnimationFrame(() => drawFrameRef.current(0));
+  }, [onProgress]);
 
   // ─── Frame draw ─────────────────────────────────────────────────────
   const drawFrame = useCallback(
@@ -272,14 +302,24 @@ export function SequencePreview({
     if (e >= total) {
       pausedAtRef.current = 0;
       setElapsed(total);
+      onProgress?.(total);
       drawFrame(total - 0.001);
       setStatus('ended');
       return;
     }
     setElapsed(e);
+    if (Math.abs(e - lastProgressEmitRef.current) >= 0.05) {
+      lastProgressEmitRef.current = e;
+      onProgress?.(e);
+    }
     drawFrame(e);
     rafRef.current = requestAnimationFrame(loop);
-  }, [drawFrame]);
+  }, [drawFrame, onProgress]);
+
+  useEffect(() => {
+    drawFrameRef.current = drawFrame;
+    loopRef.current = loop;
+  }, [drawFrame, loop]);
 
   // ─── Lifecycle ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -350,6 +390,11 @@ export function SequencePreview({
             <div className="mt-2 text-[10px] text-white/60">
               Ken Burns + crossfade + voice — không BGM/subtitle (chỉ trong render)
             </div>
+            {warnings.length > 0 && (
+              <div className="mt-2 max-w-sm rounded border border-amber-300/20 bg-amber-300/10 px-2 py-1 text-center text-[10px] text-amber-100">
+                Voice preview tạm lỗi, đã dùng timing ước lượng để vẫn xem được hình.
+              </div>
+            )}
           </Overlay>
         )}
         {status === 'paused' && (
@@ -457,6 +502,28 @@ function Overlay({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col items-center">{children}</div>
     </div>
   );
+}
+
+function estimateDurationSec(text: string) {
+  return Math.max(2, Math.min(12, text.trim().length * 0.055 + 1.2));
+}
+
+function makeSilentBuffer(ctx: AudioContext, durationSec: number) {
+  const frames = Math.max(1, Math.ceil(ctx.sampleRate * durationSec));
+  return ctx.createBuffer(1, frames, ctx.sampleRate);
+}
+
+function bufferToWaveform(buffer: AudioBuffer, samples: number) {
+  const data = buffer.getChannelData(0);
+  if (data.length === 0) return Array.from({ length: samples }, () => 0.15);
+  const block = Math.max(1, Math.floor(data.length / samples));
+  return Array.from({ length: samples }, (_, i) => {
+    const start = i * block;
+    const end = Math.min(data.length, start + block);
+    let sum = 0;
+    for (let j = start; j < end; j += 1) sum += Math.abs(data[j]);
+    return Math.max(0.08, Math.min(1, (sum / Math.max(1, end - start)) * 4));
+  });
 }
 
 /* ─────────────────────────────────────────────────

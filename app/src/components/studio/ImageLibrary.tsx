@@ -52,13 +52,13 @@ export function ImageLibrary({
           </div>
         </button>
       ) : (
-        <div className="grid grid-cols-3 gap-1 p-2 max-h-48 overflow-y-auto">
+        <div className="grid max-h-36 grid-cols-4 gap-1 overflow-y-auto p-2">
           {images.map((img, i) => (
             <div
               key={i}
-              className={`group relative aspect-square overflow-hidden rounded ring-1 cursor-pointer transition ${
+              className={`group relative aspect-[4/3] overflow-hidden rounded-md ring-1 cursor-pointer transition ${
                 i === selectedIndex
-                  ? 'ring-[var(--accent)] ring-2'
+                  ? 'ring-[var(--accent)] ring-2 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]'
                   : img.used
                   ? 'ring-emerald-400/40'
                   : 'ring-white/10 hover:ring-white/30'
@@ -76,6 +76,11 @@ export function ImageLibrary({
                   ✓
                 </div>
               )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1 py-0.5">
+                <div className="truncate font-mono text-[7px] text-white/85">
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

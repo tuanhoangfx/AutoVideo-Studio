@@ -15,6 +15,23 @@ from mutagen.mp3 import MP3
 
 DEFAULT_VOICE = "vi-VN-HoaiMyNeural"
 
+SUPPORTED_VOICES = [
+    {"ShortName": "vi-VN-HoaiMyNeural", "Locale": "vi-VN", "Gender": "Female", "FriendlyName": "Hoai My"},
+    {"ShortName": "vi-VN-NamMinhNeural", "Locale": "vi-VN", "Gender": "Male", "FriendlyName": "Nam Minh"},
+    {"ShortName": "en-US-JennyNeural", "Locale": "en-US", "Gender": "Female", "FriendlyName": "Jenny"},
+    {"ShortName": "en-US-GuyNeural", "Locale": "en-US", "Gender": "Male", "FriendlyName": "Guy"},
+    {"ShortName": "en-US-AriaNeural", "Locale": "en-US", "Gender": "Female", "FriendlyName": "Aria"},
+    {"ShortName": "en-GB-SoniaNeural", "Locale": "en-GB", "Gender": "Female", "FriendlyName": "Sonia"},
+    {"ShortName": "ja-JP-NanamiNeural", "Locale": "ja-JP", "Gender": "Female", "FriendlyName": "Nanami"},
+    {"ShortName": "ja-JP-KeitaNeural", "Locale": "ja-JP", "Gender": "Male", "FriendlyName": "Keita"},
+    {"ShortName": "ko-KR-SunHiNeural", "Locale": "ko-KR", "Gender": "Female", "FriendlyName": "SunHi"},
+    {"ShortName": "ko-KR-InJoonNeural", "Locale": "ko-KR", "Gender": "Male", "FriendlyName": "InJoon"},
+    {"ShortName": "zh-CN-XiaoxiaoNeural", "Locale": "zh-CN", "Gender": "Female", "FriendlyName": "Xiaoxiao"},
+    {"ShortName": "zh-CN-YunxiNeural", "Locale": "zh-CN", "Gender": "Male", "FriendlyName": "Yunxi"},
+    {"ShortName": "th-TH-PremwadeeNeural", "Locale": "th-TH", "Gender": "Female", "FriendlyName": "Premwadee"},
+    {"ShortName": "id-ID-GadisNeural", "Locale": "id-ID", "Gender": "Female", "FriendlyName": "Gadis"},
+]
+
 
 @dataclass
 class TTSResult:
@@ -105,10 +122,9 @@ def synthesize_sync(text: str, out_path: Path, **kwargs) -> TTSResult:
 
 
 async def list_vi_voices() -> list[dict]:
-    try:
-        voices = await edge_tts.list_voices()
-        return [v for v in voices if v["Locale"].startswith("vi-")]
-    except Exception:
-        return [
-            {"ShortName": "gtts-vi", "Locale": "vi-VN", "Gender": "Female", "FriendlyName": "Google TTS (fallback)"}
-        ]
+    """Return curated voices supported by the Studio UI.
+
+    The render path accepts any valid edge-tts voice. Keeping a curated list here
+    avoids a slow network call just to populate voice options.
+    """
+    return SUPPORTED_VOICES

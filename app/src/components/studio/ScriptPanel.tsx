@@ -53,7 +53,7 @@ export function ScriptPanel({
     <section>
       {lines.length === 0 ? (
         <div className="p-2 text-[10px] text-white/50 text-center italic">
-          Chưa có lời thoại — gõ chủ đề + Gen hoặc bấm "+ dòng".
+          Chưa có lời thoại — gõ chủ đề + Gen hoặc bấm &quot;+ dòng&quot;.
         </div>
       ) : (
         <div className="max-h-40 space-y-0.5 overflow-y-auto p-1.5">
@@ -116,9 +116,10 @@ export function ScriptPanel({
           <button
             onClick={onAddLine}
             disabled={imagesCount === 0}
-            className="text-[10px] text-[var(--accent-2)] hover:underline disabled:opacity-30"
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--accent)]/50 bg-[var(--accent)]/15 px-2.5 py-1 text-[10px] font-semibold text-[var(--accent-2)] shadow-[0_0_14px_rgba(99,102,241,0.16)] transition hover:bg-[var(--accent)] hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.03] disabled:text-white/30 disabled:shadow-none"
           >
-            + dòng
+            <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-[var(--accent)] text-[9px] text-white">+</span>
+            Thêm dòng
           </button>
           <button
             onClick={onAIGen}
