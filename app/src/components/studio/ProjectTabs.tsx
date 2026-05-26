@@ -25,7 +25,7 @@ export function ProjectTabs({
     <div className="flex items-end gap-1 border-b border-white/10 bg-black/30 px-2 pt-2">
       {jobs.length === 0 && (
         <div className="px-3 py-1.5 text-[11px] italic text-white/40">
-          Chưa có project. Click + để tạo mới.
+          No projects yet. Click + to create one.
         </div>
       )}
       {jobs.map((j) => {
@@ -55,7 +55,7 @@ export function ProjectTabs({
       <button
         onClick={onNew}
         className="ml-1 grid h-7 w-7 place-items-center rounded text-white/50 hover:bg-white/10 hover:text-white"
-        title="Tạo project mới"
+        title="Create new project"
       >
         +
       </button>

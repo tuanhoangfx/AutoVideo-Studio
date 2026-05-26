@@ -60,7 +60,7 @@ export function AudioPreview({
           compact ? 'h-6 w-6' : 'h-7 w-7'
         }`}
         aria-label={playing ? 'Pause' : 'Play preview'}
-        title={playing ? 'Pause' : 'Nghe thử'}
+        title={playing ? 'Pause' : 'Preview'}
       >
         {loading ? (
           <span className="animate-spin">⋯</span>

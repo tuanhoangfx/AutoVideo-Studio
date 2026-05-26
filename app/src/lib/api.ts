@@ -4,6 +4,10 @@
 export const WORKER_URL =
   process.env.NEXT_PUBLIC_WORKER_URL || 'http://127.0.0.1:8021';
 
+export function resolveWorkerAssetUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `${WORKER_URL}${url}`;
+}
+
 export type JobStatus =
   | 'pending'
   | 'tts'
@@ -13,15 +17,19 @@ export type JobStatus =
   | 'error';
 
 export type SubtitleStyle = 'off' | 'line' | 'word_capcut';
+export type TTSProvider = 'edge' | 'elevenlabs' | 'omnivoice-local';
 
 export type JobConfig = {
   aspect: '9:16' | '16:9' | '1:1';
   voice: string;
   fps: number;
+  resolution?: '720p' | '1080p' | '2k' | '4k';
+  video_quality?: 'auto' | 'low' | 'medium' | 'high';
+  output_format?: 'mp4' | 'mov';
   rate: string;
+  tts_provider?: TTSProvider;
   subtitle_style?: SubtitleStyle;
   bgm_volume?: number;
-  preset?: string | null;
 };
 
 export type Job = {
@@ -39,7 +47,9 @@ export type Job = {
 export type SceneInput = {
   text: string;
   image_index: number;
+  duration_ms?: number;
   effect?: string | null;
+  transition?: string | null;
 };
 
 export type CreateJobPayload = {
@@ -58,7 +68,19 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 export async function getRoot() {
-  return handle<{ name: string; version: string; jobs: number; concurrent_limit: number }>(
+  return handle<{
+    name: string;
+    version: string;
+    jobs: number;
+    concurrent_limit: number;
+    storage?: {
+      backend: string;
+      ready: boolean;
+      bucket?: string;
+      prefix?: string;
+      missing?: string[];
+    };
+  }>(
     await fetch(`${WORKER_URL}/`)
   );
 }
@@ -102,7 +124,7 @@ export const EXPORT_PRESETS: ExportPreset[] = [
   { id: 'tiktok', label: 'TikTok', icon: '◤', aspect: '9:16', fps: 30, hint: '9:16 · 30fps · 1080p' },
   { id: 'reels', label: 'Instagram Reels', icon: '◆', aspect: '9:16', fps: 30, hint: '9:16 · 30fps' },
   { id: 'shorts', label: 'YouTube Shorts', icon: '▶', aspect: '9:16', fps: 30, hint: '9:16 · 30fps' },
-  { id: 'youtube', label: 'YouTube', icon: '◢', aspect: '16:9', fps: 30, hint: '16:9 · 30fps · 1080p' },
+  { id: 'youtube', label: 'YouTube', icon: '◢', aspect: '16:9', fps: 60, hint: '16:9 · 60fps · 1080p' },
   { id: 'square', label: 'Square', icon: '■', aspect: '1:1', fps: 30, hint: '1:1 · 30fps' },
 ];
 

@@ -2,15 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Sparkles, Music, Subtitles, Smartphone,
-  Folder, FileText, ChevronRight, PlayCircle, Mic2,
-  Save,
+  Download, Loader2, Music, Subtitles,
+  Folder, FileText, Play, PlayCircle, Mic2,
 } from 'lucide-react';
 import * as api from '@/lib/api';
-import type { Job, SubtitleStyle, ExportPreset } from '@/lib/api';
-import { useAutoSave, loadDraft, clearDraft, timeAgo, type DraftState } from '@/lib/autosave';
+import type { Job, SubtitleStyle, TTSProvider } from '@/lib/api';
+import { useAutoSave, clearDraft, type DraftState } from '@/lib/autosave';
 import {
-  saveImages, loadImages, saveBgm, loadBgm, clearAllFiles, summarizeFiles,
+  saveImages, saveBgm, clearAllFiles, summarizeFiles,
 } from '@/lib/draft-files';
 import {
   ProjectTabs,
@@ -19,18 +18,38 @@ import {
   KeyframeTimeline,
   BGMPanel,
   SubtitlePanel,
-  ExportPresets,
   VoiceSelector,
   VOICE_OPTIONS,
+  FlagBadge,
   SequencePreview,
   AudioPreview,
   type LibraryImage,
+  type LibraryImageInput,
   type ScriptLine,
   type Effect,
+  type Transition,
   type SequenceTiming,
 } from '@/components/studio';
+import {
+  DEFAULT_STUDIO_EXPORT_SETTINGS,
+  readStudioExportSettings,
+  STUDIO_EXPORT_SETTINGS_EVENT,
+  type StudioExportSettings,
+} from '@/lib/studio-export-settings';
+import { saveBlobToStudioDirectory, triggerBrowserDownload } from '@/lib/studio-download-target';
+import { scriptMetrics } from '@/lib/script-metrics';
 
 type Aspect = '9:16' | '16:9' | '1:1';
+type RightPanel = 'voice' | 'subtitle' | 'music';
+type DownloadState = 'idle' | 'exporting' | 'downloading' | 'downloaded' | 'error';
+type DownloadRecord = {
+  id: string;
+  filename: string;
+  url: string;
+  target: string;
+  size: number;
+  at: number;
+};
 
 export default function StudioPage() {
   /* ─── Jobs & connection ─── */
@@ -41,31 +60,40 @@ export default function StudioPage() {
   /* ─── Project doc state ─── */
   const [images, setImages] = useState<LibraryImage[]>([]);
   const [lines, setLines] = useState<ScriptLine[]>([]);
+  const [scriptText, setScriptText] = useState('');
+  const [scriptTexts, setScriptTexts] = useState<string[]>([]);
   const [topic, setTopic] = useState('');
   const [selectedScene, setSelectedScene] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedImageIndexes, setSelectedImageIndexes] = useState<number[]>([]);
 
   /* ─── Config ─── */
   const [voice, setVoice] = useState('vi-VN-HoaiMyNeural');
-  const [aspect, setAspect] = useState<Aspect>('9:16');
+  const [aspect, setAspect] = useState<Aspect>(() => readStudioExportSettings().aspect);
   const [rate, setRate] = useState('+0%');
-  const [fps, setFps] = useState(30);
+  const [ttsProvider, setTtsProvider] = useState<TTSProvider>('edge');
+  const [fps, setFps] = useState(() => readStudioExportSettings().fps);
+  const [resolution, setResolution] = useState(() => readStudioExportSettings().resolution);
+  const [videoQuality, setVideoQuality] = useState(() => readStudioExportSettings().videoQuality);
+  const [outputFormat, setOutputFormat] = useState(() => readStudioExportSettings().outputFormat);
+  const [autoDownload, setAutoDownload] = useState(() => readStudioExportSettings().autoDownload);
+  const [downloadDirectoryName, setDownloadDirectoryName] = useState(() => readStudioExportSettings().downloadDirectoryName);
+  const [imageDurationSec, setImageDurationSec] = useState(5);
   const [bgm, setBgm] = useState<File | null>(null);
   const [bgmVolume, setBgmVolume] = useState(0.18);
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>('word_capcut');
-  const [presetId, setPresetId] = useState<ExportPreset['id'] | null>('tiktok');
 
   /* ─── UX flags ─── */
-  const [aiGenerating, setAiGenerating] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [previewMode, setPreviewMode] = useState<'static' | 'sequence'>('static');
+  const [rightPanel, setRightPanel] = useState<RightPanel>('voice');
   const [previewPlayhead, setPreviewPlayhead] = useState(0);
   const [sequenceTiming, setSequenceTiming] = useState<SequenceTiming | null>(null);
-  const [exportExpanded, setExportExpanded] = useState(false);
-  const [draftAvailable, setDraftAvailable] = useState<DraftState | null>(null);
-  const [draftFilesSummary, setDraftFilesSummary] = useState<{ images: number; bgm: boolean }>({ images: 0, bgm: false });
   const [hydrated, setHydrated] = useState(false);
-  const [filesSavedAt, setFilesSavedAt] = useState<number | null>(null);
+  const [downloadState, setDownloadState] = useState<DownloadState>('idle');
+  const [downloadMessage, setDownloadMessage] = useState('');
+  const [downloadHistory, setDownloadHistory] = useState<DownloadRecord[]>([]);
+  const autoDownloadedJobsRef = useRef<Set<string>>(new Set());
 
   /* ─── Connect server + load jobs ─── */
   useEffect(() => {
@@ -80,18 +108,31 @@ export default function StudioPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    const apply = (settings: StudioExportSettings) => {
+      setAspect(settings.aspect);
+      setFps(settings.fps);
+      setResolution(settings.resolution);
+      setVideoQuality(settings.videoQuality);
+      setOutputFormat(settings.outputFormat);
+      setAutoDownload(settings.autoDownload);
+      setDownloadDirectoryName(settings.downloadDirectoryName);
+    };
+    apply(readStudioExportSettings());
+    const onSettings = (event: Event) => {
+      apply((event as CustomEvent<StudioExportSettings>).detail ?? DEFAULT_STUDIO_EXPORT_SETTINGS);
+    };
+    window.addEventListener(STUDIO_EXPORT_SETTINGS_EVENT, onSettings);
+    return () => window.removeEventListener(STUDIO_EXPORT_SETTINGS_EVENT, onSettings);
+  }, []);
+
   /* ─── Detect draft (localStorage + IDB) on mount ─── */
   useEffect(() => {
     (async () => {
-      const draft = loadDraft();
       try {
-        const summary = await summarizeFiles();
-        setDraftFilesSummary(summary);
-        if ((draft && draft.lines.length > 0) || summary.images > 0 || summary.bgm) {
-          setDraftAvailable(draft ?? null);
-        }
+        await summarizeFiles();
       } catch {
-        if (draft && draft.lines.length > 0) setDraftAvailable(draft);
+        // Ignore old draft prompt in the compact Studio layout.
       }
       setHydrated(true);
     })();
@@ -104,88 +145,48 @@ export default function StudioPage() {
       lines,
       voice,
       rate,
+      ttsProvider,
       aspect,
       fps,
+      resolution,
+      videoQuality,
+      outputFormat,
+      autoDownload,
+      downloadDirectoryName,
       bgmVolume,
       subtitleStyle,
-      presetId,
       imagesCount: images.length,
       savedAt: new Date().toISOString(),
     }),
-    [topic, lines, voice, rate, aspect, fps, bgmVolume, subtitleStyle, presetId, images.length]
+    [topic, lines, voice, rate, ttsProvider, aspect, fps, resolution, videoQuality, outputFormat, autoDownload, downloadDirectoryName, bgmVolume, subtitleStyle, images.length]
   );
   // Only autosave AFTER initial hydration (avoid overwriting good draft with empty state).
-  const savedAt = useAutoSave(hydrated ? draftState : ({ ...draftState, lines: lines } as DraftState));
+  useAutoSave(hydrated ? draftState : ({ ...draftState, lines: lines } as DraftState));
 
   /* ─── Auto-save image blobs + BGM to IndexedDB (debounced 2s) ─── */
   useEffect(() => {
     if (!hydrated) return;
-    // Skip if user is currently looking at restore banner — they haven't applied yet.
-    if (draftAvailable) return;
     const id = setTimeout(async () => {
       try {
         await saveImages(images.map((im) => im.file));
-        setFilesSavedAt(Date.now());
       } catch (e) {
         console.warn('[idb] saveImages failed:', e);
       }
     }, 2000);
     return () => clearTimeout(id);
-  }, [images, hydrated, draftAvailable]);
+  }, [images, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
-    if (draftAvailable) return;
     const id = setTimeout(async () => {
       try {
         await saveBgm(bgm);
-        setFilesSavedAt(Date.now());
       } catch (e) {
         console.warn('[idb] saveBgm failed:', e);
       }
     }, 2000);
     return () => clearTimeout(id);
-  }, [bgm, hydrated, draftAvailable]);
-
-  /* Restore actions */
-  const applyDraft = useCallback(async () => {
-    const d = draftAvailable;
-    if (d) {
-      setTopic(d.topic);
-      setLines(d.lines);
-      setVoice(d.voice);
-      setRate(d.rate);
-      setAspect(d.aspect);
-      setFps(d.fps);
-      setBgmVolume(d.bgmVolume);
-      setSubtitleStyle(d.subtitleStyle);
-      setPresetId(d.presetId);
-    }
-    // Restore images + bgm from IDB
-    try {
-      const restoredFiles = await loadImages();
-      if (restoredFiles.length > 0) {
-        const libItems: LibraryImage[] = restoredFiles.map((f) => ({
-          file: f,
-          url: URL.createObjectURL(f),
-          used: false,
-        }));
-        setImages(libItems);
-      }
-      const restoredBgm = await loadBgm();
-      if (restoredBgm) setBgm(restoredBgm);
-    } catch (e) {
-      console.warn('[restore] IDB load failed:', e);
-    }
-    setDraftAvailable(null);
-  }, [draftAvailable]);
-
-  const discardDraft = useCallback(async () => {
-    clearDraft();
-    try { await clearAllFiles(); } catch {}
-    setDraftAvailable(null);
-    setDraftFilesSummary({ images: 0, bgm: false });
-  }, []);
+  }, [bgm, hydrated]);
 
   /* ─── Poll active job ─── */
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -193,6 +194,46 @@ export default function StudioPage() {
     () => jobs.find((j) => j.id === activeJobId) || null,
     [jobs, activeJobId]
   );
+  const downloadJobOutput = useCallback(async (job: Job) => {
+    if (!job.output_url || autoDownloadedJobsRef.current.has(job.id)) return;
+    autoDownloadedJobsRef.current.add(job.id);
+    const settings = readStudioExportSettings();
+    if (!settings.autoDownload) {
+      setDownloadState('downloaded');
+      setDownloadMessage('Export ready. Auto-download is off.');
+      return;
+    }
+    setDownloadState('downloading');
+    setDownloadMessage(settings.downloadDirectoryName ? `Saving to ${settings.downloadDirectoryName}...` : 'Preparing browser download...');
+    try {
+      const outputUrl = api.resolveWorkerAssetUrl(job.output_url);
+      const response = await fetch(outputUrl);
+      if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+      const blob = await response.blob();
+      const ext = job.config.output_format ?? outputFormat ?? 'mp4';
+      const filename = `${job.id}.${ext}`;
+      const savedToFolder = await saveBlobToStudioDirectory(filename, blob);
+      if (!savedToFolder) triggerBrowserDownload(filename, blob);
+      setDownloadState('downloaded');
+      setDownloadMessage(savedToFolder ? `Saved ${filename}` : `Downloaded ${filename}`);
+      setDownloadHistory((prev) => [
+        {
+          id: job.id,
+          filename,
+          url: outputUrl,
+          target: savedToFolder ? (readStudioExportSettings().downloadDirectoryName ?? 'Selected folder') : 'Browser downloads',
+          size: blob.size,
+          at: Date.now(),
+        },
+        ...prev.filter((item) => item.id !== job.id),
+      ].slice(0, 4));
+    } catch (e: any) {
+      autoDownloadedJobsRef.current.delete(job.id);
+      setDownloadState('error');
+      setDownloadMessage(e?.message || 'Download failed.');
+    }
+  }, [outputFormat]);
+
   useEffect(() => {
     if (!activeJobId) return;
     const j = jobs.find((x) => x.id === activeJobId);
@@ -204,17 +245,35 @@ export default function StudioPage() {
         if (updated.status === 'done' || updated.status === 'error') {
           setRendering(false);
           if (pollRef.current) clearInterval(pollRef.current);
+          if (updated.status === 'done') {
+            void downloadJobOutput(updated);
+          } else {
+            setDownloadState('error');
+            setDownloadMessage(updated.error || 'Export failed.');
+          }
         }
       } catch {}
     }, 1500);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [activeJobId, jobs]);
+  }, [activeJobId, downloadJobOutput, jobs]);
 
   /* ─── Image handlers ─── */
-  const addImages = useCallback((files: FileList) => {
-    const next: LibraryImage[] = Array.from(files).map((f) => ({
-      file: f, url: URL.createObjectURL(f), used: false,
-    }));
+  const addImages = useCallback((files: FileList | File[] | LibraryImageInput[]) => {
+    const items = Array.from(files as ArrayLike<File | LibraryImageInput>);
+    const next: LibraryImage[] = items.map((item) => {
+      const input: LibraryImageInput = item instanceof File ? { file: item } : item;
+      return {
+        file: input.file,
+        url: URL.createObjectURL(input.file),
+        used: false,
+        sourceFolder: input.sourceFolder ?? sourceFolderName(input.file),
+        sourceKind: input.sourceKind ?? 'local',
+        driveFolderId: input.driveFolderId,
+        driveFileId: input.driveFileId,
+        thumbnailUrl: input.thumbnailUrl,
+        cacheStatus: input.cacheStatus,
+      };
+    });
     setImages((prev) => [...prev, ...next]);
   }, []);
   const removeImage = useCallback((i: number) => {
@@ -222,124 +281,184 @@ export default function StudioPage() {
       URL.revokeObjectURL(prev[i].url);
       return prev.filter((_, idx) => idx !== i);
     });
-    setLines((prev) =>
-      prev.filter((l) => l.image_index !== i).map((l) => ({
-        ...l, image_index: l.image_index > i ? l.image_index - 1 : l.image_index,
-      }))
+    setSelectedImageIndexes((prev) =>
+      prev.filter((idx) => idx !== i).map((idx) => (idx > i ? idx - 1 : idx))
     );
   }, []);
   useEffect(() => {
     setImages((prev) => {
-      const usedSet = new Set(lines.map((l) => l.image_index));
+      const usedSet = new Set(selectedImageIndexes);
       return prev.map((im, idx) => ({ ...im, used: usedSet.has(idx) }));
     });
-  }, [lines]);
+  }, [selectedImageIndexes]);
 
   /* ─── Script handlers ─── */
-  const changeLine = (i: number, text: string) =>
-    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, text } : l)));
-  const addLine = () =>
-    setLines((prev) => [
-      ...prev,
-      { text: '', image_index: Math.min(images.length - 1, prev.length) },
-    ]);
-  const removeLine = (i: number) =>
-    setLines((prev) => prev.filter((_, idx) => idx !== i));
+  const applyBulkScript = useCallback((texts: string[]) => {
+    setScriptTexts(texts);
+    const targetIndexes = selectedImageIndexes.length > 0
+      ? selectedImageIndexes
+      : images.map((_, index) => index);
+    if (selectedImageIndexes.length === 0 && targetIndexes.length > 0) {
+      setSelectedImageIndexes(targetIndexes);
+    }
+    setLines((prev) => buildSceneLines(targetIndexes, prev, imageDurationSec, texts, true));
+    setSelectedScene(0);
+    setSelectedImage(targetIndexes[0] ?? 0);
+    setPreviewMode('static');
+    setPreviewPlayhead(0);
+    setSequenceTiming(null);
+  }, [imageDurationSec, images, selectedImageIndexes]);
   const changeEffect = (i: number, effect: Effect) =>
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, effect } : l)));
+  const changeTransition = (i: number, transition: Transition) =>
+    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, transition } : l)));
+  const changeDuration = (i: number, durationSec: number) =>
+    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, durationSec } : l)));
+  const changeExportDuration = useCallback((durationSec: number) => {
+    setLines((prev) => {
+      if (prev.length === 0) return prev;
+      const perScene = Math.max(1, durationSec) / prev.length;
+      return prev.map((line) => ({ ...line, durationSec: perScene }));
+    });
+  }, []);
+  const addImagesToKeyframe = useCallback((indexes: number[]) => {
+    const nextIndexes = indexes.filter((index) => images[index] && !selectedImageIndexes.includes(index));
+    if (nextIndexes.length === 0) return;
+    setSelectedImageIndexes((prev) => [...prev, ...nextIndexes]);
+    setSelectedScene(selectedImageIndexes.length);
+    setSelectedImage(nextIndexes[0]);
+  }, [images, selectedImageIndexes]);
+  const duplicateScenes = useCallback((indexes: number[]) => {
+    if (indexes.length === 0) return;
+    const ordered = [...indexes].sort((a, b) => a - b).filter((i) => lines[i]);
+    if (ordered.length === 0) return;
+    const insertAt = Math.min(Math.max(...ordered) + 1, selectedImageIndexes.length);
+    const duplicated = ordered.map((i) => lines[i]);
+    setLines((prev) => [
+      ...prev.slice(0, insertAt),
+      ...duplicated.map((line) => ({ ...line })),
+      ...prev.slice(insertAt),
+    ]);
+    setSelectedImageIndexes((prev) => [
+      ...prev.slice(0, insertAt),
+      ...duplicated.map((line) => line.image_index),
+      ...prev.slice(insertAt),
+    ]);
+    setSelectedScene(insertAt);
+  }, [lines, selectedImageIndexes.length]);
+  const removeScenes = useCallback((indexes: number[]) => {
+    if (indexes.length === 0) return;
+    const removeSet = new Set(indexes);
+    setSelectedImageIndexes((prev) => prev.filter((_, idx) => !removeSet.has(idx)));
+    setSelectedScene((prev) => Math.max(0, Math.min(prev, selectedImageIndexes.length - removeSet.size - 1)));
+  }, [selectedImageIndexes.length]);
+  const reorderScenes = useCallback((fromIndex: number, toIndex: number) => {
+    setLines((prev) => moveItem(prev, fromIndex, toIndex));
+    setSelectedImageIndexes((prev) => moveItem(prev, fromIndex, toIndex));
+    setSelectedScene(toIndex);
+  }, []);
 
-  const aiGen = useCallback(() => {
-    if (!topic.trim() || images.length === 0) return;
-    setAiGenerating(true);
-    setTimeout(() => {
-      const n = images.length;
-      const next: ScriptLine[] = [];
-      next.push({ text: `Hôm nay, cùng khám phá: ${topic}.`, image_index: 0 });
-      for (let i = 0; i < Math.max(0, n - 2); i++) {
-        next.push({
-          text: `Điểm ${i + 1}: ảnh này thể hiện một khía cạnh quan trọng — hãy chú ý chi tiết.`,
-          image_index: i + 1,
-        });
-      }
-      if (n >= 2) {
-        next.push({
-          text: 'Hy vọng bạn thấy nội dung hữu ích. Đừng quên like và theo dõi.',
-          image_index: n - 1,
-        });
-      }
-      setLines(next);
-      setAiGenerating(false);
-    }, 300);
-  }, [topic, images.length]);
+  useEffect(() => {
+    setSelectedImageIndexes((prev) => prev.filter((idx) => idx >= 0 && idx < images.length));
+  }, [images.length]);
+
+  useEffect(() => {
+    setLines((prev) => buildSceneLines(selectedImageIndexes, prev, imageDurationSec, scriptTexts));
+    setSelectedScene((prev) => Math.max(0, Math.min(prev, Math.max(0, selectedImageIndexes.length - 1))));
+    setSelectedImage(selectedImageIndexes[selectedScene] ?? selectedImageIndexes[0] ?? 0);
+  }, [imageDurationSec, scriptTexts, selectedImageIndexes, selectedScene]);
+
+  const renderLines = useMemo(
+    () => lines.filter((line) => images[line.image_index]),
+    [lines, images]
+  );
 
   /* ─── Render ─── */
   const startRender = useCallback(async () => {
-    if (lines.length === 0 || images.length === 0) return;
+    if (renderLines.length === 0) return;
     setRendering(true);
+    setDownloadState('exporting');
+    setDownloadMessage('Exporting video...');
     try {
       const job = await api.createJob({
-        scenes: lines.map((l) => ({
-          text: l.text, image_index: l.image_index,
+        scenes: renderLines.map((l, order) => ({
+          text: l.text,
+          image_index: order,
+          duration_ms: Math.max(1, l.durationSec ?? imageDurationSec) * 1000,
+          transition: l.transition ?? 'slide_left',
           effect: !l.effect || l.effect === 'auto' ? null : l.effect,
         })),
         config: {
           aspect, voice, fps, rate,
+          resolution,
+          video_quality: videoQuality,
+          output_format: outputFormat,
+          tts_provider: ttsProvider,
           subtitle_style: subtitleStyle,
           bgm_volume: bgmVolume,
-          preset: presetId,
         },
-        files: images.map((i) => i.file),
+        files: renderLines.map((line) => images[line.image_index].file),
         bgm,
       });
       setJobs((prev) => [job, ...prev]);
       setActiveJobId(job.id);
       setPreviewMode('static');
     } catch (e: any) {
-      alert(`Render lỗi: ${e?.message || e}`);
+      alert(`Export failed: ${e?.message || e}`);
+      setDownloadState('error');
+      setDownloadMessage(e?.message || 'Export failed.');
       setRendering(false);
     }
-  }, [lines, images, aspect, voice, fps, rate, subtitleStyle, bgmVolume, presetId, bgm]);
+  }, [renderLines, imageDurationSec, images, aspect, voice, fps, resolution, videoQuality, outputFormat, rate, ttsProvider, subtitleStyle, bgmVolume, bgm]);
 
   const switchJob = useCallback((id: string) => {
     setActiveJobId(id);
     setPreviewMode('static');
     setPreviewPlayhead(0);
+    setDownloadState('idle');
+    setDownloadMessage('');
   }, []);
   const newProject = useCallback(() => {
     images.forEach((im) => URL.revokeObjectURL(im.url));
     setImages([]); setLines([]); setTopic(''); setBgm(null); setActiveJobId(null);
+    setScriptText(''); setScriptTexts([]);
+    setSelectedImageIndexes([]);
     setPreviewMode('static'); setPreviewPlayhead(0); setSequenceTiming(null);
+    setDownloadState('idle'); setDownloadMessage('');
     clearDraft();
     clearAllFiles().catch(() => {});
   }, [images]);
-  const pickPreset = useCallback((p: ExportPreset) => {
-    setPresetId(p.id); setAspect(p.aspect); setFps(p.fps);
-  }, []);
-
   /* ─── Derived ─── */
   const selectedLine = lines[selectedScene];
   const previewImg =
     selectedLine && images[selectedLine.image_index]
       ? images[selectedLine.image_index].url
       : null;
-  const canRender = lines.length > 0 && images.length > 0 && !rendering && serverOk !== false;
-  const activePreset = api.EXPORT_PRESETS.find((p) => p.id === presetId);
+  const totalVideoSec = renderLines.reduce((sum, line) => sum + (line.durationSec ?? imageDurationSec), 0);
+  const transcriptDurationSec = scriptMetrics(
+    scriptText || renderLines.map((line) => line.text).join('\n'),
+    voice,
+    rate
+  ).readSeconds;
+  const canRender = renderLines.length > 0 && !rendering && serverOk !== false;
   const selectedVoice = VOICE_OPTIONS.find((v) => v.id === voice) ?? VOICE_OPTIONS[0];
   const voicePreviewText =
     selectedLine?.text.trim() ||
     topic.trim() ||
-    'Xin chào, đây là bản nghe thử giọng đọc trong AutoVideo Studio.';
+    'Hello, this is a voice preview in AutoVideo Studio.';
 
   const sequenceScenes = useMemo(
     () =>
       lines
-        .filter((l) => l.text.trim() && images[l.image_index])
+        .filter((l) => images[l.image_index])
         .map((l) => ({
           text: l.text,
           imageUrl: images[l.image_index].url,
           effect: l.effect,
+          durationSec: l.durationSec ?? imageDurationSec,
+          transition: l.transition ?? 'slide_left',
         })),
-    [lines, images]
+    [lines, images, imageDurationSec]
   );
   const canPreview = sequenceScenes.length > 0 && serverOk !== false;
 
@@ -357,50 +476,16 @@ export default function StudioPage() {
   }, []);
 
   return (
-    <>
-      {/* Restore draft banner — gate behind hydrated to avoid SSR mismatch */}
-      {hydrated && draftAvailable !== null && (
-        <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-4 py-2.5 text-[11px]">
-          <Save size={14} className="shrink-0 text-[var(--accent-2)]" />
-          <div className="flex-1">
-            <div className="font-medium text-white">
-              Phục hồi session cũ
-              {draftAvailable && ` · ${draftAvailable.lines.length} scenes`}
-              {draftFilesSummary.images > 0 && ` · ${draftFilesSummary.images} ảnh`}
-              {draftFilesSummary.bgm && ' · BGM'}
-            </div>
-            <div className="text-[10px] text-[var(--muted)]">
-              {draftAvailable && (
-                <>Lưu lần cuối: {new Date(draftAvailable.savedAt).toLocaleString('vi-VN')} · </>
-              )}
-              Tất cả ảnh + BGM khôi phục đầy đủ (IndexedDB)
-            </div>
-          </div>
-          <button
-            onClick={applyDraft}
-            className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-white hover:brightness-110"
-          >
-            Phục hồi
-          </button>
-          <button
-            onClick={discardDraft}
-            className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-[11px] text-[var(--muted)] hover:bg-white/[.04] hover:text-white"
-          >
-            Bỏ qua
-          </button>
-        </div>
-      )}
-
+    <div className="studio-page">
       {/* Server status banner */}
       {serverOk === false && (
         <div className="mb-3 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-2 text-[11px] text-rose-200">
-          ⚠ Worker chưa chạy tại <code className="font-mono">{api.WORKER_URL}</code>. Boot:{' '}
+          Worker is not running at <code className="font-mono">{api.WORKER_URL}</code>. Boot:{' '}
           <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono">
             cd worker &amp;&amp; .venv/Scripts/uvicorn main:app --port 8021
           </code>
         </div>
       )}
-
       {/* TOP: Project tabs + render bar */}
       <div className="hub-card mb-3 overflow-hidden">
         <div className="flex items-stretch gap-0">
@@ -413,14 +498,11 @@ export default function StudioPage() {
             />
           </div>
           <div className="flex items-center gap-2 border-l border-[var(--border-subtle)] px-3">
-            {hydrated && (
-              <SaveIndicator savedAt={Math.max(savedAt ?? 0, filesSavedAt ?? 0) || null} />
-            )}
             <button
               onClick={() => setPreviewMode('sequence')}
               disabled={!canPreview}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-2 text-xs font-semibold text-[var(--accent-2)] transition hover:bg-[var(--accent)]/20 disabled:opacity-30"
-              title="Preview client-side ngay trong khung chính — < 5s"
+              title="Client-side preview in the main frame, usually under 5 seconds"
             >
               <PlayCircle size={13} /> Preview
             </button>
@@ -432,11 +514,11 @@ export default function StudioPage() {
               {rendering ? (
                 <>
                   <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Đang render…
+                  Exporting...
                 </>
               ) : (
                 <>
-                  <Sparkles size={13} /> Render MP4
+                  <Download size={13} /> Export & Download
                 </>
               )}
             </button>
@@ -444,75 +526,49 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* BODY: 3-pane full screen */}
-      <div className="grid grid-cols-12 gap-2">
-        {/* LEFT 3: Library + Scenes mini — compact */}
-        <aside className="col-span-3 space-y-2">
-          <div className="hub-card flex flex-col">
-            <PanelHead icon={<Folder size={13} />} title="Thư viện ảnh" count={images.length} compact />
+      <div className="grid h-[50vh] min-h-[24rem] grid-cols-3 items-stretch gap-2">
+        <section className="min-h-0">
+          <div className="hub-card flex h-full min-h-0 flex-col overflow-hidden">
+            <PanelHead
+              icon={<Folder size={13} />}
+              title="Image Library"
+              count={images.length}
+              compact
+            />
             <ImageLibrary
               images={images}
               onAdd={addImages}
               onRemove={removeImage}
               selectedIndex={selectedImage}
               onSelect={setSelectedImage}
+              selectedForRender={selectedImageIndexes}
+              onAddToKeyframe={addImagesToKeyframe}
+              imageDurationSec={imageDurationSec}
             />
           </div>
+        </section>
 
-          {lines.length > 0 && (
-            <div className="hub-card">
-              <PanelHead icon={<ChevronRight size={13} />} title="Scenes" count={lines.length} compact />
-              <div className="max-h-44 space-y-0.5 overflow-y-auto p-1.5">
-                {lines.map((l, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedScene(i)}
-                    className={`flex w-full items-center gap-1.5 rounded p-1 text-left transition ${
-                      i === selectedScene
-                        ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/40'
-                        : 'hover:bg-white/[.03]'
-                    }`}
-                  >
-                    <span className="w-4 text-right font-mono text-[9px] text-[var(--muted)]">{i + 1}</span>
-                    <div
-                      className="h-5 w-8 shrink-0 rounded ring-1 ring-white/10"
-                      style={{
-                        background: images[l.image_index]
-                          ? `url(${images[l.image_index].url}) center/cover`
-                          : '#222',
-                      }}
-                    />
-                    <div className="min-w-0 flex-1 line-clamp-1 text-[10px]">{l.text || '(empty)'}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </aside>
-
-        {/* CENTER 6: Preview + Script */}
-        <main className="col-span-6 space-y-2">
-          {/* Preview card — 3 modes: sequence canvas / job video / static image */}
-          <div className="hub-card overflow-hidden">
+        <section className="flex min-h-0 flex-col gap-2">
+          <div className="hub-card h-[17rem] shrink-0 overflow-hidden">
             {previewMode === 'sequence' && canPreview ? (
               <SequencePreview
                 scenes={sequenceScenes}
                 voice={voice}
                 rate={rate}
                 aspect={aspect}
+                autoPlay
                 onClose={() => setPreviewMode('static')}
                 onProgress={handlePreviewProgress}
                 onTimingReady={handlePreviewTiming}
               />
             ) : (
               <div
-                className="relative grid place-items-center overflow-hidden bg-black"
-                style={{ height: 'clamp(240px, 40vh, 360px)' }}
+                className="relative mx-auto grid h-full aspect-video max-w-full place-items-center overflow-hidden bg-black"
               >
                 {currentJob?.status === 'done' && currentJob.output_url ? (
                   <video
                     key={currentJob.id}
-                    src={`${api.WORKER_URL}${currentJob.output_url}`}
+                    src={api.resolveWorkerAssetUrl(currentJob.output_url)}
                     controls preload="metadata"
                     className="h-full"
                     style={{ maxWidth: '100%' }}
@@ -533,7 +589,7 @@ export default function StudioPage() {
                           {String(lines.length).padStart(2, '0')}
                         </div>
                         <div className="mt-0.5 line-clamp-2 text-sm font-medium leading-tight text-white drop-shadow">
-                          {selectedLine.text || '(chưa có lời thoại)'}
+                          {selectedLine.text || '(empty dialogue)'}
                         </div>
                       </div>
                     )}
@@ -541,43 +597,43 @@ export default function StudioPage() {
                 ) : (
                   <div className="text-center text-[var(--muted)]">
                     <PlayCircle size={28} className="mx-auto opacity-40" />
-                    <div className="mt-1.5 text-sm">Upload ảnh → gen script → preview ngay tại đây</div>
                   </div>
                 )}
                 <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[10px] text-white/80 backdrop-blur">
                   <Mic2 size={12} className="text-[var(--accent-2)]" />
                   <span className="font-semibold">{selectedVoice.label}</span>
-                  <span className="font-mono text-white/45">{selectedVoice.locale}</span>
+                  <FlagBadge locale={selectedVoice.locale} />
                   <span className="text-white/45">{rate}</span>
                 </div>
                 <div className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 backdrop-blur">
                   <AudioPreview
                     src={api.voicePreviewUrl(voicePreviewText, voice, rate)}
-                    label="Nghe giọng"
+                    label="Voice preview"
                     compact
                   />
                 </div>
-                {(!currentJob || currentJob.status === 'done' || currentJob.status === 'error') && (
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-2 py-1.5 backdrop-blur">
-                      <button
-                        onClick={() => setPreviewMode('sequence')}
-                        disabled={!canPreview}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:brightness-110 disabled:opacity-30"
-                      >
-                        <PlayCircle size={12} /> Preview video
-                      </button>
-                      <button
-                        onClick={startRender}
-                        disabled={!canRender}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-30"
-                      >
-                        <Sparkles size={12} /> Render MP4
-                      </button>
-                    </div>
-                  </div>
+                {(!currentJob || currentJob.status === 'done' || currentJob.status === 'error') && canPreview && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode('sequence')}
+                    className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow-[0_12px_36px_rgba(0,0,0,0.5)] ring-1 ring-white/20 backdrop-blur transition hover:scale-105 hover:bg-black/70"
+                    aria-label="Preview video"
+                    title="Preview video"
+                  >
+                    <Play size={28} className="translate-x-0.5 drop-shadow" fill="currentColor" />
+                  </button>
                 )}
-                {currentJob && currentJob.status !== 'done' && currentJob.status !== 'error' && (
+                {(downloadState !== 'idle' || rendering) && (
+                  <PreviewExportStatus
+                    state={downloadState}
+                    message={downloadMessage}
+                    progress={currentJob?.progress ?? (rendering ? 8 : 0)}
+                  />
+                )}
+                {downloadHistory.length > 0 && (downloadState === 'idle' || downloadState === 'downloaded') && (
+                  <PreviewDownloadHistory records={downloadHistory} />
+                )}
+                {downloadState === 'idle' && currentJob && currentJob.status !== 'done' && currentJob.status !== 'error' && (
                   <div className="absolute inset-x-0 bottom-0 bg-[var(--bg)]/90 px-3 py-2 backdrop-blur">
                     <div className="flex items-center gap-2 text-[11px]">
                       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--accent-2)]" />
@@ -606,82 +662,79 @@ export default function StudioPage() {
                   ✓ {currentJob.id} · {currentJob.scenes_count} scenes · {currentJob.config.aspect}
                 </span>
                 <a
-                  href={`${api.WORKER_URL}${currentJob.output_url}`}
-                  download={`${currentJob.id}.mp4`}
+                  href={api.resolveWorkerAssetUrl(currentJob.output_url)}
+                  download={`${currentJob.id}.${currentJob.config.output_format ?? 'mp4'}`}
                   className="text-[var(--accent-2)] hover:underline"
                 >
-                  ⬇ Download MP4
+                  Download {(currentJob.config.output_format ?? 'mp4').toUpperCase()}
                 </a>
               </div>
             )}
           </div>
 
           {/* Script card */}
-          <div className="hub-card">
+          <div className="hub-card flex min-h-[8.75rem] flex-1 flex-col overflow-hidden">
             <PanelHead
               icon={<FileText size={13} />}
-              title="Kịch bản"
+              title="Script"
               count={lines.length}
               compact
+              rightSlot={
+                <span className="rounded bg-white/[.04] px-1.5 py-0.5 font-mono text-[9px] text-[var(--accent-2)]">
+                  {formatDuration(totalVideoSec)}
+                </span>
+              }
             />
             <ScriptPanel
-              lines={lines}
-              selectedIndex={selectedScene}
-              onChange={changeLine}
-              onSelect={setSelectedScene}
-              onAddLine={addLine}
-              onRemoveLine={removeLine}
-              onAIGen={aiGen}
-              aiTopic={topic}
-              onTopicChange={setTopic}
-              aiGenerating={aiGenerating}
-              imagesCount={images.length}
+              onBulkScript={applyBulkScript}
+              scriptText={scriptText}
+              onScriptText={setScriptText}
+              onScriptLines={setScriptTexts}
+              imagesCount={selectedImageIndexes.length}
               voice={voice}
               rate={rate}
             />
           </div>
-        </main>
+        </section>
 
-        {/* RIGHT 3: Voice / Subtitle / BGM / Export — ALL DIRECT, compact */}
-        <aside className="col-span-3 space-y-2">
-          <div className="hub-card">
-            <PanelHead icon={<Mic2 size={13} />} title="Giọng đọc" compact />
-            <div className="p-2">
+        <section className="min-h-0">
+          <div className="hub-card flex h-full min-h-0 flex-col overflow-hidden">
+            <div className="flex border-b border-[var(--border-subtle)] bg-black/10 p-1">
+              <RightPanelTab
+                active={rightPanel === 'voice'}
+                icon={<Mic2 size={12} />}
+                label="Voice"
+                onClick={() => setRightPanel('voice')}
+              />
+              <RightPanelTab
+                active={rightPanel === 'subtitle'}
+                icon={<Subtitles size={12} />}
+                label="Subtitle"
+                onClick={() => setRightPanel('subtitle')}
+              />
+              <RightPanelTab
+                active={rightPanel === 'music'}
+                icon={<Music size={12} />}
+                label="BGM"
+                onClick={() => setRightPanel('music')}
+              />
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden p-2">
+              {rightPanel === 'voice' && (
               <VoiceSelector
                 voice={voice}
                 onVoice={setVoice}
                 rate={rate}
                 onRate={setRate}
+                provider={ttsProvider}
+                onProvider={setTtsProvider}
                 previewText={voicePreviewText}
               />
-            </div>
-          </div>
-
-          <div className="hub-card">
-            <PanelHead
-              icon={<Subtitles size={13} />}
-              title="Phụ đề"
-              compact
-            />
-            <div className="p-2">
-              <SubtitlePanel value={subtitleStyle} onChange={setSubtitleStyle} />
-            </div>
-          </div>
-
-          <div className="hub-card">
-            <PanelHead
-              icon={<Music size={13} />}
-              title="Nhạc nền"
-              compact
-              rightSlot={
-                bgm && (
-                  <span className="rounded bg-[var(--panel-2)] px-1.5 py-0 font-mono text-[9px] text-[var(--accent-2)]">
-                    {Math.round(bgmVolume * 100)}%
-                  </span>
-                )
-              }
-            />
-            <div className="p-2">
+              )}
+              {rightPanel === 'subtitle' && (
+                <SubtitlePanel value={subtitleStyle} onChange={setSubtitleStyle} />
+              )}
+              {rightPanel === 'music' && (
               <BGMPanel
                 bgm={bgm}
                 onSet={setBgm}
@@ -689,55 +742,10 @@ export default function StudioPage() {
                 volume={bgmVolume}
                 onVolume={setBgmVolume}
               />
+              )}
             </div>
           </div>
-
-          {/* Export — collapsed chip by default, click to expand */}
-          <div className="hub-card">
-            <button
-              onClick={() => setExportExpanded((v) => !v)}
-              className="flex w-full items-center justify-between border-b border-[var(--border-subtle)] px-3 py-2 hover:bg-white/[.02]"
-            >
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white">
-                <span className="text-[var(--accent-2)]"><Smartphone size={13} /></span>
-                Export
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-[var(--panel-2)] px-1.5 py-0 font-mono text-[9px] text-[var(--accent-2)]">
-                  {activePreset?.label.split(' ')[0] ?? `${aspect}`} · {fps}fps
-                </span>
-                <span className={`text-[var(--muted)] transition-transform ${exportExpanded ? 'rotate-90' : ''}`}>
-                  <ChevronRight size={12} />
-                </span>
-              </div>
-            </button>
-            {exportExpanded && (
-              <div className="p-2 space-y-1.5">
-                <ExportPresets activeId={presetId} onPick={pickPreset} />
-                <div className="flex gap-1 text-[10px]">
-                  <select
-                    value={aspect}
-                    onChange={(e) => { setAspect(e.target.value as Aspect); setPresetId(null); }}
-                    className="flex-1 rounded border border-[var(--border-subtle)] bg-[var(--panel-2)] px-1.5 py-0.5 text-white"
-                  >
-                    <option value="9:16">9:16</option>
-                    <option value="16:9">16:9</option>
-                    <option value="1:1">1:1</option>
-                  </select>
-                  <select
-                    value={fps}
-                    onChange={(e) => setFps(Number(e.target.value))}
-                    className="w-16 rounded border border-[var(--border-subtle)] bg-[var(--panel-2)] px-1.5 py-0.5 text-white"
-                  >
-                    <option value={24}>24fps</option>
-                    <option value={30}>30fps</option>
-                    <option value={60}>60fps</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
+        </section>
       </div>
 
       {/* BOTTOM: keyframe timeline */}
@@ -748,13 +756,22 @@ export default function StudioPage() {
           selectedIndex={selectedScene}
           onSelectScene={setSelectedScene}
           onChangeEffect={changeEffect}
+          onChangeTransition={changeTransition}
+          onChangeDuration={changeDuration}
+          onDuplicateScenes={duplicateScenes}
+          onRemoveScenes={removeScenes}
+          onReorderScenes={reorderScenes}
+          imageDurationSec={imageDurationSec}
+          onImageDurationSec={setImageDurationSec}
+          exportDurationSec={totalVideoSec}
+          onExportDurationSec={changeExportDuration}
+          transcriptDurationSec={transcriptDurationSec}
           playheadSec={previewPlayhead}
           audioDurations={sequenceTiming?.durations}
           waveforms={sequenceTiming?.waveforms}
         />
       </div>
-
-    </>
+    </div>
   );
 }
 
@@ -764,11 +781,11 @@ function PanelHead({
 }: { icon: React.ReactNode; title: string; count?: number; rightSlot?: React.ReactNode; compact?: boolean }) {
   return (
     <div className={`flex items-center justify-between border-b border-[var(--border-subtle)] ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}>
-      <div className={`flex items-center gap-1.5 font-semibold text-white ${compact ? 'text-[10.5px]' : 'text-[11px]'}`}>
-        <span className="text-[var(--accent-2)]">{icon}</span>
+      <div className="studio-panel-label">
+        <span className="studio-panel-label-icon">{icon}</span>
         {title}
         {typeof count === 'number' && (
-          <span className="rounded-full bg-[var(--panel-2)] px-1.5 py-0 font-mono text-[9px] text-[var(--muted)]">
+          <span className="studio-panel-count">
             {count}
           </span>
         )}
@@ -778,28 +795,160 @@ function PanelHead({
   );
 }
 
-/** Subtle live indicator showing latest auto-save time. */
-function SaveIndicator({ savedAt }: { savedAt: number | null }) {
-  const [, force] = useState(0);
-  // Re-render every 10s so the relative label refreshes.
-  useEffect(() => {
-    const id = setInterval(() => force((x) => x + 1), 10_000);
-    return () => clearInterval(id);
-  }, []);
-  if (!savedAt) {
-    return (
-      <span className="hidden md:inline-flex items-center gap-1 text-[10px] text-[var(--muted)]" title="Chưa có thay đổi để save">
-        <Save size={11} /> idle
-      </span>
-    );
-  }
+function RightPanelTab({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
   return (
-    <span
-      className="hidden md:inline-flex items-center gap-1 text-[10px] text-[var(--accent-2)]"
-      title={`Auto-saved · ${new Date(savedAt).toLocaleString('vi-VN')}`}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold transition ${
+        active
+          ? 'bg-[var(--accent)] text-white'
+          : 'text-white/45 hover:bg-white/[.04] hover:text-white'
+      }`}
     >
-      <Save size={11} /> saved {timeAgo(savedAt)}
-    </span>
+      {icon}
+      {label}
+    </button>
   );
+}
+
+function PreviewExportStatus({
+  state,
+  message,
+  progress,
+}: {
+  state: DownloadState;
+  message: string;
+  progress: number;
+}) {
+  const isBusy = state === 'exporting' || state === 'downloading';
+  const label =
+    state === 'downloading'
+      ? 'Downloading'
+      : state === 'downloaded'
+      ? 'Downloaded'
+      : state === 'error'
+      ? 'Export issue'
+      : 'Exporting';
+  const pct = state === 'downloaded' ? 100 : state === 'downloading' ? 100 : Math.max(5, Math.min(100, progress));
+  return (
+    <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/10 bg-black/70 p-2 text-white shadow-2xl backdrop-blur">
+      <div className="mb-1.5 flex items-center gap-2 text-[11px]">
+        {isBusy ? <Loader2 size={13} className="animate-spin text-[var(--accent-2)]" /> : null}
+        <span className="font-semibold">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-white/55">{message}</span>
+        <span className="font-mono text-[10px] text-white/70">{Math.round(pct)}%</span>
+      </div>
+      <div className="h-1 overflow-hidden rounded-full bg-white/10">
+        <div
+          className={`h-full rounded-full transition-all ${
+            state === 'error'
+              ? 'bg-rose-400'
+              : state === 'downloaded'
+              ? 'bg-emerald-400'
+              : 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PreviewDownloadHistory({ records }: { records: DownloadRecord[] }) {
+  return (
+    <div className="absolute bottom-3 right-3 w-52 overflow-hidden rounded-2xl border border-white/10 bg-black/60 text-[10px] text-white shadow-2xl backdrop-blur">
+      <div className="flex items-center justify-between border-b border-white/10 px-2 py-1.5">
+        <span className="font-semibold">Download History</span>
+        <span className="font-mono text-white/35">{records.length}</span>
+      </div>
+      <div className="max-h-24 overflow-auto p-1">
+        {records.map((record) => (
+          <div key={record.id} className="rounded-lg px-1.5 py-1 hover:bg-white/[.05]">
+            <a
+              href={record.url}
+              download={record.filename}
+              className="block truncate font-mono text-[9px] text-[var(--accent-2)] hover:underline"
+            >
+              {record.filename}
+            </a>
+            <div className="mt-0.5 flex items-center justify-between gap-2 text-[8px] text-white/45">
+              <span className="truncate">{record.target}</span>
+              <span className="shrink-0">{formatExportTime(record.at)} · {formatBytes(record.size)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function sourceFolderName(file: File) {
+  const relativePath = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
+  const [folderName] = relativePath.split(/[\\/]/);
+  return folderName || undefined;
+}
+
+function buildSceneLines(
+  imageIndexes: number[],
+  existing: ScriptLine[],
+  durationSec: number,
+  nextTexts?: string[],
+  forceTexts = false
+): ScriptLine[] {
+  return imageIndexes.map((imageIndex, order) => {
+    const current =
+      existing[order]?.image_index === imageIndex
+        ? existing[order]
+        : existing.find((line) => line.image_index === imageIndex);
+    return {
+      text: forceTexts ? (nextTexts?.[order] ?? '') : (current?.text ?? nextTexts?.[order] ?? ''),
+      image_index: imageIndex,
+      durationSec,
+      effect: current?.effect ?? 'none',
+      transition: current?.transition ?? 'slide_left',
+    };
+  });
+}
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return items;
+  if (fromIndex >= items.length || toIndex >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, item);
+  return next;
+}
+
+function formatDuration(totalSec: number) {
+  const safe = Math.max(0, Math.round(totalSec));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const remainMinutes = minutes % 60;
+    return `${hours}h${String(remainMinutes).padStart(2, '0')}m`;
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatExportTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 

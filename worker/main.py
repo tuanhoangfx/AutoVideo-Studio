@@ -4,7 +4,7 @@ Endpoints:
     POST   /jobs                 — create job (multipart: images[] + scenes JSON + config)
     GET    /jobs                 — list jobs
     GET    /jobs/{id}            — get status + progress
-    GET    /jobs/{id}/output     — download MP4
+    GET    /jobs/{id}/output     — download exported video
     POST   /jobs/{id}/cancel
     GET    /voices               — list Studio-supported voices
 
@@ -29,13 +29,19 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from pipeline.runner import JobProgress, JobSpec, SceneSpec, run_job
+from pipeline.storage_backend import publish_output, storage_status
 from pipeline.tts import list_vi_voices
 
 app = FastAPI(title="AutoVideo Studio Worker", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3021", "http://127.0.0.1:3021"],
+    allow_origins=[
+        "http://localhost:3021",
+        "http://127.0.0.1:3021",
+        "https://p0021-autovideo-studio.vercel.app",
+        "https://p0021.infix1.io.vn",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -79,17 +85,22 @@ class JobConfig(BaseModel):
     aspect: Literal["9:16", "16:9", "1:1"] = "9:16"
     voice: str = "vi-VN-HoaiMyNeural"
     fps: int = 30
+    resolution: Literal["720p", "1080p", "2k", "4k"] = "1080p"
+    video_quality: Literal["auto", "low", "medium", "high"] = "auto"
+    output_format: Literal["mp4", "mov"] = "mp4"
     rate: str = "+0%"
+    tts_provider: Literal["edge", "elevenlabs", "omnivoice-local"] = "edge"
     # v0.3 features
     subtitle_style: Literal["off", "line", "word_capcut"] = "off"
     bgm_volume: float = 0.18  # 0.0 – 1.0
-    preset: str | None = None  # tiktok | reels | shorts | youtube — UI-only, doesn't affect render
 
 
 class SceneIn(BaseModel):
     text: str
     image_index: int  # index vào files[] upload
+    duration_ms: int | None = None
     effect: str | None = None
+    transition: str | None = None
 
 
 class Job(BaseModel):
@@ -126,6 +137,7 @@ def root():
         "version": "0.2.0",
         "jobs": len(JOBS),
         "concurrent_limit": MAX_CONCURRENT,
+        "storage": storage_status(),
     }
 
 
@@ -209,7 +221,9 @@ async def create_job(
         SceneSpec(
             text=s.text,
             image_path=str(saved[min(s.image_index, len(saved) - 1)]),
+            duration_ms=s.duration_ms,
             effect=s.effect,
+            transition=s.transition,
         )
         for s in raw_scenes
     ]
@@ -230,7 +244,11 @@ async def create_job(
         voice=cfg.voice,
         aspect=cfg.aspect,
         fps=cfg.fps,
+        resolution=cfg.resolution,
+        video_quality=cfg.video_quality,
+        output_format=cfg.output_format,
         rate=cfg.rate,
+        tts_provider=cfg.tts_provider,
         bgm_path=bgm_path,
         bgm_volume=cfg.bgm_volume,
         subtitle_style=cfg.subtitle_style,
@@ -250,7 +268,7 @@ async def create_job(
             j = JOBS[job_id]
             j.status = "done"
             j.progress = 100
-            j.output_url = f"/jobs/{job_id}/output"
+            j.output_url = publish_output(job_id, out) or f"/jobs/{job_id}/output"
             _persist_job(j)
         except Exception as e:
             j = JOBS[job_id]
@@ -290,10 +308,14 @@ def get_job(job_id: str):
 def get_output(job_id: str):
     if job_id not in JOBS:
         raise HTTPException(404, "job not found")
-    out = STORAGE_ROOT / job_id / "output.mp4"
+    output_format = JOBS[job_id].config.output_format or "mp4"
+    out = STORAGE_ROOT / job_id / f"output.{output_format}"
+    if not out.exists():
+        out = STORAGE_ROOT / job_id / "output.mp4"
     if not out.exists():
         raise HTTPException(404, "output not ready")
-    return FileResponse(out, media_type="video/mp4", filename=f"{job_id}.mp4")
+    media_type = "video/quicktime" if out.suffix.lower() == ".mov" else "video/mp4"
+    return FileResponse(out, media_type=media_type, filename=f"{job_id}{out.suffix}")
 
 
 @app.post("/jobs/{job_id}/cancel")

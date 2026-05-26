@@ -2,12 +2,12 @@
 import type { SubtitleStyle } from '@/lib/api';
 
 const OPTIONS: Array<{ id: SubtitleStyle; label: string; icon: string; hint: string }> = [
-  { id: 'off', label: 'Off', icon: '∅', hint: 'Tắt phụ đề' },
-  { id: 'line', label: 'Line', icon: '▦', hint: '1 dòng cả câu' },
-  { id: 'word_capcut', label: 'CapCut', icon: '✨', hint: 'Từng từ pop-in' },
+  { id: 'off', label: 'Off', icon: '∅', hint: 'Disable subtitles' },
+  { id: 'line', label: 'Line', icon: '▦', hint: 'One full sentence per line' },
+  { id: 'word_capcut', label: 'CapCut', icon: '✨', hint: 'Word-by-word pop-in' },
 ];
 
-/** Compact segmented control — 3 nút 1 hàng, không tốn diện tích. */
+/** Compact segmented control: 3 options in one row. */
 export function SubtitlePanel({
   value,
   onChange,

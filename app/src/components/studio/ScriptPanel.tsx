@@ -1,8 +1,9 @@
 'use client';
-import { voicePreviewUrl } from '@/lib/api';
-import { AudioPreview } from './AudioPreview';
+import { useEffect, useMemo } from 'react';
+import { formatReadTime, scriptMetrics } from '@/lib/script-metrics';
 
-export type Effect = 'auto' | 'zoom_in' | 'zoom_out' | 'pan_right' | 'pan_left' | 'none';
+export type Effect = 'auto' | 'zoom_in' | 'zoom_out' | 'pan_right' | 'pan_left' | 'flash' | 'sparkle' | 'none';
+export type Transition = 'slide_left' | 'slide_right' | 'fade' | 'zoom' | 'random';
 
 export const EFFECT_OPTIONS: Array<{ id: Effect; label: string; icon: string }> = [
   { id: 'auto', label: 'Auto cycle', icon: '🔄' },
@@ -10,126 +11,144 @@ export const EFFECT_OPTIONS: Array<{ id: Effect; label: string; icon: string }> 
   { id: 'zoom_out', label: 'Zoom out', icon: '🔍−' },
   { id: 'pan_right', label: 'Pan right', icon: '→' },
   { id: 'pan_left', label: 'Pan left', icon: '←' },
+  { id: 'flash', label: 'Flash', icon: '⚡' },
+  { id: 'sparkle', label: 'Sparkle', icon: '✦' },
   { id: 'none', label: 'Static', icon: '⏸' },
+];
+
+export const TRANSITION_OPTIONS: Array<{ id: Transition; label: string; icon: string }> = [
+  { id: 'slide_left', label: 'Slide left', icon: '←' },
+  { id: 'slide_right', label: 'Slide right', icon: '→' },
+  { id: 'fade', label: 'Fade', icon: '◐' },
+  { id: 'zoom', label: 'Zoom', icon: '◎' },
+  { id: 'random', label: 'Random', icon: '✦' },
 ];
 
 export type ScriptLine = {
   text: string;
   image_index: number;
+  durationSec?: number;
   effect?: Effect; // undefined = auto cycle
+  transition?: Transition;
 };
 
 export function ScriptPanel({
-  lines,
-  selectedIndex,
-  onChange,
-  onSelect,
-  onAddLine,
-  onRemoveLine,
-  onAIGen,
-  aiTopic,
-  onTopicChange,
-  aiGenerating,
+  onBulkScript,
+  scriptText,
+  onScriptText,
+  onScriptLines,
   imagesCount,
   voice,
   rate,
 }: {
-  lines: ScriptLine[];
-  selectedIndex: number;
-  onChange: (i: number, text: string) => void;
-  onSelect: (i: number) => void;
-  onAddLine: () => void;
-  onRemoveLine: (i: number) => void;
-  onAIGen: () => void;
-  aiTopic: string;
-  onTopicChange: (v: string) => void;
-  aiGenerating: boolean;
+  onBulkScript: (lines: string[]) => void;
+  scriptText: string;
+  onScriptText: (value: string) => void;
+  onScriptLines: (lines: string[]) => void;
   imagesCount: number;
-  /** Voice + rate dùng cho preview per-line. Optional — nếu thiếu nút ▸ bị hide. */
-  voice?: string;
-  rate?: string;
+  voice: string;
+  rate: string;
 }) {
+  const bulkLines = useMemo(() => parseBulkScript(scriptText, imagesCount), [imagesCount, scriptText]);
+  const metrics = useMemo(() => scriptMetrics(scriptText, voice, rate), [rate, scriptText, voice]);
+  const canApplyBulk = bulkLines.length > 0;
+
+  useEffect(() => {
+    onScriptLines(bulkLines);
+  }, [bulkLines, onScriptLines]);
+
+  const applyBulkScript = () => {
+    onBulkScript(bulkLines);
+  };
+
   return (
-    <section>
-      {lines.length === 0 ? (
-        <div className="p-2 text-[10px] text-white/50 text-center italic">
-          Chưa có lời thoại — gõ chủ đề + Gen hoặc bấm &quot;+ dòng&quot;.
+    <section className="flex flex-1 flex-col">
+      <div className="p-2">
+        <div className="mb-1 flex items-center justify-between gap-2 text-[10px]">
+          <span className="font-semibold text-[var(--accent-2)]">Paste Full Script</span>
+          <span className="font-mono text-white/40">
+            {bulkLines.length} lines / {imagesCount} selected images
+          </span>
         </div>
-      ) : (
-        <div className="max-h-40 space-y-0.5 overflow-y-auto p-1.5">
-          {lines.map((s, i) => {
-            const hasText = s.text.trim().length > 0;
-            const previewSrc =
-              hasText && voice
-                ? voicePreviewUrl(s.text, voice, rate ?? '+0%')
-                : null;
-            return (
-              <div
-                key={i}
-                className={`group flex items-start gap-1.5 rounded px-1.5 py-1 ${
-                  i === selectedIndex
-                    ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/40'
-                    : 'hover:bg-white/[.04]'
-                }`}
-              >
-                <span className="mt-1 w-4 text-right font-mono text-[9px] text-white/40">
-                  {i + 1}
-                </span>
-                <textarea
-                  value={s.text}
-                  onChange={(e) => onChange(i, e.target.value)}
-                  onFocus={() => onSelect(i)}
-                  rows={1}
-                  className="min-h-[1.75rem] flex-1 resize-none rounded bg-transparent px-1 py-0.5 text-[11px] leading-snug text-white outline-none focus:bg-black/30"
-                />
-                {/* Per-line audio preview */}
-                {voice && (
-                  <div className="mt-0.5 shrink-0">
-                    <AudioPreview src={previewSrc} compact />
-                  </div>
-                )}
-                <span className="mt-1 font-mono text-[9px] text-white/40">
-                  #{s.image_index + 1}
-                </span>
-                <button
-                  onClick={() => onRemoveLine(i)}
-                  className="mt-0.5 grid h-4 w-4 place-items-center rounded text-[9px] text-white/30 opacity-0 hover:bg-rose-500/30 hover:text-white group-hover:opacity-100"
-                  title="Xóa dòng"
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <div className="border-t border-[var(--border-subtle)] p-1.5">
-        <div className="flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--panel-2)] px-2 py-1">
-          <span className="text-[var(--accent-2)]">✨</span>
-          <input
-            value={aiTopic}
-            onChange={(e) => onTopicChange(e.target.value)}
-            placeholder="Mô tả video — AI viết script khớp ảnh..."
-            className="flex-1 bg-transparent text-[11px] text-white placeholder-white/40 focus:outline-none"
-            disabled={aiGenerating}
-          />
+        <textarea
+          value={scriptText}
+          onChange={(e) => onScriptText(e.target.value)}
+          placeholder="Paste script..."
+          rows={3}
+          className="max-h-24 w-full resize-y rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-snug text-white outline-none placeholder-white/35 focus:border-[var(--accent)]/60"
+        />
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[9px]">
+            <MetricChip label="Chars" value={metrics.chars.toLocaleString()} />
+            <MetricChip label="Tokens" value={`~${metrics.tokens.toLocaleString()}`} />
+            <MetricChip label="Read" value={formatReadTime(metrics.readSeconds)} />
+          </div>
           <button
-            onClick={onAddLine}
-            disabled={imagesCount === 0}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--accent)]/50 bg-[var(--accent)]/15 px-2.5 py-1 text-[10px] font-semibold text-[var(--accent-2)] shadow-[0_0_14px_rgba(99,102,241,0.16)] transition hover:bg-[var(--accent)] hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.03] disabled:text-white/30 disabled:shadow-none"
+            onClick={applyBulkScript}
+            className={`rounded px-2.5 py-1 font-semibold text-white hover:brightness-110 ${
+              canApplyBulk ? 'bg-[var(--accent)]' : 'bg-white/[.08] text-white/55'
+            }`}
           >
-            <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-[var(--accent)] text-[9px] text-white">+</span>
-            Thêm dòng
-          </button>
-          <button
-            onClick={onAIGen}
-            disabled={aiGenerating || imagesCount === 0 || !aiTopic.trim()}
-            className="rounded bg-[var(--accent)] px-2 py-0.5 text-[10px] text-white hover:brightness-110 disabled:opacity-30"
-          >
-            {aiGenerating ? '...' : 'Gen'}
+            {canApplyBulk ? 'Apply Script' : 'Import Empty'}
           </button>
         </div>
       </div>
     </section>
   );
 }
+
+function MetricChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/[.035] px-1.5 py-0.5">
+      <span className="text-white/35">{label}</span>
+      <span className="text-[var(--accent-2)]">{value}</span>
+    </span>
+  );
+}
+
+function parseBulkScript(value: string, sceneCount: number) {
+  const lines = value
+    .split(/\r?\n+/)
+    .map((line) =>
+      line
+        .replace(/^\s*(?:scene|cảnh)\s*\d+\s*[:.)-]\s*/i, '')
+        .replace(/^\s*(?:\d+[\).:-]|[-*•])\s*/, '')
+        .trim()
+    )
+    .filter(Boolean);
+  if (sceneCount <= 0 || lines.length === sceneCount) return lines;
+  if (lines.length > sceneCount) return chunkItems(lines, sceneCount).map((chunk) => chunk.join(' '));
+
+  const sentences = splitSentences(lines.join(' '));
+  if (sentences.length >= sceneCount) {
+    return chunkItems(sentences, sceneCount).map((chunk) => chunk.join(' '));
+  }
+  return chunkWords(lines.join(' '), sceneCount);
+}
+
+function splitSentences(value: string) {
+  return value
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?。！？])\s+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function chunkItems(items: string[], count: number) {
+  return Array.from({ length: count }, (_, index) => {
+    const start = Math.floor((index * items.length) / count);
+    const end = Math.floor(((index + 1) * items.length) / count);
+    return items.slice(start, Math.max(start + 1, end));
+  });
+}
+
+function chunkWords(value: string, count: number) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  return Array.from({ length: count }, (_, index) => {
+    const start = Math.floor((index * words.length) / count);
+    const end = Math.floor(((index + 1) * words.length) / count);
+    return words.slice(start, Math.max(start + 1, end)).join(' ');
+  }).filter(Boolean);
+}
+

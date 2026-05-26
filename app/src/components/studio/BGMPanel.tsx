@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Music, Plus, Trash2 } from 'lucide-react';
 import { AudioPreview } from './AudioPreview';
 
-/** Compact BGM panel — empty = nút "+ Chọn nhạc" 1 dòng, filled = 1 row info+slider. */
+/** Compact BGM panel: empty shows one picker row; filled shows file info plus slider. */
 export function BGMPanel({
   bgm, onSet, onClear,
   volume, onVolume,
@@ -46,7 +46,7 @@ export function BGMPanel({
             <button
               onClick={onClear}
               className="grid h-5 w-5 place-items-center rounded text-[var(--muted)] hover:bg-[var(--danger)]/20 hover:text-[var(--danger)]"
-              title="Xoá"
+              title="Remove"
             >
               <Trash2 size={11} />
             </button>
@@ -70,7 +70,7 @@ export function BGMPanel({
           className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-[var(--border)] bg-[var(--panel-2)]/40 px-3 py-2 text-[11px] text-[var(--muted)] transition hover:border-[var(--accent)]/60 hover:bg-[var(--panel-2)] hover:text-white"
         >
           <Plus size={12} />
-          Chọn nhạc nền
+          Choose BGM
           <span className="text-[9px] opacity-50">· mp3/wav</span>
         </button>
       )}

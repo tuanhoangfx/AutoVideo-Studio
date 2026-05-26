@@ -22,6 +22,8 @@ export type SequenceScene = {
   text: string;
   imageUrl: string;
   effect?: string;
+  durationSec?: number;
+  transition?: string;
 };
 
 export type SequenceTiming = {
@@ -32,9 +34,9 @@ export type SequenceTiming = {
 
 type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
 
-const EFFECTS_CYCLE = ['zoom_in', 'pan_right', 'zoom_out', 'pan_left'];
+const EFFECTS_CYCLE = ['zoom_in', 'pan_right', 'flash', 'sparkle'];
 
-/** Crossfade duration giữa các scene — match ffmpeg render (compose.py transition=0.4) */
+/** Crossfade duration between scenes: matches ffmpeg render (compose.py transition=0.4). */
 const TRANSITION_S = 0.4;
 
 export function SequencePreview({
@@ -45,6 +47,7 @@ export function SequencePreview({
   onClose,
   onProgress,
   onTimingReady,
+  autoPlay = false,
 }: {
   scenes: SequenceScene[];
   voice: string;
@@ -53,6 +56,7 @@ export function SequencePreview({
   onClose?: () => void;
   onProgress?: (elapsedSec: number) => void;
   onTimingReady?: (timing: SequenceTiming) => void;
+  autoPlay?: boolean;
 }) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +78,7 @@ export function SequencePreview({
   const drawFrameRef = useRef<(e: number) => void>(() => {});
   const loopRef = useRef<() => void>(() => {});
   const lastProgressEmitRef = useRef(-1);
+  const autoStartedRef = useRef(false);
 
   /** Internal aspect-driven canvas resolution. Display element scales via CSS. */
   const canvasSize = useMemo<[number, number]>(() => {
@@ -97,6 +102,14 @@ export function SequencePreview({
       const nextWarnings: string[] = [];
       const buffers = await Promise.all(
         scenes.map(async (s, i) => {
+          if (s.durationSec) {
+            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+            return makeSilentBuffer(ctx, s.durationSec);
+          }
+          if (!s.text.trim()) {
+            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+            return makeSilentBuffer(ctx, estimateDurationSec(s.text));
+          }
           const url = voicePreviewUrl(s.text, voice, rate);
           try {
             const resp = await fetch(url);
@@ -106,7 +119,7 @@ export function SequencePreview({
             setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
             return buf;
           } catch {
-            nextWarnings.push(`Scene ${i + 1}: voice preview lỗi, dùng timing ước lượng.`);
+            nextWarnings.push(`Scene ${i + 1}: voice preview failed, using estimated timing.`);
             setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
             return makeSilentBuffer(ctx, estimateDurationSec(s.text));
           }
@@ -249,10 +262,11 @@ export function SequencePreview({
           ? scenes[idx].effect!
           : EFFECTS_CYCLE[idx % EFFECTS_CYCLE.length];
 
-      // Detect crossfade zone: last TRANSITION_S of current scene
+      // Detect transition zone: last TRANSITION_S of current scene
       const remaining = sceneDur - sceneT;
       const inCrossfade = remaining < TRANSITION_S && idx < scenes.length - 1;
       const img = imagesRef.current[idx];
+      const transition = resolveTransition(scenes[idx].transition, idx);
 
       // Reset
       cnvCtx.globalAlpha = 1;
@@ -262,20 +276,29 @@ export function SequencePreview({
 
       if (inCrossfade) {
         const fadeProgress = (TRANSITION_S - remaining) / TRANSITION_S; // 0 → 1
-        // Out-going: current scene fades 1 → 0
-        cnvCtx.globalAlpha = 1 - fadeProgress;
-        if (img) drawKenBurns(cnvCtx, canvas, img, progress, effect);
-        // In-coming: next scene fades 0 → 1, at its initial progress (start of scene)
         const nextIdx = idx + 1;
         const nextImg = imagesRef.current[nextIdx];
         const nextEffect =
           scenes[nextIdx]?.effect && scenes[nextIdx].effect !== 'auto'
             ? scenes[nextIdx].effect!
             : EFFECTS_CYCLE[nextIdx % EFFECTS_CYCLE.length];
-        if (nextImg) {
-          cnvCtx.globalAlpha = fadeProgress;
-          // Next scene just starting → progress 0
+        if ((transition === 'slide_left' || transition === 'slide_right') && img && nextImg) {
+          const direction = transition === 'slide_left' ? -1 : 1;
+          cnvCtx.save();
+          cnvCtx.translate(direction * fadeProgress * canvas.width, 0);
+          drawKenBurns(cnvCtx, canvas, img, progress, effect);
+          cnvCtx.restore();
+          cnvCtx.save();
+          cnvCtx.translate(-direction * (1 - fadeProgress) * canvas.width, 0);
           drawKenBurns(cnvCtx, canvas, nextImg, 0, nextEffect);
+          cnvCtx.restore();
+        } else {
+          cnvCtx.globalAlpha = transition === 'cut' ? 1 : 1 - fadeProgress;
+          if (img && (transition !== 'cut' || fadeProgress < 0.5)) drawKenBurns(cnvCtx, canvas, img, progress, effect);
+          if (nextImg && (transition !== 'cut' || fadeProgress >= 0.5)) {
+            cnvCtx.globalAlpha = transition === 'cut' ? 1 : fadeProgress;
+            drawKenBurns(cnvCtx, canvas, nextImg, transition === 'zoom' ? fadeProgress : 0, nextEffect);
+          }
         }
         cnvCtx.globalAlpha = 1;
         // Caption: crossfade text too
@@ -333,15 +356,20 @@ export function SequencePreview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!autoPlay || autoStartedRef.current || status !== 'ready') return;
+    autoStartedRef.current = true;
+    play();
+  }, [autoPlay, play, status]);
+
   // ─── UI ─────────────────────────────────────────────────────────────
   const total = totalRef.current;
   const pct = total > 0 ? Math.min(100, (elapsed / total) * 100) : 0;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       <div
-        className="relative grid place-items-center overflow-hidden bg-black"
-        style={{ height: 'clamp(240px, 40vh, 360px)' }}
+        className="relative mx-auto grid min-h-0 flex-1 aspect-video w-full max-w-[420px] place-items-center overflow-hidden bg-black"
       >
         <canvas
           ref={canvasRef}
@@ -358,7 +386,7 @@ export function SequencePreview({
         {onClose && (
           <button
             onClick={onClose}
-            aria-label="Đóng preview"
+            aria-label="Close preview"
             className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white/80 backdrop-blur hover:bg-black/80 hover:text-white"
           >
             <X size={14} />
@@ -369,7 +397,7 @@ export function SequencePreview({
         {status === 'loading' && (
           <Overlay>
             <Loader2 className="animate-spin" size={28} />
-            <div className="mt-2 text-sm">Tải voice {loadProgress.done}/{loadProgress.total}</div>
+            <div className="mt-2 text-sm">Loading voice {loadProgress.done}/{loadProgress.total}</div>
             <div className="mt-2 h-1 w-40 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]"
@@ -378,21 +406,18 @@ export function SequencePreview({
             </div>
           </Overlay>
         )}
-        {status === 'ready' && (
+        {status === 'ready' && !autoPlay && (
           <Overlay>
             <button
               onClick={play}
-              className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+              className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-[0_10px_30px_rgba(0,0,0,0.45)] ring-1 ring-white/20 backdrop-blur transition hover:scale-105 hover:bg-black/75"
+              aria-label="Play"
             >
-              <Play size={14} fill="currentColor" />
-              Phát preview ({total.toFixed(1)}s)
+              <Play size={26} className="translate-x-0.5" fill="currentColor" />
             </button>
-            <div className="mt-2 text-[10px] text-white/60">
-              Ken Burns + crossfade + voice — không BGM/subtitle (chỉ trong render)
-            </div>
             {warnings.length > 0 && (
               <div className="mt-2 max-w-sm rounded border border-amber-300/20 bg-amber-300/10 px-2 py-1 text-center text-[10px] text-amber-100">
-                Voice preview tạm lỗi, đã dùng timing ước lượng để vẫn xem được hình.
+                Voice preview failed temporarily, so estimated timing is used.
               </div>
             )}
           </Overlay>
@@ -401,20 +426,21 @@ export function SequencePreview({
           <Overlay>
             <button
               onClick={play}
-              className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold"
+              className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-[0_10px_30px_rgba(0,0,0,0.45)] ring-1 ring-white/20 backdrop-blur transition hover:scale-105 hover:bg-black/75"
+              aria-label="Continue"
             >
-              <Play size={14} fill="currentColor" /> Tiếp tục
+              <Play size={26} className="translate-x-0.5" fill="currentColor" />
             </button>
           </Overlay>
         )}
         {status === 'ended' && (
           <Overlay>
-            <div className="text-sm">✓ Preview xong</div>
+            <div className="text-sm">Preview complete</div>
             <button
               onClick={() => { pausedAtRef.current = 0; play(); }}
               className="btn-primary mt-2 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
             >
-              <RotateCcw size={12} /> Phát lại
+              <RotateCcw size={12} /> Replay
             </button>
           </Overlay>
         )}
@@ -426,37 +452,29 @@ export function SequencePreview({
               onClick={preload}
               className="mt-2 rounded border border-white/15 bg-white/[.04] px-3 py-1 text-xs hover:bg-white/[.08]"
             >
-              Thử lại
+              Retry
             </button>
           </Overlay>
         )}
       </div>
 
       {/* Compact controls bar */}
-      <div className="border-t border-[var(--border-subtle)] bg-[var(--panel)]/80 px-3 py-2 backdrop-blur">
-        <div className="mb-1.5 flex items-center gap-2 font-mono text-[10px] text-[var(--muted)]">
-          <span>{elapsed.toFixed(1)}s</span>
+      <div className="shrink-0 border-t border-[var(--border-subtle)] bg-[var(--panel)]/80 px-3 py-1 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[9px] text-[var(--muted)]">{elapsed.toFixed(1)}s</span>
           <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-white/10">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] transition-[width] duration-75"
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span>{total.toFixed(1)}s</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 text-[11px]">
-            <span className="text-[var(--accent-2)]">S{currentScene + 1}/{scenes.length}</span>
-            <span className="ml-2 text-[var(--muted)] truncate inline-block max-w-[300px] align-bottom">
-              {scenes[currentScene]?.text.slice(0, 60)}
-              {(scenes[currentScene]?.text.length ?? 0) > 60 ? '…' : ''}
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <span className="font-mono text-[9px] text-[var(--muted)]">{total.toFixed(1)}s</span>
+          <span className="shrink-0 text-[10px] text-[var(--accent-2)]">S{currentScene + 1}/{scenes.length}</span>
+          <div className="ml-1 flex shrink-0 items-center gap-1">
             {(status === 'ready' || status === 'paused') && (
               <button
                 onClick={play}
-                className="grid h-7 w-7 place-items-center rounded-full bg-[var(--accent)] text-white hover:brightness-110"
+                className="grid h-6 w-6 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
                 title="Play"
               >
                 <Play size={12} fill="currentColor" />
@@ -465,7 +483,7 @@ export function SequencePreview({
             {status === 'playing' && (
               <button
                 onClick={pause}
-                className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
+                className="grid h-6 w-6 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
                 title="Pause"
               >
                 <Pause size={12} fill="currentColor" />
@@ -474,7 +492,7 @@ export function SequencePreview({
             {(status === 'playing' || status === 'paused' || status === 'ended') && (
               <button
                 onClick={stop}
-                className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
+                className="grid h-6 w-6 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
                 title="Stop"
               >
                 <Square size={11} fill="currentColor" />
@@ -483,7 +501,7 @@ export function SequencePreview({
             {status === 'ended' && (
               <button
                 onClick={() => { pausedAtRef.current = 0; play(); }}
-                className="grid h-7 w-7 place-items-center rounded-full bg-[var(--accent)]/30 text-[var(--accent-2)] hover:bg-[var(--accent)]/50"
+                className="grid h-6 w-6 place-items-center rounded-full bg-[var(--accent)]/30 text-[var(--accent-2)] hover:bg-[var(--accent)]/50"
                 title="Replay"
               >
                 <RotateCcw size={11} />
@@ -561,6 +579,12 @@ function drawKenBurns(
       zoom = 1.08;
       dx = -((fitW * zoom - W) / 2) - (fitW * zoom - W) * progress + (fitW * zoom - W);
       break;
+    case 'flash':
+      zoom = 1.03 + 0.02 * progress;
+      break;
+    case 'sparkle':
+      zoom = 1.05 + 0.03 * Math.sin(progress * Math.PI);
+      break;
     case 'none':
     default:
       zoom = 1.0;
@@ -570,6 +594,36 @@ function drawKenBurns(
   const drawX = (W - drawW) / 2 + dx;
   const drawY = (H - drawH) / 2 + dy;
   ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  if (effect === 'flash') {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 0.35 * (1 - progress * 4));
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  if (effect === 'sparkle') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    for (let i = 0; i < 10; i += 1) {
+      const phase = (progress + i * 0.17) % 1;
+      const x = ((i * 97) % W) + Math.sin(phase * Math.PI * 2) * 8;
+      const y = ((i * 53) % H) + Math.cos(phase * Math.PI * 2) * 8;
+      const r = 1.5 + Math.sin(phase * Math.PI) * 2.5;
+      ctx.globalAlpha = Math.max(0, Math.sin(phase * Math.PI));
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function resolveTransition(value: string | undefined, index: number) {
+  if (value === 'random') {
+    return (['slide_left', 'slide_right', 'fade', 'zoom'] as const)[index % 4];
+  }
+  if (value === 'slide') return 'slide_left';
+  return value ?? 'slide_left';
 }
 
 function drawCaption(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, text: string, alpha = 1) {

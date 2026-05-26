@@ -7,7 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev --turbo --port 3021",
+    "dev": "next dev --port 3021",
+    "dev:turbo": "next dev --turbo --port 3021",
     "build": "next build",
     "start": "next start --port 3021",
     "lint": "next lint",
