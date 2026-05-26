@@ -1,10 +1,15 @@
 // Worker API client — wraps fetch calls to FastAPI on port 8021.
 // Override base via NEXT_PUBLIC_WORKER_URL when deploying.
 
+const CONFIGURED_WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL?.trim();
+
 export const WORKER_URL =
-  process.env.NEXT_PUBLIC_WORKER_URL || 'http://127.0.0.1:8021';
+  CONFIGURED_WORKER_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8021');
+
+export const WORKER_URL_CONFIGURED = Boolean(WORKER_URL);
 
 export function resolveWorkerAssetUrl(url: string): string {
+  if (!WORKER_URL) return url;
   return /^https?:\/\//i.test(url) ? url : `${WORKER_URL}${url}`;
 }
 
@@ -81,22 +86,22 @@ export async function getRoot() {
       missing?: string[];
     };
   }>(
-    await fetch(`${WORKER_URL}/`)
+    await fetch(workerUrl('/'))
   );
 }
 
 export async function listVoices() {
   return handle<{ ShortName: string; Gender: string; FriendlyName: string; Locale: string }[]>(
-    await fetch(`${WORKER_URL}/voices`)
+    await fetch(workerUrl('/voices'))
   );
 }
 
 export async function listJobs() {
-  return handle<Job[]>(await fetch(`${WORKER_URL}/jobs`));
+  return handle<Job[]>(await fetch(workerUrl('/jobs')));
 }
 
 export async function getJob(id: string) {
-  return handle<Job>(await fetch(`${WORKER_URL}/jobs/${id}`));
+  return handle<Job>(await fetch(workerUrl(`/jobs/${id}`)));
 }
 
 export async function createJob(payload: CreateJobPayload): Promise<Job> {
@@ -106,7 +111,7 @@ export async function createJob(payload: CreateJobPayload): Promise<Job> {
   for (const f of payload.files) fd.append('files', f, f.name);
   if (payload.bgm) fd.append('bgm', payload.bgm, payload.bgm.name);
   return handle<Job>(
-    await fetch(`${WORKER_URL}/jobs`, { method: 'POST', body: fd })
+    await fetch(workerUrl('/jobs'), { method: 'POST', body: fd })
   );
 }
 
@@ -130,15 +135,24 @@ export const EXPORT_PRESETS: ExportPreset[] = [
 
 export async function cancelJob(id: string) {
   return handle<{ ok: true }>(
-    await fetch(`${WORKER_URL}/jobs/${id}/cancel`, { method: 'POST' })
+    await fetch(workerUrl(`/jobs/${id}/cancel`), { method: 'POST' })
   );
 }
 
 export function outputUrl(id: string): string {
-  return `${WORKER_URL}/jobs/${id}/output`;
+  if (!WORKER_URL) return '';
+  return workerUrl(`/jobs/${id}/output`);
 }
 
 export function voicePreviewUrl(text: string, voice: string, rate = '+0%'): string {
+  if (!WORKER_URL) return '';
   const params = new URLSearchParams({ text, voice, rate });
-  return `${WORKER_URL}/voices/preview?${params.toString()}`;
+  return workerUrl(`/voices/preview?${params.toString()}`);
+}
+
+function workerUrl(path: string) {
+  if (!WORKER_URL) {
+    throw new Error('NEXT_PUBLIC_WORKER_URL is not configured for this deployment.');
+  }
+  return `${WORKER_URL}${path}`;
 }

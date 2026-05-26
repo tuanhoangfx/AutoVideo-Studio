@@ -11,6 +11,8 @@ export function DeploymentCheck() {
   const [info, setInfo] = useState<WorkerInfo | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [productionLocalWorker, setProductionLocalWorker] = useState(false);
+  const [productionMissingWorker, setProductionMissingWorker] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -26,6 +28,10 @@ export function DeploymentCheck() {
   };
 
   useEffect(() => {
+    const host = window.location.hostname;
+    const productionHost = host !== 'localhost' && host !== '127.0.0.1';
+    setProductionLocalWorker(productionHost && isLocalWorkerUrl(api.WORKER_URL));
+    setProductionMissingWorker(productionHost && !api.WORKER_URL_CONFIGURED);
     void load();
   }, []);
 
@@ -65,7 +71,7 @@ export function DeploymentCheck() {
         <CheckCard
           icon={<Server size={16} />}
           title="Worker API"
-          value={api.WORKER_URL}
+          value={api.WORKER_URL || 'Not configured'}
           ok={workerOk}
           detail={workerOk ? `${info?.jobs ?? 0} jobs · ${info?.concurrent_limit ?? 0} concurrent renders` : error || 'Offline'}
         />
@@ -77,6 +83,20 @@ export function DeploymentCheck() {
           detail={storageOk ? storageDetail(storage) : missingDetail(storage)}
         />
       </div>
+
+      {productionLocalWorker ? (
+        <div className="mt-3 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-[11px] leading-5 text-rose-100/85">
+          Production is pointing to <span className="font-mono">127.0.0.1</span>. Set{' '}
+          <span className="font-mono">NEXT_PUBLIC_WORKER_URL</span> in Vercel to your public worker domain,
+          then redeploy the frontend.
+        </div>
+      ) : null}
+      {productionMissingWorker ? (
+        <div className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100/85">
+          Production worker URL is missing. Set <span className="font-mono">NEXT_PUBLIC_WORKER_URL</span>{' '}
+          in Vercel to the public FastAPI worker domain before using Export & Download.
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -124,4 +144,8 @@ function missingDetail(storage: WorkerInfo['storage']) {
   const missing = storage?.missing ?? [];
   if (missing.length > 0) return `Missing env: ${missing.join(', ')}`;
   return 'Worker offline or storage not configured.';
+}
+
+function isLocalWorkerUrl(url: string) {
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url);
 }

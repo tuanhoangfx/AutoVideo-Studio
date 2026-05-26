@@ -480,10 +480,18 @@ export default function StudioPage() {
       {/* Server status banner */}
       {serverOk === false && (
         <div className="mb-3 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-2 text-[11px] text-rose-200">
-          Worker is not running at <code className="font-mono">{api.WORKER_URL}</code>. Boot:{' '}
-          <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono">
-            cd worker &amp;&amp; .venv/Scripts/uvicorn main:app --port 8021
-          </code>
+          {api.WORKER_URL ? (
+            <>
+              Worker is not running at <code className="font-mono">{api.WORKER_URL}</code>. Boot:{' '}
+              <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono">
+                cd worker &amp;&amp; .venv/Scripts/uvicorn main:app --port 8021
+              </code>
+            </>
+          ) : (
+            <>
+              Worker URL is not configured. Set <code className="font-mono">NEXT_PUBLIC_WORKER_URL</code> in Vercel.
+            </>
+          )}
         </div>
       )}
       {/* TOP: Project tabs + render bar */}
