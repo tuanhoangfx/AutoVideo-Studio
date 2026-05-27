@@ -7,6 +7,10 @@ const DOWNLOAD_DIR_HANDLE_KEY = 'download:directory-handle';
 let downloadDirectoryHandle: any | null = null;
 
 export async function chooseStudioDownloadDirectory(): Promise<string | null> {
+  if (typeof window !== 'undefined' && window.autovideo?.chooseOutputDirectory) {
+    const result = await window.autovideo.chooseOutputDirectory();
+    return result?.name ?? null;
+  }
   const picker = (window as any).showDirectoryPicker;
   if (typeof picker !== 'function') return null;
   const handle = await picker({
@@ -32,10 +36,14 @@ export async function clearStudioDownloadDirectory(): Promise<void> {
 }
 
 export function supportsStudioDownloadDirectory(): boolean {
-  return typeof window !== 'undefined' && typeof (window as any).showDirectoryPicker === 'function';
+  return typeof window !== 'undefined' && (Boolean(window.autovideo?.chooseOutputDirectory) || typeof (window as any).showDirectoryPicker === 'function');
 }
 
 export async function saveBlobToStudioDirectory(filename: string, blob: Blob): Promise<boolean> {
+  if (typeof window !== 'undefined' && window.autovideo?.saveOutputFile) {
+    const result = await window.autovideo.saveOutputFile(filename, await blob.arrayBuffer());
+    return result.ok;
+  }
   if (!downloadDirectoryHandle) {
     await restoreStudioDownloadDirectory().catch(() => null);
   }

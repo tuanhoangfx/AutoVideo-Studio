@@ -1,23 +1,26 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode } from 'react';
-import { Activity, Boxes, Code2, GitBranch, RefreshCcw, Rocket, Settings2, User, Video, type LucideIcon } from 'lucide-react';
+import { type ElementType, type ReactNode } from 'react';
+import { Activity, Boxes, Code2, GitBranch, RefreshCcw, Rocket, Settings2, User } from 'lucide-react';
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from './AppTabHeader';
+
+type IconComponent = ElementType;
 
 type WorkspaceNavItem = {
   href: string;
   match: string;
   label: string;
-  icon: typeof Video;
+  icon: IconComponent;
 };
 
 const APP_VERSION = '0.3';
 const APP_USER_LABEL = 'czpgopro';
 
 const navItems: WorkspaceNavItem[] = [
-  { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: Video },
+  { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: AutoVideoBrandIcon },
   { href: '/system', match: '/system', label: 'System', icon: Settings2 },
 ];
 
@@ -33,7 +36,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
       <aside className="flex h-full min-h-0 w-60 shrink-0 flex-col overflow-visible border-r border-white/5 bg-[var(--panel)] p-4">
         <div className="mb-4 flex shrink-0 items-center gap-3">
           <div className="brand-icon-wrap grid h-10 w-10 place-items-center rounded-xl text-white">
-            <Video size={20} strokeWidth={2} />
+            <Image src="/icons/tools/P0021.svg" alt="" width={28} height={28} className="h-7 w-7" priority />
           </div>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold leading-tight">Workspace Hub</div>
@@ -95,7 +98,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
 function resolveHeader(pathname: string): {
   ariaLabel: string;
-  titleIcon: LucideIcon;
+  titleIcon: IconComponent;
   titleIconClass: string;
   title: string;
   metaItems: TabHeaderMetaItem[];
@@ -123,7 +126,7 @@ function resolveHeader(pathname: string): {
 
   return {
     ariaLabel: 'AutoVideo Studio tab header',
-    titleIcon: Video,
+    titleIcon: AutoVideoBrandIcon,
     titleIconClass: 'text-indigo-300',
     title: 'AutoVideo Studio',
     metaItems: [
@@ -136,6 +139,29 @@ function resolveHeader(pathname: string): {
       { key: 'providers', icon: Boxes, label: 'Providers', value: 3, toneClass: 'text-amber-300' },
     ],
   };
+}
+
+function AutoVideoBrandIcon({
+  size = 16,
+  className = '',
+  'aria-hidden': ariaHidden,
+}: {
+  size?: string | number;
+  className?: string;
+  'aria-hidden'?: boolean;
+}) {
+  const dimension = typeof size === 'number' ? size : Number.parseInt(String(size), 10) || 16;
+
+  return (
+    <Image
+      src="/icons/tools/P0021.svg"
+      alt=""
+      width={dimension}
+      height={dimension}
+      className={`shrink-0 ${className}`}
+      aria-hidden={ariaHidden}
+    />
+  );
 }
 
 function SidebarFooterButton({

@@ -2,15 +2,31 @@
 // Override base via NEXT_PUBLIC_WORKER_URL when deploying.
 
 const CONFIGURED_WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL?.trim();
+const QUERY_WORKER_URL = readWorkerUrlFromQuery();
+const DESKTOP_WORKER_URL = readDesktopWorkerUrl();
 
-export const WORKER_URL =
-  CONFIGURED_WORKER_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8021');
+let runtimeWorkerUrl =
+  DESKTOP_WORKER_URL || QUERY_WORKER_URL || CONFIGURED_WORKER_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8021');
+
+export const WORKER_URL = runtimeWorkerUrl;
 
 export const WORKER_URL_CONFIGURED = Boolean(WORKER_URL);
 
+export function getWorkerUrl() {
+  return runtimeWorkerUrl;
+}
+
+export async function initializeDesktopWorkerUrl() {
+  if (typeof window === 'undefined' || !window.autovideo) return runtimeWorkerUrl;
+  const next = await window.autovideo.getWorkerUrl().catch(() => '');
+  if (next) runtimeWorkerUrl = next;
+  return runtimeWorkerUrl;
+}
+
 export function resolveWorkerAssetUrl(url: string): string {
-  if (!WORKER_URL) return url;
-  return /^https?:\/\//i.test(url) ? url : `${WORKER_URL}${url}`;
+  const baseUrl = getWorkerUrl();
+  if (!baseUrl) return url;
+  return /^https?:\/\//i.test(url) ? url : `${baseUrl}${url}`;
 }
 
 export type JobStatus =
@@ -151,8 +167,23 @@ export function voicePreviewUrl(text: string, voice: string, rate = '+0%'): stri
 }
 
 function workerUrl(path: string) {
-  if (!WORKER_URL) {
+  const baseUrl = getWorkerUrl();
+  if (!baseUrl) {
     throw new Error('NEXT_PUBLIC_WORKER_URL is not configured for this deployment.');
   }
-  return `${WORKER_URL}${path}`;
+  return `${baseUrl}${path}`;
+}
+
+function readWorkerUrlFromQuery() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return new URLSearchParams(window.location.search).get('workerUrl')?.trim() ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function readDesktopWorkerUrl() {
+  if (typeof window === 'undefined') return '';
+  return window.autovideo?.workerUrl?.trim() ?? '';
 }

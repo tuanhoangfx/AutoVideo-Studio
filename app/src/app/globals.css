@@ -172,7 +172,8 @@ html, body {
   margin: 0;
   padding: 0;
 }
-.app-tab-header svg {
+.app-tab-header svg,
+.app-tab-header img {
   display: block;
   flex-shrink: 0;
 }

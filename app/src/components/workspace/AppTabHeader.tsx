@@ -1,7 +1,21 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { Clock, FileVideo, Gauge, MonitorPlay, RotateCcw, Settings2, SlidersHorizontal, X, type LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Download,
+  FileVideo,
+  Gauge,
+  MonitorPlay,
+  RefreshCw,
+  RotateCcw,
+  Settings2,
+  SlidersHorizontal,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   readStudioExportSettings,
   writeStudioExportSettings,
@@ -15,6 +29,7 @@ import {
   restoreStudioDownloadDirectory,
   supportsStudioDownloadDirectory,
 } from '@/lib/studio-download-target';
+import type { AutoVideoUpdateStatus } from '@/types/autovideo-desktop';
 
 export type TabHeaderMetaItem = {
   icon: LucideIcon;
@@ -33,7 +48,7 @@ export type TabHeaderStatItem = {
 
 type AppTabHeaderProps = {
   ariaLabel: string;
-  titleIcon: LucideIcon;
+  titleIcon: ElementType;
   titleIconClass?: string;
   title: string;
   metaItems: TabHeaderMetaItem[];
@@ -85,6 +100,7 @@ export function AppTabHeader({
           <span>Session</span>
           <span className="tabular-nums text-[var(--text)]/90">{session}</span>
         </div>
+        <HeaderUpdateButton />
         <HeaderOutputSettings />
       </div>
     </header>
@@ -116,6 +132,170 @@ function StatLine({ icon: Icon, value, label, toneClass }: TabHeaderStatItem) {
       <span className="font-semibold tabular-nums text-[var(--text)]/90">{value}</span>
       <span>{label}</span>
     </div>
+  );
+}
+
+function HeaderUpdateButton() {
+  const [status, setStatus] = useState<AutoVideoUpdateStatus | null>(null);
+  const [hasDesktopApi, setHasDesktopApi] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [updateToastOpen, setUpdateToastOpen] = useState(false);
+  const dismissedUpdateKey = useRef('');
+
+  useEffect(() => {
+    const desktopApi = window.autovideo;
+    setHasDesktopApi(Boolean(desktopApi));
+    if (!desktopApi) return;
+
+    desktopApi.getUpdateStatus().then(setStatus).catch(() => {});
+    return desktopApi.onUpdateStatus(setStatus);
+  }, []);
+
+  useEffect(() => {
+    if (status?.state === 'available') {
+      const updateKey = status.updateVersion || status.releaseName || 'available';
+      if (dismissedUpdateKey.current !== updateKey) {
+        setUpdateToastOpen(true);
+      }
+      return;
+    }
+
+    if (status?.state === 'downloading' || status?.state === 'downloaded' || status?.state === 'latest') {
+      setUpdateToastOpen(false);
+    }
+  }, [status?.state, status?.updateVersion, status?.releaseName]);
+
+  if (!hasDesktopApi) return null;
+
+  const currentState = status?.state ?? 'idle';
+  const progress = Math.round(status?.progress?.percent ?? 0);
+  const label =
+    currentState === 'available'
+      ? 'Update'
+      : currentState === 'downloaded'
+      ? 'Install'
+      : currentState === 'downloading'
+      ? `${progress}%`
+      : currentState === 'checking'
+      ? 'Checking'
+      : currentState === 'latest'
+      ? 'Latest'
+      : currentState === 'dev'
+      ? 'Dev'
+      : 'Update';
+  const title =
+    status?.message ||
+    (currentState === 'available'
+      ? 'New version available'
+      : currentState === 'latest'
+      ? 'You are using the latest version'
+      : 'Check for AutoVideo Studio updates');
+  const disabled = busy || currentState === 'checking' || currentState === 'downloading' || currentState === 'installing' || currentState === 'dev';
+  const isActive = currentState === 'available' || currentState === 'downloaded';
+  const isSuccess = currentState === 'latest';
+  const isError = currentState === 'error';
+
+  const runUpdateAction = async () => {
+    const desktopApi = window.autovideo;
+    if (!desktopApi || disabled) return;
+    setBusy(true);
+    try {
+      const next =
+        currentState === 'available'
+          ? await desktopApi.downloadUpdate()
+          : currentState === 'downloaded'
+          ? await desktopApi.installUpdate()
+          : await desktopApi.checkForUpdates();
+      setStatus(next);
+    } finally {
+      if (currentState !== 'downloaded') setBusy(false);
+    }
+  };
+
+  const dismissUpdateToast = () => {
+    dismissedUpdateKey.current = status?.updateVersion || status?.releaseName || 'available';
+    setUpdateToastOpen(false);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={runUpdateAction}
+        disabled={disabled}
+        className={`relative inline-flex h-7 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-65 ${
+          isActive
+            ? 'border-amber-300/45 bg-amber-400/15 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.16)]'
+            : isSuccess
+            ? 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
+            : isError
+            ? 'border-rose-300/35 bg-rose-500/10 text-rose-100'
+            : 'border-white/10 bg-white/[.03] text-[var(--muted)] hover:bg-white/[.06] hover:text-[var(--text)]'
+        }`}
+        aria-label={title}
+        title={title}
+      >
+        {currentState === 'latest' ? (
+          <CheckCircle2 size={13} className="shrink-0 text-emerald-200" />
+        ) : currentState === 'error' ? (
+          <AlertTriangle size={13} className="shrink-0 text-rose-200" />
+        ) : currentState === 'available' || currentState === 'downloaded' ? (
+          <Download size={13} className="shrink-0 text-amber-200" />
+        ) : (
+          <RefreshCw size={13} className={`shrink-0 ${currentState === 'checking' || busy ? 'animate-spin text-indigo-200' : ''}`} />
+        )}
+        <span className="hidden sm:inline">{label}</span>
+        {isActive ? (
+          <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-70" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-300" />
+          </span>
+        ) : null}
+      </button>
+
+      {updateToastOpen && currentState === 'available' ? (
+        <div className="fixed right-4 top-14 z-[90] w-[22rem] overflow-hidden rounded-2xl border border-amber-300/25 bg-[#11142a]/95 shadow-2xl shadow-black/45 backdrop-blur">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.18),transparent_42%)]" />
+          <div className="relative p-3">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400/15 text-amber-100 ring-1 ring-amber-300/25">
+                <Download size={17} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-white">Có bản cập nhật mới</div>
+                <div className="mt-1 text-[11px] leading-5 text-white/60">
+                  {status?.updateVersion ? `AutoVideo Studio ${status.updateVersion} đã sẵn sàng để tải.` : status?.message}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={dismissUpdateToast}
+                className="grid h-7 w-7 place-items-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white"
+                aria-label="Dismiss update notification"
+              >
+                <X size={13} />
+              </button>
+            </div>
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={dismissUpdateToast}
+                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-white/50 hover:bg-white/10 hover:text-white"
+              >
+                Later
+              </button>
+              <button
+                type="button"
+                onClick={() => void runUpdateAction()}
+                className="rounded-lg bg-amber-400 px-3 py-1 text-[11px] font-bold text-slate-950 shadow-lg shadow-amber-400/15 hover:bg-amber-300"
+              >
+                Download update
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

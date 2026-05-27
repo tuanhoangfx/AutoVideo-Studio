@@ -12,6 +12,7 @@ type DriveImageFile = {
   thumbnailLink?: string;
   size?: string;
   modifiedTime?: string;
+  relativePath?: string;
 };
 
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
@@ -70,11 +71,31 @@ async function getPublicDriveFolder(folderInput: string): Promise<DriveFolder> {
 
 async function listDriveFolderImages(folderId: string): Promise<DriveImageFile[]> {
   const files: DriveImageFile[] = [];
+  const queue: { id: string; path: string }[] = [{ id: folderId, path: '' }];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const children = await listDriveFolderChildren(current.id);
+    children.forEach((child) => {
+      const relativePath = current.path ? `${current.path}/${child.name}` : child.name;
+      if (child.mimeType === DRIVE_FOLDER_MIME) {
+        queue.push({ id: child.id, path: relativePath });
+      } else if (child.mimeType?.startsWith('image/')) {
+        files.push({ ...child, relativePath: current.path ? relativePath : `Images/${child.name}` });
+      }
+    });
+  }
+
+  return files;
+}
+
+async function listDriveFolderChildren(folderId: string): Promise<DriveImageFile[]> {
+  const files: DriveImageFile[] = [];
   let pageToken: string | undefined;
 
   do {
     const params = driveParams({
-      q: `'${folderId}' in parents and trashed = false and mimeType contains 'image/'`,
+      q: `'${folderId}' in parents and trashed = false and (mimeType = '${DRIVE_FOLDER_MIME}' or mimeType contains 'image/')`,
       fields: 'nextPageToken,files(id,name,mimeType,thumbnailLink,size,modifiedTime)',
       orderBy: 'name_natural',
       pageSize: '1000',

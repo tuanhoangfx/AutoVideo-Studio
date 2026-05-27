@@ -12,6 +12,7 @@
   "type": "Web",
   "owner": "Tool",
   "status": "Ready",
+  "icon": "app/public/icons/tools/P0021.svg",
   "summary": "Auto-gen video: LLM script → ảnh (gen SD/DALL-E hoặc upload) → TTS (edge-tts VN) → subtitle (whisper) → Ken Burns + transition → MP4. Next.js UI + Python FastAPI worker.",
   "stack": [
     "Next.js 14",
@@ -45,12 +46,21 @@
     "typecheck": "cd app && pnpm typecheck",
     "worker:install": "cd worker && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
     "worker:dev": "cd worker && .venv/Scripts/uvicorn main:app --reload --port 8021",
-    "worker:public": "powershell -ExecutionPolicy Bypass -File scripts/start-public-worker.ps1"
+    "worker:public": "powershell -ExecutionPolicy Bypass -File scripts/start-public-worker.ps1",
+    "desktop:dev": "cd app && pnpm desktop:dev",
+    "desktop:worker": "cd app && pnpm desktop:worker",
+    "desktop:dist": "cd app && pnpm desktop:dist",
+    "desktop:release": "cd app && pnpm desktop:release -- -Version 0.1.1 -Publish",
+    "desktop:release:patch": "cd app && pnpm desktop:release:patch",
+    "desktop:release:minor": "cd app && pnpm desktop:release:minor",
+    "desktop:release:major": "cd app && pnpm desktop:release:major"
   },
   "docs": {
     "readme": "README.md",
     "claude": "CLAUDE.md",
-    "architecture": "docs/ARCHITECTURE.md"
+    "architecture": "docs/ARCHITECTURE.md",
+    "desktopHybrid": "docs/DESKTOP-HYBRID-PLAN.md",
+    "designDecision": "docs/DESIGN-DECISION.md"
   },
   "github": {
     "repo": "tuanhoangfx/AutoVideo-Studio",
@@ -71,8 +81,9 @@
     "team": "tuanhoangfxs-projects"
   },
   "release": {
-    "version": "0.1.0",
-    "readiness": []
+    "version": "0.1.1",
+    "readiness": [],
+    "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps."
   },
   "health": {
     "status": "Ready",
@@ -95,6 +106,21 @@
     "components": "src/components/studio/",
     "decidedAt": "2026-05-26",
     "rationale": "User chốt S2 vì: tabs Chrome-style cho multi-project song song, 3-pane body cover Library/Preview+Script/Properties, keyframe timeline full-width bottom — hiển thị MỌI chức năng trong 1 màn."
+  },
+  "desktopHybridDecision": {
+    "chosen": "V2 Web Companion + Desktop Agent",
+    "decidedAt": "2026-05-27",
+    "rationale": "Giữ một giao diện web hiện tại; desktop chỉ thêm năng lực render local phía sau shared UI.",
+    "plan": "docs/DESKTOP-HYBRID-PLAN.md",
+    "bridge": "app/electron/main.cjs + app/electron/preload.cjs",
+    "workerBundle": "worker/dist/autovideo-worker/autovideo-worker.exe",
+    "installer": "app/dist-desktop/AutoVideo Studio Setup 0.1.1.exe"
+  },
+  "sourceWorkspaceDecision": {
+    "chosen": "V5 Compact Power Tree",
+    "decidedAt": "2026-05-27",
+    "promotedTo": "app/src/components/studio/ImageLibrary.tsx",
+    "rationale": "Hiển thị local folder và nhiều Google Drive folder theo workspace tree dày dữ liệu, có search và chọn hàng loạt."
   },
   "functional": {
     "status": "v0.3 working",

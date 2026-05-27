@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CheckSquare, ChevronRight, Cloud, Folder, FolderOpen, HardDrive, Search, Square } from 'lucide-react';
 import {
   downloadDriveImage,
   getPublicDriveFolder,
@@ -31,6 +32,7 @@ type FolderImage = {
   id: string;
   file?: File;
   driveFile?: DriveImageFile;
+  relativePath?: string;
   url: string;
   selected: boolean;
 };
@@ -47,6 +49,8 @@ type FolderError = {
   message: string;
   canRetry?: boolean;
 };
+
+type FileWithRelativePath = File & { relativePath?: string };
 
 export function ImageLibrary({
   images,
@@ -78,6 +82,7 @@ export function ImageLibrary({
   const [folderError, setFolderError] = useState<FolderError | null>(null);
   const [publicDriveOpen, setPublicDriveOpen] = useState(false);
   const [publicDriveInput, setPublicDriveInput] = useState('');
+  const [workspaceQuery, setWorkspaceQuery] = useState('');
   const [driveNotice, setDriveNotice] = useState<string | null>(null);
   const [pendingIndexes, setPendingIndexes] = useState<number[]>([]);
   const [folderConfirmOpen, setFolderConfirmOpen] = useState(false);
@@ -106,12 +111,20 @@ export function ImageLibrary({
   const selectedRenderSet = useMemo(() => new Set(selectedForRender ?? []), [selectedForRender]);
   const pendingSet = useMemo(() => new Set(pendingIndexes), [pendingIndexes]);
   const filteredFolders = useMemo(
-    () => folders.filter((folder) => sourceFilter === 'all' || folder.source === sourceFilter),
-    [folders, sourceFilter]
+    () => filterWorkspaces(folders, sourceFilter, workspaceQuery),
+    [folders, sourceFilter, workspaceQuery]
   );
   const activeFolder =
     filteredFolders.find((folder) => folder.id === activeFolderId) ?? filteredFolders[0] ?? null;
-  const selectedFolderFiles = activeFolder?.files.filter((item) => item.selected && !syncedKeys.has(item.id)) ?? [];
+  const selectedWorkspaceFiles = useMemo(
+    () =>
+      filteredFolders.flatMap((folder) =>
+        folder.files
+          .filter((item) => item.selected && !syncedKeys.has(item.id))
+          .map((item) => ({ folder, item }))
+      ),
+    [filteredFolders, syncedKeys]
+  );
 
   const addFolders = (files: FileList | File[] | null, fallbackFolderName = 'Local folder') => {
     if (!files) return;
@@ -135,6 +148,7 @@ export function ImageLibrary({
           .map((file) => ({
             id: fileKey(file),
             file,
+            relativePath: relativePathOf(file) || file.name,
             url: URL.createObjectURL(file),
             selected: false,
           }));
@@ -172,39 +186,48 @@ export function ImageLibrary({
   const addDriveFolder = useCallback(async () => {
     setFolderError(null);
     setDriveNotice(null);
-    const folderValue = publicDriveInput.trim();
-    if (!folderValue) {
-      setFolderError({ message: 'Paste a public Google Drive folder link or ID before loading.', canRetry: false });
+    const folderValues = parseDriveFolderInputs(publicDriveInput);
+    if (folderValues.length === 0) {
+      setFolderError({ message: 'Paste one or more public Google Drive folder links or IDs before loading.', canRetry: false });
       setPublicDriveOpen(true);
       return;
     }
 
     setDriveBusy(true);
     try {
-      const folder = await getPublicDriveFolder(folderValue);
-      const driveFiles = await listDriveFolderImages(folder.id);
-      const bucketId = `drive:${folder.id}`;
-      const nextFiles: FolderImage[] = driveFiles.map((file) => ({
-        id: `drive:${file.id}`,
-        driveFile: file,
-        url: file.thumbnailLink ?? '',
-        selected: false,
-      }));
-
-      setFolders((prev) => {
-        const next = prev.filter((item) => item.id !== bucketId);
-        next.push({
-          id: bucketId,
+      const loadedBuckets: FolderBucket[] = [];
+      for (const folderValue of folderValues) {
+        const folder = await getPublicDriveFolder(folderValue);
+        const driveFiles = await listDriveFolderImages(folder.id);
+        loadedBuckets.push({
+          id: `drive:${folder.id}`,
           name: folder.name,
           source: 'drive',
           driveFolderId: folder.id,
-          files: nextFiles,
+          files: driveFiles.map((file) => ({
+            id: `drive:${file.id}`,
+            driveFile: file,
+            relativePath: file.relativePath ?? `Images/${file.name}`,
+            url: file.thumbnailLink ?? '',
+            selected: false,
+          })),
         });
-        setActiveFolderId(bucketId);
+      }
+
+      setFolders((prev) => {
+        const loadedIds = new Set(loadedBuckets.map((folder) => folder.id));
+        const next = prev.filter((item) => !loadedIds.has(item.id));
+        next.push(...loadedBuckets);
+        setActiveFolderId(loadedBuckets[0]?.id ?? next[0]?.id ?? null);
         return next;
       });
       setSourceFilter('all');
       setPublicDriveOpen(false);
+      setDriveNotice(
+        loadedBuckets.length === 1
+          ? `Loaded ${loadedBuckets[0].files.length} Drive images from ${loadedBuckets[0].name}.`
+          : `Loaded ${loadedBuckets.length} Drive workspaces.`
+      );
     } catch (e: any) {
       setFolderError({ message: driveErrorMessage(e), canRetry: true });
       setPublicDriveOpen(true);
@@ -254,6 +277,23 @@ export function ImageLibrary({
     );
   };
 
+  const setFolderSelectionByPrefix = (folderIdValue: string, prefix: string, selected: boolean) => {
+    setFolders((prev) =>
+      prev.map((folder) =>
+        folder.id === folderIdValue
+          ? {
+              ...folder,
+              files: folder.files.map((item) => {
+                const path = displayFolderPath(folder, item);
+                if ((path !== prefix && !path.startsWith(`${prefix}/`)) || syncedKeys.has(item.id)) return item;
+                return { ...item, selected };
+              }),
+            }
+          : folder
+      )
+    );
+  };
+
   const removeFolder = (folderIdValue: string) => {
     setFolders((prev) => {
       const removed = prev.find((folder) => folder.id === folderIdValue);
@@ -264,19 +304,21 @@ export function ImageLibrary({
     });
   };
 
-  const syncSelectedFolderImages = async () => {
-    if (selectedFolderFiles.length === 0) return;
-    if (!activeFolder || activeFolder.source === 'local') {
-      onAdd(selectedFolderFiles.map((item) => item.file).filter(Boolean) as File[]);
-      return;
-    }
-
-    if (!activeFolder.driveFolderId) return;
+  const syncSelectedWorkspaceImages = async () => {
+    if (selectedWorkspaceFiles.length === 0) return;
     setFolderError(null);
     setSyncingDrive(true);
     try {
-      const downloaded: LibraryImageInput[] = await Promise.all(
-        selectedFolderFiles.map(async (item) => {
+      const syncedItems: LibraryImageInput[] = await Promise.all(
+        selectedWorkspaceFiles.map(async ({ folder, item }) => {
+          if (folder.source === 'local') {
+            if (!item.file) throw new Error('Missing local image file.');
+            return {
+              file: item.file,
+              sourceKind: 'local',
+              sourceFolder: displaySourceFolder(folder, item),
+            };
+          }
           if (!item.driveFile) throw new Error('Missing Google Drive image metadata.');
           let file = await loadCachedDriveImage(item.driveFile);
           const cacheStatus: LibraryImageInput['cacheStatus'] = file ? 'cached' : 'downloaded';
@@ -287,15 +329,15 @@ export function ImageLibrary({
           return {
             file,
             sourceKind: 'drive',
-            sourceFolder: activeFolder.name,
-            driveFolderId: activeFolder.driveFolderId,
+            sourceFolder: displaySourceFolder(folder, item),
+            driveFolderId: folder.driveFolderId,
             driveFileId: item.driveFile.id,
             thumbnailUrl: item.driveFile.thumbnailLink,
             cacheStatus,
           };
         })
       );
-      onAdd(downloaded);
+      onAdd(syncedItems);
     } catch (e: any) {
       setFolderError({ message: driveErrorMessage(e), canRetry: true });
     } finally {
@@ -318,44 +360,38 @@ export function ImageLibrary({
   };
 
   return (
-    <section>
-      <div className="hub-filter-toolbar mx-2 mt-1">
-        <div className="hub-filter-row">
-        <div className="hub-filter-chips mr-auto" role="group" aria-label="Image source filters">
+    <section className="flex h-full min-h-0 flex-col">
+      <div className="mx-1 mt-1 flex shrink-0 flex-wrap items-center justify-between gap-1.5 rounded-xl border border-white/10 bg-black/10 px-2 py-1">
+        <div className="flex items-center gap-1" role="group" aria-label="Image source filters">
           {(['all', 'local', 'drive'] as const).map((source) => (
             <button
               key={source}
               onClick={() => setSourceFilter(source)}
-              className={`hub-filter-chip ${
+              className={`rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${
                 sourceFilter === source
-                  ? 'active'
-                  : ''
+                  ? 'border-indigo-300/35 bg-indigo-500/20 text-indigo-100'
+                  : 'border-white/10 bg-white/[.03] text-white/55 hover:bg-white/[.06] hover:text-white'
               }`}
             >
               {source === 'all' ? 'All' : source === 'local' ? 'Local' : 'Drive'}
             </button>
           ))}
         </div>
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="hub-filter-chip"
-        >
-          + Upload
-        </button>
-        <button
-          onClick={() => setFolderConfirmOpen(true)}
-          className="hub-filter-chip"
-        >
-          + Folder
-        </button>
-        <button
-          onClick={() => setPublicDriveOpen((open) => !open)}
-          disabled={driveBusy || !googleDriveConfigured()}
-          className="hub-filter-chip disabled:cursor-not-allowed disabled:opacity-35"
-          title={googleDriveConfigured() ? 'Paste a public Google Drive folder link' : googleDriveConfigHint()}
-        >
-          {driveBusy ? 'Drive...' : '+ Public Drive'}
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => inputRef.current?.click()} className="hub-filter-chip">
+            + Upload
+          </button>
+          <button onClick={() => setFolderConfirmOpen(true)} className="hub-filter-chip">
+            + Folder
+          </button>
+          <button
+            onClick={() => setPublicDriveOpen((open) => !open)}
+            disabled={driveBusy || !googleDriveConfigured()}
+            className="hub-filter-chip disabled:cursor-not-allowed disabled:opacity-35"
+            title={googleDriveConfigured() ? 'Paste a public Google Drive folder link' : googleDriveConfigHint()}
+          >
+            {driveBusy ? 'Drive...' : '+ Drive'}
+          </button>
         </div>
       </div>
       <input
@@ -375,7 +411,7 @@ export function ImageLibrary({
         onChange={(e) => addFolders(e.target.files)}
       />
       {folderConfirmOpen && (
-        <div className="mx-2 mt-1 rounded-xl border border-indigo-300/20 bg-indigo-500/10 p-2 text-[10px] text-indigo-50 shadow-lg shadow-black/20">
+        <div className="mx-1 mt-1 shrink-0 rounded-xl border border-indigo-300/20 bg-indigo-500/10 p-2 text-[10px] text-indigo-50 shadow-lg shadow-black/20">
           <div className="font-semibold text-white">Import local folder?</div>
           <div className="mt-0.5 text-white/55">
             AutoVideo will scan image files only, then show them inside Image Library for review before adding to Keyframe.
@@ -400,47 +436,49 @@ export function ImageLibrary({
       )}
       {publicDriveOpen && (
         <form
-          className="mx-2 mt-1 rounded border border-white/10 bg-white/[.03] p-1.5"
+          className="mx-1 mt-1 shrink-0 rounded-xl border border-white/10 bg-white/[.03] p-2"
           onSubmit={(e) => {
             e.preventDefault();
             void addDriveFolder();
           }}
         >
-          <div className="mb-1 text-[8px] text-white/45">
-            Folder must be public: Anyone with the link can view.
+          <div className="mb-1 text-[9px] text-white/45">
+            Paste one or many public Drive folder links. Separate by new line, comma, or space.
           </div>
-          <div className="flex gap-1">
-            <label className="hub-search-box min-w-0 flex-1">
-              <input
+          <div className="grid gap-1">
+            <textarea
               value={publicDriveInput}
               onChange={(e) => setPublicDriveInput(e.target.value)}
-              placeholder="Paste Drive folder link or folder ID..."
+              rows={3}
+              placeholder="https://drive.google.com/drive/folders/...&#10;https://drive.google.com/drive/folders/..."
+              className="min-h-16 resize-none rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-white/75 outline-none placeholder:text-white/25 focus:border-[var(--accent)]/60"
             />
-            </label>
-            <button
-              type="submit"
-              disabled={driveBusy || !publicDriveInput.trim()}
-              className="hub-filter-chip active disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              Load
-            </button>
-            <button
-              type="button"
-              onClick={clearDriveCache}
-              className="hub-filter-chip"
-            >
-              Clear cache
-            </button>
+            <div className="flex justify-end gap-1">
+              <button
+                type="button"
+                onClick={clearDriveCache}
+                className="hub-filter-chip"
+              >
+                Clear cache
+              </button>
+              <button
+                type="submit"
+                disabled={driveBusy || !publicDriveInput.trim()}
+                className="hub-filter-chip active disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                {driveBusy ? 'Loading...' : `Load ${parseDriveFolderInputs(publicDriveInput).length || ''}`}
+              </button>
+            </div>
           </div>
         </form>
       )}
       {driveNotice && (
-        <div className="mx-2 mt-1 rounded border border-emerald-400/20 bg-emerald-500/10 px-2 py-1 text-[9px] text-emerald-100">
+        <div className="mx-1 mt-1 shrink-0 rounded border border-emerald-400/20 bg-emerald-500/10 px-2 py-1 text-[9px] text-emerald-100">
           {driveNotice}
         </div>
       )}
       {folderError && (
-        <div className="mx-2 mt-1 rounded border border-rose-400/25 bg-rose-500/10 px-2 py-1 text-[9px] text-rose-100">
+        <div className="mx-1 mt-1 shrink-0 rounded border border-rose-400/25 bg-rose-500/10 px-2 py-1 text-[9px] text-rose-100">
           <div>{folderError.message}</div>
           <div className="mt-1 flex items-center gap-2">
             {folderError.canRetry && (
@@ -461,212 +499,254 @@ export function ImageLibrary({
           </div>
         </div>
       )}
-      {filteredFolders.length > 0 && (
-        <div className="m-2 overflow-hidden rounded-md border border-[var(--border-subtle)] bg-black/20">
-          <div className="grid grid-cols-[0.42fr_0.58fr]">
-            <div className="max-h-36 overflow-y-auto border-r border-[var(--border-subtle)] p-1">
-              {filteredFolders.map((folder) => {
-                const selectedCount = folder.files.filter((item) => item.selected).length;
-                return (
-                  <div
-                    key={folder.id}
-                    className={`group relative mb-1 rounded transition ${
-                      activeFolder?.id === folder.id
-                        ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/40'
-                        : 'hover:bg-white/[.04]'
-                    }`}
-                  >
-                    <button
-                      onClick={() => setActiveFolderId(folder.id)}
-                      className="w-full px-1.5 py-1 text-left"
-                    >
-                      <div className="flex items-center gap-1 text-[9px] font-semibold text-white/85">
-                        <span>{folder.source === 'drive' ? 'G' : 'L'}</span>
-                        <span className="min-w-0 flex-1 truncate">{folder.name}</span>
-                        <span className="font-mono text-white/35">{folder.files.length}</span>
-                      </div>
-                      <div className="mt-0.5 text-[8px] text-white/35">{selectedCount} selected</div>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFolder(folder.id);
-                      }}
-                      className="absolute bottom-1 right-1 text-[8px] text-white/35 opacity-0 hover:text-rose-200 group-hover:opacity-100"
-                    >
-                      remove
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="min-w-0 p-1">
-              {activeFolder && (
-                <>
-                  <div className="mb-1 flex items-center justify-between gap-1">
-                    <div className="min-w-0 truncate text-[9px] text-white/55">
-                      Select images in <span className="text-white/80">{activeFolder.name}</span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={() => setFolderSelection(activeFolder.id, true)}
-                        className="rounded bg-white/[.05] px-1.5 py-0.5 text-[8px] text-white/55 hover:text-white"
-                      >
-                        all
-                      </button>
-                      <button
-                        onClick={() => setFolderSelection(activeFolder.id, false)}
-                        className="rounded bg-white/[.05] px-1.5 py-0.5 text-[8px] text-white/55 hover:text-white"
-                      >
-                        none
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid max-h-24 grid-cols-3 gap-1 overflow-y-auto">
-                    {activeFolder.files.map((item) => {
-                      const isSynced = syncedKeys.has(item.id);
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => !isSynced && toggleFolderImage(activeFolder.id, item.id)}
-                          disabled={isSynced}
-                          className={`group relative aspect-[4/3] overflow-hidden rounded ring-1 transition ${
-                            isSynced
-                              ? 'cursor-not-allowed ring-emerald-400/50 opacity-70'
-                              : item.selected
-                              ? 'ring-[var(--accent)] ring-2'
-                              : 'ring-white/10 hover:ring-white/30'
-                          }`}
-                          title={isSynced ? 'Already synced to library' : item.file?.name ?? item.driveFile?.name}
-                        >
-                          {item.url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={item.url}
-                              alt={item.file?.name ?? item.driveFile?.name ?? 'image'}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="grid h-full w-full place-items-center bg-white/[.04] text-[8px] text-white/35">
-                              IMG
-                            </div>
-                          )}
-                          <span className="absolute left-0.5 top-0.5 grid h-3.5 w-3.5 place-items-center rounded border border-white/25 bg-black/70 text-[8px] text-white">
-                            {isSynced ? '✓' : item.selected ? '✓' : ''}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={syncSelectedFolderImages}
-                    disabled={selectedFolderFiles.length === 0 || syncingDrive}
-                    className="mt-1 w-full rounded bg-[var(--accent)] px-2 py-1 text-[9px] font-semibold text-white transition hover:brightness-110 disabled:opacity-30"
-                  >
-                    {syncingDrive ? 'Syncing...' : `Sync selected (${selectedFolderFiles.length})`}
-                  </button>
-                </>
-              )}
-            </div>
+      <div className="m-1 grid min-h-0 flex-1 grid-cols-[minmax(12rem,0.72fr)_minmax(0,1fr)] gap-1.5 overflow-hidden">
+        <div className="order-2 flex h-full min-w-0 flex-col rounded-xl border border-white/10 bg-black/15">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-2 py-1 text-[9px] text-white/45">
+            <span className="font-semibold uppercase tracking-[0.14em]">Library</span>
+            {images.length > 0 ? (
+              <span>
+                Keyframe <span className="font-semibold text-white">{selectedRenderSet.size}</span>/{images.length}
+                <span className="ml-1 font-mono text-[var(--accent-2)]">{formatDuration(selectedRenderSet.size * imageDurationSec)}</span>
+              </span>
+            ) : null}
           </div>
-        </div>
-      )}
-      {images.length > 0 && (
-        <div className="mx-2 mt-2 flex items-center justify-between gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-[9px]">
-          <div className="min-w-0 text-white/55">
-            Keyframe <span className="font-semibold text-white">{selectedRenderSet.size}</span>/{images.length}
-            <span className="ml-1 font-mono text-[var(--accent-2)]">{formatDuration(selectedRenderSet.size * imageDurationSec)}</span>
-          </div>
-          <button
-            onClick={addPendingToKeyframe}
-            disabled={pendingIndexes.length === 0 || !onAddToKeyframe}
-            className="shrink-0 rounded bg-[var(--accent)] px-2 py-0.5 font-semibold text-white disabled:opacity-30"
-          >
-            Add to Keyframe ({pendingIndexes.length})
-          </button>
-        </div>
-      )}
-      {images.length === 0 && filteredFolders.length === 0 ? (
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="m-2 grid h-20 w-[calc(100%-1rem)] place-items-center rounded-md border border-dashed border-white/20 bg-white/[.02] text-center transition hover:border-[var(--accent)]/60 hover:bg-white/[.04]"
-        >
-          <div>
-            <div className="text-xl opacity-50">📤</div>
-            <div className="mt-0.5 text-[10px] text-white/60">Drop images here</div>
-            <div className="text-[9px] text-white/40">PNG · JPG · WebP</div>
-          </div>
-        </button>
-      ) : (
-        <div className="grid max-h-32 grid-cols-6 gap-1 overflow-y-auto p-2">
-          {images.map((img, i) => {
-            const renderSelected = selectedRenderSet.has(i);
-            const pending = pendingSet.has(i);
-            return (
-              <div
-                key={i}
-                className={`group relative aspect-square cursor-pointer overflow-hidden rounded-md ring-1 transition ${
-                  i === selectedIndex
-                    ? 'ring-[var(--accent)] ring-2 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]'
-                    : pending
-                    ? 'ring-sky-300/70 ring-2'
-                    : renderSelected
-                    ? 'ring-emerald-400/50'
-                    : 'ring-white/10 hover:ring-white/30'
-                }`}
-                onClick={() => togglePendingImage(i)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.url}
-                  alt={img.file.name}
-                  className="h-full w-full object-cover"
-                />
-              {(renderSelected || pending) && (
-                <div className={`absolute left-0.5 top-0.5 grid h-3.5 w-3.5 place-items-center rounded text-[8px] font-bold text-white ${
-                  pending ? 'bg-sky-500/90' : 'bg-emerald-500/85'
-                }`}>
-                  ✓
-                </div>
-              )}
-              {renderSelected && (
-                <div className="absolute left-0.5 top-4 rounded bg-black/70 px-1 py-0.5 font-mono text-[6px] text-emerald-100">
-                  {imageDurationSec}s
-                </div>
-              )}
-              {img.sourceKind === 'drive' && (
-                <div className="absolute right-4 top-0.5 rounded bg-black/70 px-1 py-0.5 text-[6px] font-semibold uppercase tracking-wide text-cyan-100 ring-1 ring-cyan-300/30">
-                  {img.cacheStatus === 'cached' ? 'cached' : 'downloaded'}
-                </div>
-              )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1 py-0.5">
-                <div className="truncate font-mono text-[7px] text-white/85">
-                  {String(i + 1).padStart(2, '0')}
-                </div>
-                {img.sourceFolder && (
-                  <div className="truncate text-[6px] text-white/45">{img.sourceFolder}</div>
-                )}
+          {images.length === 0 ? (
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="grid min-h-0 flex-1 place-items-center rounded-b-xl border border-dashed border-transparent bg-white/[.02] text-center transition hover:border-[var(--accent)]/60 hover:bg-white/[.04]"
+            >
+              <div>
+                <div className="text-xl opacity-50">📤</div>
+                <div className="mt-0.5 text-[10px] text-white/60">Drop images here</div>
+                <div className="text-[9px] text-white/40">PNG · JPG · WebP</div>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove(i);
-                }}
-                className="absolute right-0.5 top-0.5 grid h-3 w-3 place-items-center rounded-full bg-black/60 text-[8px] text-white opacity-0 hover:bg-rose-500 group-hover:opacity-100"
-              >
-                ×
-              </button>
-            </div>
-            );
-          })}
+            </button>
+          ) : (
+            <>
+              <div className="grid min-h-0 flex-1 grid-cols-6 content-start gap-1 overflow-y-auto p-1.5">
+                {images.map((img, i) => {
+                  const renderSelected = selectedRenderSet.has(i);
+                  const pending = pendingSet.has(i);
+                  return (
+                    <div
+                      key={i}
+                      className={`group relative aspect-square cursor-pointer overflow-hidden rounded-md ring-1 transition ${
+                        i === selectedIndex
+                          ? 'ring-[var(--accent)] ring-2 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]'
+                          : pending
+                          ? 'ring-sky-300/70 ring-2'
+                          : renderSelected
+                          ? 'ring-emerald-400/50'
+                          : 'ring-white/10 hover:ring-white/30'
+                      }`}
+                      onClick={() => togglePendingImage(i)}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt={img.file.name} className="h-full w-full object-cover" />
+                      {(renderSelected || pending) && (
+                        <div className={`absolute left-0.5 top-0.5 grid h-3.5 w-3.5 place-items-center rounded text-[8px] font-bold text-white ${
+                          pending ? 'bg-sky-500/90' : 'bg-emerald-500/85'
+                        }`}>
+                          ✓
+                        </div>
+                      )}
+                      {renderSelected && (
+                        <div className="absolute left-0.5 top-4 rounded bg-black/70 px-1 py-0.5 font-mono text-[6px] text-emerald-100">
+                          {imageDurationSec}s
+                        </div>
+                      )}
+                      {img.sourceKind === 'drive' && (
+                        <div className="absolute right-4 top-0.5 rounded bg-black/70 px-1 py-0.5 text-[6px] font-semibold uppercase tracking-wide text-cyan-100 ring-1 ring-cyan-300/30">
+                          {img.cacheStatus === 'cached' ? 'cached' : 'downloaded'}
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1 py-0.5">
+                        <div className="truncate font-mono text-[7px] text-white/85">{String(i + 1).padStart(2, '0')}</div>
+                        {img.sourceFolder && <div className="truncate text-[6px] text-white/45">{img.sourceFolder}</div>}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemove(i);
+                        }}
+                        className="absolute right-0.5 top-0.5 grid h-3 w-3 place-items-center rounded-full bg-black/60 text-[8px] text-white opacity-0 hover:bg-rose-500 group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="shrink-0 border-t border-white/10 p-1">
+                <button
+                  onClick={addPendingToKeyframe}
+                  disabled={pendingIndexes.length === 0 || !onAddToKeyframe}
+                  className="w-full rounded bg-[var(--accent)] px-2 py-1 text-[9px] font-semibold text-white disabled:opacity-30"
+                >
+                  Add to Keyframe ({pendingIndexes.length})
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      )}
+
+        <div className="order-1 flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-black/20">
+          <div className="shrink-0 border-b border-white/10 p-1">
+            <label className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] text-white/45">
+              <Search size={11} />
+              <input
+                value={workspaceQuery}
+                onChange={(event) => setWorkspaceQuery(event.target.value)}
+                placeholder="Search workspace, folder..."
+                className="min-w-0 flex-1 bg-transparent text-[10px] text-white/70 outline-none placeholder:text-white/25"
+              />
+            </label>
+          </div>
+          {filteredFolders.length === 0 ? (
+            <div className="grid min-h-0 flex-1 place-items-center px-3 text-center text-[10px] leading-5 text-white/35">
+              Folder workspace will appear here after importing a local folder or Drive folder.
+            </div>
+          ) : (
+            <>
+              <div className="min-h-0 flex-1 overflow-y-auto p-1">
+                {filteredFolders.map((folder) => {
+                  const selectedCount = folder.files.filter((item) => item.selected && !syncedKeys.has(item.id)).length;
+                  const allSelectable = folder.files.filter((item) => !syncedKeys.has(item.id)).length;
+                  const checked = selectedCount > 0 && selectedCount === allSelectable;
+                  return (
+                    <div
+                      key={folder.id}
+                      className={`group mb-1 rounded-lg border transition ${
+                        activeFolder?.id === folder.id
+                          ? 'border-[var(--accent)]/45 bg-[var(--accent)]/10'
+                          : 'border-white/5 bg-white/[.02] hover:bg-white/[.04]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 px-2 py-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setFolderSelection(folder.id, !checked)}
+                          className="grid h-4 w-4 place-items-center rounded text-white/55 hover:text-white"
+                          title={checked ? 'Unselect workspace' : 'Select workspace'}
+                        >
+                          {checked ? <CheckSquare size={13} className="text-emerald-200" /> : <Square size={13} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFolderId(folder.id)}
+                          className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                        >
+                          <ChevronRight size={11} className="text-white/25" />
+                          {folder.source === 'drive' ? (
+                            <Cloud size={12} className="text-cyan-200" />
+                          ) : (
+                            <HardDrive size={12} className="text-indigo-200" />
+                          )}
+                          <FolderOpen size={13} className="text-amber-200/85" />
+                          <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-white/85">{folder.name}</span>
+                          <span className="font-mono text-[9px] text-white/35">{folder.files.length}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFolder(folder.id)}
+                          className="text-[8px] text-white/30 opacity-0 hover:text-rose-200 group-hover:opacity-100"
+                        >
+                          remove
+                        </button>
+                      </div>
+                      <div className="ml-8 border-l border-white/10 pb-1 pl-2">
+                        {workspaceTree(folder, workspaceQuery).map((node) => (
+                          <WorkspaceTreeNode
+                            key={node.path}
+                            node={node}
+                            folder={folder}
+                            syncedKeys={syncedKeys}
+                            onSelectFolder={setFolderSelectionByPrefix}
+                          />
+                        ))}
+                      </div>
+                      <div className="border-t border-white/5 px-2 py-1 text-[8px] text-white/35">
+                        {selectedCount} selected · {allSelectable} available
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="shrink-0 border-t border-white/10 p-1">
+                <button
+                  onClick={syncSelectedWorkspaceImages}
+                  disabled={selectedWorkspaceFiles.length === 0 || syncingDrive}
+                  className="w-full rounded-lg bg-[var(--accent)] px-2 py-1.5 text-[9px] font-semibold text-white transition hover:brightness-110 disabled:opacity-30"
+                >
+                  {syncingDrive ? 'Syncing...' : `Sync selected folders (${selectedWorkspaceFiles.length})`}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
 
+type WorkspaceTreeNodeData = {
+  path: string;
+  name: string;
+  children: WorkspaceTreeNodeData[];
+  files: FolderImage[];
+};
+
+function WorkspaceTreeNode({
+  node,
+  folder,
+  syncedKeys,
+  onSelectFolder,
+}: {
+  node: WorkspaceTreeNodeData;
+  folder: FolderBucket;
+  syncedKeys: Set<string>;
+  onSelectFolder: (folderIdValue: string, prefix: string, selected: boolean) => void;
+}) {
+  const allFiles = flattenTreeFiles(node);
+  const selectedFiles = allFiles.filter((file) => file.selected && !syncedKeys.has(file.id)).length;
+  const selectableFiles = allFiles.filter((file) => !syncedKeys.has(file.id)).length;
+  const folderChecked = selectableFiles > 0 && selectedFiles === selectableFiles;
+
+  return (
+    <div>
+      <div className="flex items-center gap-1 rounded px-1 py-0.5 text-[9px] text-white/60 hover:bg-white/[.04]">
+        <button
+          type="button"
+          onClick={() => onSelectFolder(folder.id, node.path, !folderChecked)}
+          className="grid h-3.5 w-3.5 place-items-center text-white/45 hover:text-white"
+          title={folderChecked ? 'Unselect folder' : 'Select folder'}
+        >
+          {folderChecked ? <CheckSquare size={11} className="text-emerald-200" /> : <Square size={11} />}
+        </button>
+        <Folder size={11} className="text-amber-200/80" />
+        <span className="min-w-0 flex-1 truncate font-semibold text-white/70">{node.name}</span>
+        <span className="font-mono text-[8px] text-white/30">{selectableFiles}</span>
+        {selectedFiles > 0 ? <span className="rounded bg-emerald-400/10 px-1 text-[7px] text-emerald-100">{selectedFiles}</span> : null}
+      </div>
+      {node.children.length > 0 ? (
+        <div className="ml-3 border-l border-white/10 pl-1">
+          {node.children.map((child) => (
+            <WorkspaceTreeNode
+              key={child.path}
+              node={child}
+              folder={folder}
+              syncedKeys={syncedKeys}
+              onSelectFolder={onSelectFolder}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function fileKey(file: File) {
-  const relativePath = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
+  const relativePath = relativePathOf(file);
   return `${relativePath || file.name}:${file.size}:${file.lastModified}`;
 }
 
@@ -675,25 +755,115 @@ function imageSyncKey(image: LibraryImage) {
 }
 
 function sourceFolderName(file: File) {
-  const relativePath = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
+  const relativePath = relativePathOf(file);
   const [folderName] = relativePath.split(/[\\/]/);
   return folderName || undefined;
 }
 
-async function readImageFilesFromDirectory(directoryHandle: any): Promise<File[]> {
-  const files: File[] = [];
-  const walk = async (handle: any) => {
+async function readImageFilesFromDirectory(directoryHandle: any): Promise<FileWithRelativePath[]> {
+  const files: FileWithRelativePath[] = [];
+  const walk = async (handle: any, parts: string[]) => {
     for await (const entry of handle.values()) {
       if (entry.kind === 'file') {
         const file = await entry.getFile();
-        if (file.type.startsWith('image/')) files.push(file);
+        if (file.type.startsWith('image/')) files.push(attachRelativePath(file, [...parts, file.name].join('/')));
       } else if (entry.kind === 'directory') {
-        await walk(entry);
+        await walk(entry, [...parts, entry.name]);
       }
     }
   };
-  await walk(directoryHandle);
+  await walk(directoryHandle, [directoryHandle.name || 'Local folder']);
   return files;
+}
+
+function attachRelativePath(file: File, relativePath: string): FileWithRelativePath {
+  const next = file as FileWithRelativePath;
+  try {
+    Object.defineProperty(next, 'relativePath', { value: relativePath, configurable: true });
+  } catch {
+    next.relativePath = relativePath;
+  }
+  return next;
+}
+
+function relativePathOf(file: File) {
+  const browserPath = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
+  return browserPath || (file as FileWithRelativePath).relativePath || '';
+}
+
+function parseDriveFolderInputs(input: string) {
+  return input
+    .split(/[\s,]+/g)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index);
+}
+
+function filterWorkspaces(folders: FolderBucket[], sourceFilter: 'all' | 'local' | 'drive', query: string) {
+  const normalized = query.trim().toLowerCase();
+  return folders.filter((folder) => {
+    if (sourceFilter !== 'all' && folder.source !== sourceFilter) return false;
+    if (!normalized) return true;
+    if (folder.name.toLowerCase().includes(normalized)) return true;
+    return folder.files.some((item) =>
+      `${item.relativePath ?? ''} ${item.file?.name ?? ''} ${item.driveFile?.name ?? ''}`.toLowerCase().includes(normalized)
+    );
+  });
+}
+
+function workspaceTree(folder: FolderBucket, query: string): WorkspaceTreeNodeData[] {
+  const normalized = query.trim().toLowerCase();
+  const root: WorkspaceTreeNodeData[] = [];
+  folder.files
+    .filter((item) => {
+      if (!normalized) return true;
+      const haystack = `${item.relativePath ?? ''} ${item.file?.name ?? ''} ${item.driveFile?.name ?? ''}`.toLowerCase();
+      return folder.name.toLowerCase().includes(normalized) || haystack.includes(normalized);
+    })
+    .forEach((item) => {
+      const segments = displayFolderSegments(folder, item);
+      let current = root;
+      let path = '';
+      segments.forEach((segment, index) => {
+        path = path ? `${path}/${segment}` : segment;
+        const isLeaf = index === segments.length - 1;
+        let node = current.find((candidate) => candidate.name === segment);
+        if (!node) {
+          node = { path, name: segment, children: [], files: [] };
+          current.push(node);
+        }
+        node.files.push(item);
+        current = node.children;
+      });
+    });
+  return root;
+}
+
+function displayFolderSegments(folder: FolderBucket, item: FolderImage) {
+  const parts = displayPathSegments(folder, item);
+  if (parts.length <= 1) return ['Images'];
+  return parts.slice(0, -1);
+}
+
+function displayFolderPath(folder: FolderBucket, item: FolderImage) {
+  return displayFolderSegments(folder, item).join('/');
+}
+
+function displayPathSegments(folder: FolderBucket, item: FolderImage) {
+  const rawPath = item.relativePath || item.file?.name || item.driveFile?.name || 'image';
+  const parts = rawPath.split(/[\\/]/).filter(Boolean);
+  if (parts[0] === folder.name) return parts.slice(1);
+  return parts;
+}
+
+function flattenTreeFiles(node: WorkspaceTreeNodeData): FolderImage[] {
+  return [...node.files, ...node.children.flatMap((child) => flattenTreeFiles(child))];
+}
+
+function displaySourceFolder(folder: FolderBucket, item: FolderImage) {
+  const parts = displayPathSegments(folder, item);
+  if (parts.length <= 1) return folder.name;
+  return `${folder.name}/${parts.slice(0, -1).join('/')}`;
 }
 
 function folderId(name: string) {

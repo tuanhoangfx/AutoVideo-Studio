@@ -95,9 +95,10 @@ function DesignTemplateEmpty() {
         </div>
         <h2 className="mt-4 text-2xl font-semibold text-white">No active designs</h2>
         <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-          The workspace shell has been promoted to production. New design templates will appear here when a design review is requested.
+          Source workspace tree is locked as V5 Compact Power Tree and has been promoted into the Studio image library.
         </p>
       </div>
     </section>
   );
 }
+

@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, Cloud, Database, RefreshCw, Server } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Cloud, Database, FolderOpen, RefreshCw, RotateCcw, Server, Terminal } from 'lucide-react';
 import * as api from '@/lib/api';
+import { detectRuntimeProfile } from '@/lib/runtime-mode';
 
 type WorkerInfo = Awaited<ReturnType<typeof api.getRoot>>;
+type DesktopRuntimeProfile = Awaited<ReturnType<NonNullable<Window['autovideo']>['getRuntimeProfile']>>;
 
 export function DeploymentCheck() {
   const [info, setInfo] = useState<WorkerInfo | null>(null);
@@ -13,11 +15,18 @@ export function DeploymentCheck() {
   const [loading, setLoading] = useState(false);
   const [productionLocalWorker, setProductionLocalWorker] = useState(false);
   const [productionMissingWorker, setProductionMissingWorker] = useState(false);
+  const [workerUrl, setWorkerUrl] = useState(() => api.getWorkerUrl());
+  const [desktopProfile, setDesktopProfile] = useState<DesktopRuntimeProfile | null>(null);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
+      const nextWorkerUrl = await api.initializeDesktopWorkerUrl();
+      setWorkerUrl(nextWorkerUrl);
+      if (window.autovideo) {
+        setDesktopProfile(await window.autovideo.getRuntimeProfile());
+      }
       setInfo(await api.getRoot());
     } catch (nextError) {
       setInfo(null);
@@ -30,14 +39,33 @@ export function DeploymentCheck() {
   useEffect(() => {
     const host = window.location.hostname;
     const productionHost = host !== 'localhost' && host !== '127.0.0.1';
-    setProductionLocalWorker(productionHost && isLocalWorkerUrl(api.WORKER_URL));
-    setProductionMissingWorker(productionHost && !api.WORKER_URL_CONFIGURED);
+    setProductionLocalWorker(productionHost && isLocalWorkerUrl(workerUrl));
+    setProductionMissingWorker(productionHost && !workerUrl);
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const workerOk = Boolean(info && !error);
   const storage = info?.storage;
   const storageOk = Boolean(storage?.ready);
+  const runtime = detectRuntimeProfile(workerUrl);
+  const restartDesktopWorker = async () => {
+    if (!window.autovideo) return;
+    setLoading(true);
+    setError('');
+    try {
+      await window.autovideo.restartWorker();
+      const nextWorkerUrl = await api.initializeDesktopWorkerUrl();
+      setWorkerUrl(nextWorkerUrl);
+      setDesktopProfile(await window.autovideo.getRuntimeProfile());
+      setInfo(await api.getRoot());
+    } catch (nextError) {
+      setInfo(null);
+      setError(nextError instanceof Error ? nextError.message : 'Worker restart failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-5">
@@ -71,16 +99,16 @@ export function DeploymentCheck() {
         <CheckCard
           icon={<Server size={16} />}
           title="Worker API"
-          value={api.WORKER_URL || 'Not configured'}
+          value={workerUrl || 'Not configured'}
           ok={workerOk}
           detail={workerOk ? `${info?.jobs ?? 0} jobs · ${info?.concurrent_limit ?? 0} concurrent renders` : error || 'Offline'}
         />
         <CheckCard
           icon={<Server size={16} />}
           title="Worker Mode"
-          value={workerMode(api.WORKER_URL)}
+          value={runtime.label}
           ok={workerOk}
-          detail={workerModeDetail(api.WORKER_URL)}
+          detail={runtime.detail}
         />
         <CheckCard
           icon={<Database size={16} />}
@@ -104,7 +132,92 @@ export function DeploymentCheck() {
           in Vercel to the public FastAPI worker domain before using Export & Download.
         </div>
       ) : null}
+      {desktopProfile ? (
+        <DesktopHealthPanel
+          profile={desktopProfile}
+          loading={loading}
+          workerOk={workerOk}
+          onRestart={restartDesktopWorker}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function DesktopHealthPanel({
+  profile,
+  loading,
+  workerOk,
+  onRestart,
+}: {
+  profile: DesktopRuntimeProfile;
+  loading: boolean;
+  workerOk: boolean;
+  onRestart: () => void;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/5 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-cyan-100">
+            <Terminal size={14} />
+            Desktop Health
+          </div>
+          <div className="mt-1 text-[11px] leading-5 text-white/45">
+            Native bridge is controlling the local render worker and output folder.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRestart}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/15 bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-50 hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <RotateCcw size={12} className={loading ? 'animate-spin' : ''} />
+          Restart Worker
+        </button>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        <MiniStatus label="Worker" value={workerOk ? 'Running' : 'Check'} detail={profile.workerUrl} />
+        <MiniStatus label="Port" value={String(profile.workerPort)} detail="Auto-selected if the default port is busy." />
+        <MiniStatus
+          label="Runtime"
+          value={profile.workerExecutable?.endsWith('.exe') ? 'Bundled exe' : 'Python'}
+          detail={profile.workerExecutable || 'Worker launcher unavailable.'}
+        />
+      </div>
+      <div className="mt-2">
+        <MiniStatus
+          label="Output"
+          value={profile.outputDirectory ? 'Native folder' : 'Not selected'}
+          detail={profile.outputDirectory || 'Choose a folder in Output Settings.'}
+        />
+      </div>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        <LogPath icon={<Terminal size={12} />} label="Worker log" value={profile.logs?.workerLog ?? 'n/a'} />
+        <LogPath icon={<FolderOpen size={12} />} label="Error log" value={profile.logs?.workerErrorLog ?? 'n/a'} />
+      </div>
+    </div>
+  );
+}
+
+function MiniStatus({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+      <div className="text-[9px] uppercase tracking-[0.16em] text-white/35">{label}</div>
+      <div className="mt-1 truncate text-xs font-semibold text-white">{value}</div>
+      <div className="mt-0.5 truncate font-mono text-[10px] text-white/40">{detail}</div>
+    </div>
+  );
+}
+
+function LogPath({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+      <span className="text-white/35">{icon}</span>
+      <span className="shrink-0 text-[10px] font-semibold text-white/50">{label}</span>
+      <span className="min-w-0 truncate font-mono text-[10px] text-white/35">{value}</span>
+    </div>
   );
 }
 
@@ -157,19 +270,3 @@ function isLocalWorkerUrl(url: string) {
   return /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url);
 }
 
-function workerMode(url: string) {
-  if (!url) return 'Offline';
-  if (isLocalWorkerUrl(url)) return 'Local';
-  if (/trycloudflare\.com/i.test(url)) return 'Tunnel';
-  if (/zaloai\.infix1\.io\.vn/i.test(url)) return 'VPS';
-  return 'Public';
-}
-
-function workerModeDetail(url: string) {
-  const mode = workerMode(url);
-  if (mode === 'Tunnel') return 'Cloudflare Tunnel is forwarding public traffic to this machine.';
-  if (mode === 'Local') return 'Only this machine can use Export & Download.';
-  if (mode === 'VPS') return 'Dedicated VPS worker endpoint.';
-  if (mode === 'Public') return 'Public worker URL configured.';
-  return 'Set NEXT_PUBLIC_WORKER_URL and redeploy.';
-}

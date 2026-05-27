@@ -534,7 +534,7 @@ export default function StudioPage() {
         </div>
       </div>
 
-      <div className="grid h-[50vh] min-h-[24rem] grid-cols-3 items-stretch gap-2">
+      <div className="grid h-[50vh] min-h-[24rem] grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(17rem,0.85fr)] items-stretch gap-2">
         <section className="min-h-0">
           <div className="hub-card flex h-full min-h-0 flex-col overflow-hidden">
             <PanelHead

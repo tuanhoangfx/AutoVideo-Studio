@@ -17,10 +17,11 @@ from pathlib import Path
 from typing import Callable, Literal
 
 from .compose import SceneInput, compose_video
+from .paths import worker_storage_root
 from .subtitle import SceneCaption, write_ass_lines, write_ass_words, write_srt
 from .tts import synthesize
 
-STORAGE_ROOT = Path(__file__).resolve().parent.parent / "storage" / "jobs"
+STORAGE_ROOT = worker_storage_root()
 
 EFFECTS_CYCLE = ["zoom_in", "pan_right", "flash", "sparkle"]
 

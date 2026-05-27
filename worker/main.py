@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from pipeline.paths import worker_preview_root, worker_storage_root
 from pipeline.runner import JobProgress, JobSpec, SceneSpec, run_job
 from pipeline.storage_backend import publish_output, storage_status
 from pipeline.tts import list_vi_voices
@@ -47,7 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-STORAGE_ROOT = Path(__file__).resolve().parent / "storage" / "jobs"
+STORAGE_ROOT = worker_storage_root()
 STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
 
 MAX_CONCURRENT = 2
@@ -152,7 +153,7 @@ import asyncio as _asyncio
 import hashlib as _hashlib
 from fastapi import Query
 
-PREVIEW_DIR = Path(__file__).resolve().parent / "storage" / "preview"
+PREVIEW_DIR = worker_preview_root()
 PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
 

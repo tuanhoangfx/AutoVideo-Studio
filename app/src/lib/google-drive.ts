@@ -12,6 +12,7 @@ export type DriveImageFile = {
   thumbnailLink?: string;
   size?: string;
   modifiedTime?: string;
+  relativePath?: string;
 };
 
 export function googleDriveConfigured() {
