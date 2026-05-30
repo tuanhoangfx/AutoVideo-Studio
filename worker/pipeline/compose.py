@@ -21,7 +21,7 @@ from .ffmpeg_util import (
     probe_duration_ms,
     run_ffmpeg_checked,
 )
-from .pipeline_constants import TRANSITION_S
+from .pipeline_constants import TRANSITION_S, normalize_transition
 
 FFMPEG = get_ffmpeg()
 _XF_FILTER_AVAILABLE: bool | None = None
@@ -139,8 +139,8 @@ def _pick_h264_encoder() -> tuple[str, list[str]]:
 class SceneInput:
     image_path: Path
     duration_ms: int
-    effect: str = "zoom_in"  # zoom_in | zoom_out | pan_right | pan_left | flash | sparkle | none
-    transition: str = "slide_left"  # slide_left | slide_right | fade | zoom | random
+    effect: str = "zoom_in"  # zoom_in | zoom_out | pan_right | pan_left | flash | sparkle | random | none
+    transition: str = "slide_left"  # slide_left | slide_right | fade | zoom | random | none (cut)
 
 
 def _zoompan_filter(effect: str, duration_s: float, fps: int, w: int, h: int) -> str:
@@ -354,6 +354,8 @@ def xfade_segments(
 
 
 def _xfade_name(transition: str, index: int = 0) -> str:
+    if transition in ("none", "cut"):
+        return "fade"
     if transition == "random":
         return ["slideleft", "slideright", "fade", "fade"][index % 4]
     if transition == "slide_right":
@@ -459,14 +461,17 @@ def compose_video(
     for i, sc in enumerate(scenes):
         seg = workdir / f"scene_{i:03d}.mp4"
         scene_durations_s.append(max(0.5, sc.duration_ms / 1000.0))
+        transition = normalize_transition(sc.transition)
         if i < len(scenes) - 1:
-            transitions.append(sc.transition or "slide_left")
-        transition_buffer_ms = int(TRANSITION_S * 1000) if use_xfade and i < len(scenes) - 1 else 0
+            transitions.append(transition)
+        transition_buffer_ms = (
+            int(TRANSITION_S * 1000) if use_xfade and i < len(scenes) - 1 and transition != "cut" else 0
+        )
         render_input = SceneInput(
             image_path=sc.image_path,
             duration_ms=sc.duration_ms + transition_buffer_ms,
             effect=sc.effect,
-            transition=sc.transition,
+            transition=transition,
         )
         render_jobs.append((i, render_input, seg))
 

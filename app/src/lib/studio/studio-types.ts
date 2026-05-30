@@ -1,9 +1,7 @@
-import type { StudioDownloadState } from '@/lib/studio-editor-snapshot';
 import type { VideoNameTemplate } from '@/lib/studio-export-settings';
 
 export type StudioAspect = '9:16' | '16:9' | '1:1';
 export type StudioRightPanel = 'voice' | 'subtitle' | 'music';
-export type StudioDownloadStateLocal = StudioDownloadState;
 
 export type StudioDownloadRecord = {
   id: string;

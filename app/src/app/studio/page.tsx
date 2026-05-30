@@ -49,7 +49,7 @@ import { buildVideoFilename } from '@/lib/video-filename';
 import { computeSceneDurationsSec, totalExportDurationSec } from '@/lib/export-duration';
 import { resolveNarrationScript } from '@/lib/narration-script';
 import { scriptMetrics } from '@/lib/script-metrics';
-import { DEFAULT_STUDIO_VOICE } from '@/lib/studio-defaults';
+import { DEFAULT_STUDIO_SUBTITLE_STYLE, DEFAULT_STUDIO_VOICE } from '@/lib/studio-defaults';
 import { clampVoicePreviewText } from '@/lib/voice-preview-text';
 import { useStudioJobs } from '@/lib/studio/use-studio-jobs';
 import { useStudioToast } from '@/lib/studio/use-studio-toast';
@@ -57,7 +57,7 @@ import { useStudioExportSettings } from '@/lib/studio/use-studio-export-settings
 import { useStudioProjectTabs } from '@/lib/studio/use-studio-project-tabs';
 import { useStudioExport } from '@/lib/studio/use-studio-export';
 import { buildSceneLines, moveItem, sourceFolderName } from '@/lib/studio/studio-scene-utils';
-import type { StudioAspect, StudioRightPanel } from '@/lib/studio/studio-types';
+import type { StudioAspect, StudioDownloadRecord, StudioRightPanel } from '@/lib/studio/studio-types';
 import {
   PanelHead,
   PreviewExportStatus,
@@ -67,14 +67,7 @@ import {
 type Aspect = StudioAspect;
 type RightPanel = StudioRightPanel;
 type DownloadState = StudioDownloadState;
-type DownloadRecord = {
-  id: string;
-  filename: string;
-  url: string;
-  target: string;
-  size: number;
-  at: number;
-};
+type DownloadRecord = StudioDownloadRecord;
 
 export default function StudioPage() {
   const { toast, toastActionRef, showToast, dismissToast } = useStudioToast();
@@ -130,7 +123,7 @@ export default function StudioPage() {
   const [imageDurationSec, setImageDurationSec] = useState(5);
   const [bgm, setBgm] = useState<File | null>(null);
   const [bgmVolume, setBgmVolume] = useState(0.18);
-  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>('off');
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(DEFAULT_STUDIO_SUBTITLE_STYLE);
 
   /* ─── UX flags ─── */
   const [previewMode, setPreviewMode] = useState<'static' | 'sequence'>('static');
@@ -294,7 +287,7 @@ export default function StudioPage() {
             output_format: draft?.outputFormat ?? DEFAULT_STUDIO_EXPORT_SETTINGS.outputFormat,
             rate: draft?.rate ?? '+0%',
             tts_provider: draft?.ttsProvider ?? 'edge',
-            subtitle_style: draft?.subtitleStyle ?? 'off',
+            subtitle_style: draft?.subtitleStyle ?? DEFAULT_STUDIO_SUBTITLE_STYLE,
             bgm_volume: draft?.bgmVolume ?? 0.18,
           },
           scenes_count: draft?.lines.length ?? 0,
@@ -324,7 +317,7 @@ export default function StudioPage() {
           imageDurationSec: 5,
           bgm: bgmFile,
           bgmVolume: draft?.bgmVolume ?? 0.18,
-          subtitleStyle: draft?.subtitleStyle ?? 'off',
+          subtitleStyle: draft?.subtitleStyle ?? DEFAULT_STUDIO_SUBTITLE_STYLE,
           previewMode: 'static',
           previewPlayhead: 0,
           sequenceTiming: null,
@@ -467,12 +460,12 @@ export default function StudioPage() {
     });
   }, []);
   const addImagesToKeyframe = useCallback((indexes: number[]) => {
-    const nextIndexes = indexes.filter((index) => images[index] && !selectedImageIndexes.includes(index));
+    const nextIndexes = indexes.filter((index) => index >= 0 && index < images.length);
     if (nextIndexes.length === 0) return;
     setSelectedImageIndexes((prev) => [...prev, ...nextIndexes]);
     setSelectedScene(selectedImageIndexes.length);
     setSelectedImage(nextIndexes[0]);
-  }, [images, selectedImageIndexes]);
+  }, [images, selectedImageIndexes.length]);
   const duplicateScenes = useCallback((indexes: number[]) => {
     if (indexes.length === 0) return;
     const ordered = [...indexes].sort((a, b) => a - b).filter((i) => lines[i]);
@@ -586,6 +579,7 @@ export default function StudioPage() {
     exportEstimateLabel,
     exportTimeModel,
     openJobOutput,
+    openLatestJobOutput,
     triggerExportAndDownload,
     renderSpeedLabel,
     currentJobRunning,
@@ -659,6 +653,10 @@ export default function StudioPage() {
     [lines, images, imageDurationSec]
   );
   const canPreview = sequenceScenes.length > 0 && serverOk !== false;
+  const hasExportedVideo = useMemo(
+    () => jobs.some((j) => j.status === 'done' && j.output_url),
+    [jobs]
+  );
   const canOpenOutputFolder =
     hydrated && typeof window !== 'undefined' && Boolean(window.autovideo?.openOutputDirectory);
 
@@ -980,34 +978,26 @@ export default function StudioPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!downloadDirectoryName) {
-                  window.dispatchEvent(new Event('studio-output-settings-open'));
-                  return;
-                }
-                void window.autovideo?.openOutputDirectory?.();
-              }}
-              disabled={!canOpenOutputFolder}
+              onClick={() => openLatestJobOutput()}
+              disabled={!canOpenOutputFolder || !hasExportedVideo}
               className={`studio-control inline-flex items-center gap-1 disabled:opacity-35 ${
-                canOpenOutputFolder && downloadDirectoryName
+                canOpenOutputFolder && hasExportedVideo
                   ? 'border-amber-300/30 bg-amber-400/10 text-amber-100 hover:bg-amber-400/15'
                   : 'text-white/55'
               }`}
               title={
                 !canOpenOutputFolder
-                  ? 'Open folder is only available in Desktop.'
-                  : !downloadDirectoryName
-                  ? 'Choose a download folder in Output Settings.'
-                  : 'Open download folder'
+                  ? 'Open file is only available in Desktop.'
+                  : !hasExportedVideo
+                  ? 'Export a video first.'
+                  : 'Open latest exported video file'
               }
             >
               <FolderOpen
                 size={13}
-                className={canOpenOutputFolder && downloadDirectoryName ? 'text-amber-300' : 'text-white/35'}
+                className={canOpenOutputFolder && hasExportedVideo ? 'text-amber-300' : 'text-white/35'}
               />
-              <span suppressHydrationWarning>
-                {downloadDirectoryName ? 'Open folder' : 'Choose folder'}
-              </span>
+              <span suppressHydrationWarning>Open file</span>
             </button>
           </div>
 
@@ -1146,15 +1136,5 @@ export default function StudioPage() {
       )}
     </div>
   );
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatExportTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 

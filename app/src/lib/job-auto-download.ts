@@ -52,10 +52,6 @@ export function wasJobAutoDownloaded(jobId: string): boolean {
   return readDownloadedIds().has(jobId);
 }
 
-export function listAutoDownloadedJobIds(): string[] {
-  return [...readDownloadedIds()];
-}
-
 const DOWNLOAD_FAILED_KEY = 'autovideo:downloadFailedJobIds';
 
 export function markJobDownloadFailed(jobId: string) {
@@ -216,8 +212,4 @@ export async function performJobAutoDownload(
   } finally {
     downloadInFlight.delete(job.id);
   }
-}
-
-export async function handleCompletedJobExport(job: Job, options: AutoDownloadOptions = {}) {
-  return performJobAutoDownload(job, options);
 }

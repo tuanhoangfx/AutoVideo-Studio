@@ -21,7 +21,7 @@ from .compose import SceneInput, compose_video, refresh_encoder_for_job
 from .duration_text import trim_text_for_duration
 from .ffmpeg_util import probe_duration_ms, run_ffmpeg
 from .paths import worker_storage_root
-from .pipeline_constants import EFFECTS_CYCLE
+from .pipeline_constants import normalize_transition, resolve_effect
 from .subtitle import SceneCaption, write_ass_lines, write_ass_words, write_srt
 from .tts import synthesize
 
@@ -88,13 +88,13 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
 
     for i, sc in enumerate(spec.scenes):
         target_ms = max(500, sc.duration_ms or 5000)
-        effect = sc.effect or EFFECTS_CYCLE[i % len(EFFECTS_CYCLE)]
+        effect = resolve_effect(sc.effect, i)
         scene_inputs.append(
             SceneInput(
                 image_path=Path(sc.image_path),
                 duration_ms=target_ms,
                 effect=effect,
-                transition=sc.transition or "slide_left",
+                transition=normalize_transition(sc.transition),
             )
         )
         total_ms += target_ms

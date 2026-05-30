@@ -19,19 +19,9 @@ import { Play, Pause, Square, Loader2, AlertCircle, RotateCcw, X } from 'lucide-
 import { voicePreviewUrl } from '@/lib/api';
 import { TRANSITION_S, resolveAutoEffect } from '@/lib/pipeline-constants';
 
-export type SequenceScene = {
-  text: string;
-  imageUrl: string;
-  effect?: string;
-  durationSec?: number;
-  transition?: string;
-};
+import type { SequenceScene, SequenceTiming } from '@/types/studio';
 
-export type SequenceTiming = {
-  durations: number[];
-  waveforms: number[][];
-  total: number;
-};
+export type { SequenceScene, SequenceTiming } from '@/types/studio';
 
 type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
 
@@ -652,6 +642,7 @@ function drawKenBurns(
 }
 
 function resolveTransition(value: string | undefined, index: number) {
+  if (value === 'none') return 'cut';
   if (value === 'random') {
     return (['slide_left', 'slide_right', 'fade', 'zoom'] as const)[index % 4];
   }

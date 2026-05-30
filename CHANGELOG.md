@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.1.1
+
+- Official desktop release: timeline scene table V1, compact Duration/Transition/Effect columns, Random/None for transitions and effects.
+- Studio defaults (Jenny voice, subtitle off), open latest exported video, architecture cleanup (shared types, job events, dead code removal).
+- Worker: random effect pool, cut transitions (none), lib sync with preview pipeline.
+
+## 0.2.15
+
+- Transition/Effect: add Random + None options; worker preview resolves random effects and cut (none) transitions.
+
+## 0.2.14
+
+- Timeline Duration column: 2.67rem width, shared bulk/row padding with Transition/Effect; compact w-full controls.
+
+## 0.2.13
+
+- Timeline Transition/Effect columns reduced to one-third width (2.67rem / 2.33rem).
+
+## 0.2.12
+
+- Timeline Transition column 8rem, Effect column 7rem; bulk filters in native table cells aligned with row dropdowns.
+
+## 0.2.11
+
+- Timeline scene table: equal Transition/Effect column width (6.5rem); bulk filters grid-aligned; row inline filters fill column.
+
+## 0.2.10
+
+- Timeline toolbar: remove empty grip/transcript header cells; action buttons flush left, bulk Effect aligned without 40% dead space.
+
+## 0.2.9
+
+- Lock timeline scene table design V1 (fixed grid, flat actions, transcript 40%); remove Design Template mocks.
+
+## 0.2.8
+
+- Timeline scene table: flat action buttons (no frame), table-fixed columns with Transcript 40%.
+- System → Design Template: 5 mockups (V1–V5) for timeline table layout review.
+
+## 0.2.7
+
+- Timeline table: bulk Duration / Transition / Effect filters align with column headers; Apply sits next to Delete.
+
+## 0.2.6
+
+- Timeline storyboard: hide duration overlay on scene thumbnails.
+- Library: allow adding the same image to keyframes multiple times; remove duration badge on library thumbs.
+
+## 0.2.5
+
+- Architecture cleanup: shared `types/studio`, `lib/job-events`, remove dead code and duplicate helpers.
+- Defaults: Jenny (en-US) voice first, subtitles Off.
+- Open file button reveals the latest exported video (same as job-tab download badge), not just the output folder.
+
 ## 0.2.4
 
 - Remove redundant Voice duration hint on Timeline stats row.

@@ -1,7 +1,5 @@
 'use client';
 
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-
 export type StudioControlTone = 'neutral' | 'sky' | 'violet' | 'rose' | 'amber' | 'indigo';
 
 const TONE_CLASS: Record<StudioControlTone, string> = {
@@ -15,52 +13,4 @@ const TONE_CLASS: Record<StudioControlTone, string> = {
 
 export function studioControlClass(tone: StudioControlTone = 'neutral', active = false) {
   return `studio-control ${active ? 'studio-control--active' : TONE_CLASS[tone]}`;
-}
-
-export function StudioBtn({
-  tone = 'neutral',
-  active = false,
-  icon,
-  children,
-  className = '',
-  ...props
-}: {
-  tone?: StudioControlTone;
-  active?: boolean;
-  icon?: ReactNode;
-  children: ReactNode;
-  className?: string;
-} & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button type="button" className={`${studioControlClass(tone, active)} ${className}`} {...props}>
-      {icon ? <span className="studio-control-icon">{icon}</span> : null}
-      {children}
-    </button>
-  );
-}
-
-export function StudioSearch({
-  value,
-  onChange,
-  placeholder,
-  icon,
-  className = '',
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  icon: ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`studio-search ${className}`}>
-      <span className="studio-control-icon text-white/45">{icon}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent outline-none"
-      />
-    </label>
-  );
 }

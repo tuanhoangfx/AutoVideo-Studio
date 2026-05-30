@@ -28,7 +28,7 @@ import {
 import type { LibraryImage } from './ImageLibrary';
 import { HubFilterDropdown } from './HubFilterDropdown';
 import { studioControlClass } from './StudioControl';
-import { StudioToolbarButton, StudioToolbarGroup } from './StudioToolbar';
+import { StudioToolbarButton } from './StudioToolbar';
 import { EFFECTS_CYCLE } from '@/lib/pipeline-constants';
 import {
   EFFECT_OPTIONS,
@@ -49,6 +49,13 @@ const TRANSITION_FILTER_OPTIONS = TRANSITION_OPTIONS.map((opt) => ({
   label: opt.label,
   icon: opt.icon,
 }));
+
+/** Compact bulk/row control columns — Duration aligned with Transition/Effect. */
+const SCENE_DURATION_COL = 'w-[2.67rem]';
+const SCENE_TRANSITION_COL = 'w-[2.67rem]';
+const SCENE_EFFECT_COL = 'w-[2.33rem]';
+const SCENE_BULK_CONTROL_CELL = 'align-middle px-1.5 py-1';
+const SCENE_ROW_CONTROL_CELL = 'px-1.5 py-0';
 
 type ViewMode = 'storyboard' | 'dense';
 
@@ -135,6 +142,7 @@ export function KeyframeTimeline({
 
   const effectOf = (i: number): Effect => {
     const effect = lines[i]?.effect;
+    if (effect === 'random' || effect === 'none') return effect;
     if (!effect || effect === 'auto') return EFFECTS_CYCLE[i % EFFECTS_CYCLE.length] as Effect;
     return effect;
   };
@@ -366,9 +374,6 @@ export function KeyframeTimeline({
                           <div className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 font-mono text-[8px] text-white">
                             S{i + 1}
                           </div>
-                          <div className="absolute right-1 top-1 rounded bg-black/60 px-1 py-0.5 font-mono text-[8px] text-white/75">
-                            {fmtTime(exportDurations[i])}
-                          </div>
                         </div>
                         <MiniWaveform values={waveform} />
                         <div className="mt-1 min-w-0">
@@ -402,105 +407,110 @@ export function KeyframeTimeline({
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/20">
-              <div className="relative z-[80] border-b border-white/10 bg-[var(--panel)]/80 px-2 py-1">
-                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                  <StudioToolbarGroup className="w-auto shrink-0" aria-label="Scene selection actions">
-                    <StudioToolbarButton
-                      tone="sky"
-                      active={allRowsSelected}
-                      icon={ListChecks}
-                      grow={false}
-                      onClick={toggleSelectAllRows}
-                      title={allRowsSelected ? 'Deselect all rows' : 'Select all rows'}
-                    >
-                      {allRowsSelected ? 'Deselect' : 'Select all'}
-                    </StudioToolbarButton>
-                    <StudioToolbarButton
-                      tone="violet"
-                      icon={Copy}
-                      grow={false}
-                      onClick={() => onDuplicateScenes(activeRows)}
-                      disabled={activeRows.length === 0}
-                      title="Duplicate selected scenes"
-                    >
-                      Duplicate
-                    </StudioToolbarButton>
-                    <StudioToolbarButton
-                      tone="rose"
-                      icon={Trash2}
-                      grow={false}
-                      onClick={() => {
-                        onRemoveScenes(activeRows);
-                        setSelectedRows([]);
-                      }}
-                      disabled={activeRows.length === 0}
-                      title="Delete selected scenes"
-                    >
-                      Delete
-                    </StudioToolbarButton>
-                  </StudioToolbarGroup>
-
-                  <div className="flex min-w-0 items-center justify-center gap-1">
-                    <span className={`${studioControlClass('amber')} !cursor-default`}>
-                      <Timer size={11} className="text-amber-200/80" />
-                      <input
-                        type="number"
-                        min={1}
-                        value={bulkDuration}
-                        onChange={(e) => setBulkDuration(safeDuration(e.target.value, bulkDuration))}
-                        className="w-8 bg-transparent text-center font-mono text-[10px] text-amber-100 outline-none"
-                        title="Bulk duration (seconds)"
-                      />
-                      <span className="text-white/35">s</span>
-                    </span>
-                    <span className="min-w-0">
-                      <HubFilterDropdown
-                        icon={<Sparkles size={11} />}
-                        label="Effect"
-                        selected={[bulkEffect]}
-                        options={EFFECT_FILTER_OPTIONS}
-                        onChange={(values) => setBulkEffect((values[0] as Effect) ?? 'none')}
-                        singleSelect
-                        compact
-                        buttonVariant="command"
-                        className="max-w-[6.75rem]"
-                      />
-                    </span>
-                    <span className="min-w-0">
-                      <HubFilterDropdown
-                        icon={<ArrowRightLeft size={11} />}
-                        label="Transition"
-                        selected={[bulkTransition]}
-                        options={TRANSITION_FILTER_OPTIONS}
-                        onChange={(values) => setBulkTransition((values[0] as Transition) ?? 'slide_left')}
-                        singleSelect
-                        compact
-                        buttonVariant="command"
-                        className="max-w-[7rem]"
-                      />
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-1">
-                    <StudioToolbarGroup className="w-auto shrink-0">
-                      <StudioToolbarButton
-                        tone={hasPendingBulkChanges ? 'amber' : 'indigo'}
-                        active={hasPendingBulkChanges}
-                        icon={Check}
-                        grow={false}
-                        onClick={applyBulkAll}
-                        disabled={activeRows.length === 0}
-                        title="Apply duration + effect + transition to selection"
-                      >
-                        Apply to {activeRows.length}
-                      </StudioToolbarButton>
-                    </StudioToolbarGroup>
-                  </div>
-                </div>
-              </div>
               <div className="max-h-56 overflow-auto select-none">
-                <table className="w-full min-w-[760px] border-collapse text-left text-[8px]">
+                <table className="w-full table-fixed border-collapse text-left text-[8px]">
+                  <colgroup>
+                    <col className="w-5" />
+                    <col className="w-10" />
+                    <col className="w-[4.5rem]" />
+                    <col className="w-[4.25rem]" />
+                    <col className={SCENE_DURATION_COL} />
+                    <col className={SCENE_TRANSITION_COL} />
+                    <col className={SCENE_EFFECT_COL} />
+                    <col style={{ width: '40%' }} />
+                  </colgroup>
                   <thead className="sticky top-0 z-10 bg-[var(--panel)] text-white/45">
+                    <tr className="border-b border-white/10 [&>th]:px-1.5 [&>th]:py-1 [&>th:first-child]:pl-1">
+                      <th colSpan={4} className="text-left">
+                        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Scene selection actions">
+                          <StudioToolbarButton
+                            tone="sky"
+                            active={allRowsSelected}
+                            icon={ListChecks}
+                            grow={false}
+                            onClick={toggleSelectAllRows}
+                            title={allRowsSelected ? 'Deselect all rows' : 'Select all rows'}
+                          >
+                            {allRowsSelected ? 'Deselect' : 'Select all'}
+                          </StudioToolbarButton>
+                          <StudioToolbarButton
+                            tone="violet"
+                            icon={Copy}
+                            grow={false}
+                            onClick={() => onDuplicateScenes(activeRows)}
+                            disabled={activeRows.length === 0}
+                            title="Duplicate selected scenes"
+                          >
+                            Duplicate
+                          </StudioToolbarButton>
+                          <StudioToolbarButton
+                            tone="rose"
+                            icon={Trash2}
+                            grow={false}
+                            onClick={() => {
+                              onRemoveScenes(activeRows);
+                              setSelectedRows([]);
+                            }}
+                            disabled={activeRows.length === 0}
+                            title="Delete selected scenes"
+                          >
+                            Delete
+                          </StudioToolbarButton>
+                          <StudioToolbarButton
+                            tone={hasPendingBulkChanges ? 'amber' : 'indigo'}
+                            active={hasPendingBulkChanges}
+                            icon={Check}
+                            grow={false}
+                            onClick={applyBulkAll}
+                            disabled={activeRows.length === 0}
+                            title="Apply duration + effect + transition to selection"
+                          >
+                            Apply to {activeRows.length}
+                          </StudioToolbarButton>
+                        </div>
+                      </th>
+                      <th className={SCENE_BULK_CONTROL_CELL}>
+                        <span className={`${studioControlClass('amber')} !cursor-default inline-flex w-full !justify-start !px-1`}>
+                          <Timer size={11} className="shrink-0 text-amber-200/80" />
+                          <input
+                            type="number"
+                            min={1}
+                            value={bulkDuration}
+                            onChange={(e) => setBulkDuration(safeDuration(e.target.value, bulkDuration))}
+                            className="min-w-0 flex-1 bg-transparent text-center font-mono text-[10px] text-amber-100 outline-none"
+                            title="Bulk duration (seconds)"
+                          />
+                          <span className="shrink-0 text-white/35">s</span>
+                        </span>
+                      </th>
+                      <th className={SCENE_BULK_CONTROL_CELL}>
+                        <HubFilterDropdown
+                          icon={<ArrowRightLeft size={11} />}
+                          label="Transition"
+                          selected={[bulkTransition]}
+                          options={TRANSITION_FILTER_OPTIONS}
+                          onChange={(values) => setBulkTransition((values[0] as Transition) ?? 'slide_left')}
+                          singleSelect
+                          compact
+                          buttonVariant="command"
+                          className="w-full"
+                        />
+                      </th>
+                      <th className={SCENE_BULK_CONTROL_CELL}>
+                        <HubFilterDropdown
+                          icon={<Sparkles size={11} />}
+                          label="Effect"
+                          selected={[bulkEffect]}
+                          options={EFFECT_FILTER_OPTIONS}
+                          onChange={(values) => setBulkEffect((values[0] as Effect) ?? 'none')}
+                          singleSelect
+                          compact
+                          buttonVariant="command"
+                          className="w-full"
+                        />
+                      </th>
+                      <th aria-hidden className="p-0" />
+                    </tr>
                     <tr className="[&>th]:border-b [&>th]:border-white/10 [&>th]:px-1.5 [&>th]:py-0.5">
                       <th className="w-5" aria-label="Reorder" />
                       <th><TableHeadLabel icon={<Hash size={10} />} label="Scene" /></th>
@@ -593,17 +603,17 @@ export function KeyframeTimeline({
                             </div>
                           </td>
                           <td className="px-1.5 py-0 font-mono text-white/55">{fmtTime(starts[i] ?? 0)}</td>
-                          <td className="px-1.5 py-0">
+                          <td className={SCENE_ROW_CONTROL_CELL}>
                             <input
                               type="number"
                               min={1}
                               value={line.durationSec ?? Math.round(exportDurations[i] ?? imageDurationSec)}
                               onChange={(e) => onChangeDuration(i, safeDuration(e.target.value, imageDurationSec))}
                               onClick={(e) => e.stopPropagation()}
-                              className="h-5 w-11 rounded border border-white/10 bg-black/30 px-1 text-center font-mono text-[8px] text-white outline-none focus:border-[var(--accent)]/60"
+                              className="h-[18px] w-full min-w-0 rounded border border-white/10 bg-black/30 px-0.5 text-center font-mono text-[8px] text-white outline-none focus:border-[var(--accent)]/60"
                             />
                           </td>
-                          <td className="px-1 py-0">
+                          <td className={SCENE_ROW_CONTROL_CELL}>
                             <HubFilterDropdown
                               icon={<ArrowRightLeft size={10} />}
                               label="Transition"
@@ -612,9 +622,10 @@ export function KeyframeTimeline({
                               onChange={(values) => onChangeTransition(i, (values[0] as Transition) ?? 'slide_left')}
                               singleSelect
                               variant="inline"
+                              className="w-full"
                             />
                           </td>
-                          <td className="px-1 py-0">
+                          <td className={SCENE_ROW_CONTROL_CELL}>
                             <HubFilterDropdown
                               icon={<Wand2 size={10} />}
                               label="Effect"
@@ -623,12 +634,15 @@ export function KeyframeTimeline({
                               onChange={(values) => onChangeEffect(i, (values[0] as Effect) ?? 'none')}
                               singleSelect
                               variant="inline"
+                              className="w-full"
                             />
                           </td>
-                          <td className="max-w-[16rem] truncate px-1.5 py-0 text-white/70">
-                            {coverage
-                              ? sceneNarrationLabel(coverage, narrationScript, transcriptTimeSec)
-                              : line.text || '(empty)'}
+                          <td className="px-1.5 py-0 text-white/70">
+                            <div className="truncate" title={coverage ? sceneNarrationLabel(coverage, narrationScript, transcriptTimeSec) : line.text || '(empty)'}>
+                              {coverage
+                                ? sceneNarrationLabel(coverage, narrationScript, transcriptTimeSec)
+                                : line.text || '(empty)'}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -811,7 +825,14 @@ function effectLabel(effect: Effect) {
 }
 
 function normalizeTransition(value: ScriptLine['transition']): Transition {
-  if (value === 'slide_left' || value === 'slide_right' || value === 'fade' || value === 'zoom' || value === 'random') {
+  if (
+    value === 'slide_left' ||
+    value === 'slide_right' ||
+    value === 'fade' ||
+    value === 'zoom' ||
+    value === 'random' ||
+    value === 'none'
+  ) {
     return value;
   }
   return 'slide_left';

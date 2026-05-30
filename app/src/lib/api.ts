@@ -114,12 +114,6 @@ export async function getRoot() {
   );
 }
 
-export async function listVoices() {
-  return handle<{ ShortName: string; Gender: string; FriendlyName: string; Locale: string }[]>(
-    await fetch(workerUrl('/voices'))
-  );
-}
-
 export async function listJobs() {
   return handle<Job[]>(await fetch(workerUrl('/jobs')));
 }

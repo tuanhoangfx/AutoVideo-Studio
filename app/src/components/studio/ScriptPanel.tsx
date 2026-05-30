@@ -3,8 +3,9 @@ import { useMemo } from 'react';
 import { formatInteger } from '@/lib/format-count';
 import { formatReadTime, scriptMetrics } from '@/lib/script-metrics';
 
-export type Effect = 'auto' | 'zoom_in' | 'zoom_out' | 'pan_right' | 'pan_left' | 'flash' | 'sparkle' | 'none';
-export type Transition = 'slide_left' | 'slide_right' | 'fade' | 'zoom' | 'random';
+import type { Effect, ScriptLine, Transition } from '@/types/studio';
+
+export type { Effect, ScriptLine, Transition } from '@/types/studio';
 
 export const EFFECT_OPTIONS: Array<{ id: Effect; label: string; icon: string }> = [
   { id: 'auto', label: 'Auto cycle', icon: '🔄' },
@@ -14,7 +15,8 @@ export const EFFECT_OPTIONS: Array<{ id: Effect; label: string; icon: string }> 
   { id: 'pan_left', label: 'Pan left', icon: '←' },
   { id: 'flash', label: 'Flash', icon: '⚡' },
   { id: 'sparkle', label: 'Sparkle', icon: '✦' },
-  { id: 'none', label: 'Static', icon: '⏸' },
+  { id: 'random', label: 'Random', icon: '🎲' },
+  { id: 'none', label: 'None', icon: '⏸' },
 ];
 
 export const TRANSITION_OPTIONS: Array<{ id: Transition; label: string; icon: string }> = [
@@ -22,16 +24,9 @@ export const TRANSITION_OPTIONS: Array<{ id: Transition; label: string; icon: st
   { id: 'slide_right', label: 'Slide right', icon: '→' },
   { id: 'fade', label: 'Fade', icon: '◐' },
   { id: 'zoom', label: 'Zoom', icon: '◎' },
-  { id: 'random', label: 'Random', icon: '✦' },
+  { id: 'random', label: 'Random', icon: '🎲' },
+  { id: 'none', label: 'None', icon: '⏸' },
 ];
-
-export type ScriptLine = {
-  text: string;
-  image_index: number;
-  durationSec?: number;
-  effect?: Effect; // undefined = auto cycle
-  transition?: Transition;
-};
 
 export function ScriptPanel({
   onApplyNarration,

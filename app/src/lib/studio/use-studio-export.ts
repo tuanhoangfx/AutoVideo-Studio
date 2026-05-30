@@ -13,7 +13,7 @@ import {
   performJobAutoDownload,
   type JobDownloadCompleteDetail,
 } from '@/lib/job-auto-download';
-import { JOB_POLLED_EVENT, JOB_TERMINAL_EVENT } from '@/components/workspace/GlobalJobPoller';
+import { JOB_POLLED_EVENT, JOB_TERMINAL_EVENT } from '@/lib/job-events';
 import { buildVideoFilename } from '@/lib/video-filename';
 import {
   bindJobToSlot,
@@ -39,10 +39,11 @@ import {
   type ExportTimeModel,
 } from '@/lib/export-time-estimate';
 import type { EditorSnapshot, StudioDownloadState } from '@/lib/studio-editor-snapshot';
-import type { ScriptLine } from '@/components/studio';
+import type { ScriptLine } from '@/types/studio';
 import type { LibraryImage } from '@/components/studio/ImageLibrary';
 import type { StudioAspect } from './studio-types';
 import { formatJobErrorForUi } from './format-job-error';
+import { findLatestDoneJob, revealStudioOutputFile } from '@/lib/studio-output-reveal';
 
 export type UseStudioExportParams = {
   jobs: Job[];
@@ -154,8 +155,12 @@ export function useStudioExport(p: UseStudioExportParams) {
       const label = detail.savedToFolder ? `Saved ${detail.filename}` : `Downloaded ${detail.filename}`;
       p.showToast(
         label,
-        detail.savedToFolder && window.autovideo ? 'Open folder' : undefined,
-        detail.savedToFolder && window.autovideo ? () => { void window.autovideo?.openOutputDirectory?.(); } : undefined
+        detail.savedToFolder && window.autovideo ? 'Open file' : undefined,
+        detail.savedToFolder && window.autovideo
+          ? () => {
+              void revealStudioOutputFile(detail.filename);
+            }
+          : undefined
       );
       forceExportDownloadRef.current = false;
       p.setDownloadBadgeVersion((v) => v + 1);
@@ -228,11 +233,9 @@ export function useStudioExport(p: UseStudioExportParams) {
 
   const openJobOutput = useCallback(
     (job: Job, filename?: string) => {
-      const name = filename ?? resolveJobOutputFilename(job);
+      const name = filename ?? savedOutputFilenames[job.id] ?? resolveJobOutputFilename(job);
       if (typeof window !== 'undefined' && window.autovideo?.openOutputFile && name) {
-        void window.autovideo.openOutputFile(name).then((result) => {
-          if (!result.ok) void window.autovideo?.openOutputDirectory?.();
-        });
+        void revealStudioOutputFile(name);
         return;
       }
       if (typeof window !== 'undefined' && window.autovideo?.openOutputDirectory) {
@@ -241,8 +244,17 @@ export function useStudioExport(p: UseStudioExportParams) {
       }
       window.dispatchEvent(new Event('studio-output-settings-open'));
     },
-    [resolveJobOutputFilename]
+    [resolveJobOutputFilename, savedOutputFilenames]
   );
+
+  const openLatestJobOutput = useCallback(() => {
+    const job = findLatestDoneJob(p.jobs, p.currentJob);
+    if (!job) {
+      p.showToast('No exported video yet.');
+      return;
+    }
+    openJobOutput(job, savedOutputFilenames[job.id]);
+  }, [openJobOutput, p, savedOutputFilenames]);
 
   const handleJobTerminal = useCallback(
     (updated: Job, activeId: string | null) => {
@@ -461,6 +473,7 @@ export function useStudioExport(p: UseStudioExportParams) {
     downloadJobOutput,
     resolveJobOutputFilename,
     openJobOutput,
+    openLatestJobOutput,
     startRender,
     triggerExportAndDownload,
     renderSpeedLabel,

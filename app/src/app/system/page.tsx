@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Database, LayoutDashboard, Palette, Settings2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DeploymentCheck } from '@/components/system/DeploymentCheck';
+import { DesignTemplatePanel } from '@/components/system/DesignTemplatePanel';
 import { ExportBenchmarkPanel } from '@/components/system/ExportBenchmarkPanel';
 import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
 
@@ -36,7 +37,7 @@ export default function SystemPage({
         </SystemTabLink>
       </div>
 
-      {tab === 'template' ? <DesignTemplateEmpty /> : <SystemOverview />}
+      {tab === 'template' ? <DesignTemplatePanel /> : <SystemOverview />}
     </div>
   );
 }
@@ -89,22 +90,6 @@ function SystemOverview() {
         </div>
       </section>
     </div>
-  );
-}
-
-function DesignTemplateEmpty() {
-  return (
-    <section className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-white/10 bg-[var(--panel)] p-6 text-center">
-      <div>
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-100">
-          <Palette size={24} />
-        </div>
-        <h2 className="mt-4 text-2xl font-semibold text-white">No active designs</h2>
-        <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-          Source workspace tree is locked as V5 Compact Power Tree and has been promoted into the Studio image library.
-        </p>
-      </div>
-    </section>
   );
 }
 

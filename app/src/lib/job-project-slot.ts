@@ -112,7 +112,3 @@ export function removeJobSlot(jobId: string) {
   writeJson(SLOT_DOWNLOADS_KEY, downloads);
   writeJson(SLOT_EXPORTS_KEY, exports);
 }
-
-export function listSlotDownloadCounts(): Record<string, number> {
-  return readSlotDownloadCounts();
-}

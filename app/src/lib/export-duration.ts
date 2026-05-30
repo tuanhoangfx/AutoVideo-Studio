@@ -1,4 +1,4 @@
-import type { ScriptLine } from '@/components/studio';
+import type { ScriptLine } from '@/types/studio';
 import type { ExportDurationMode } from '@/lib/studio-export-settings';
 
 /** Per-scene export length (seconds) from Image vs Script mode rules. */

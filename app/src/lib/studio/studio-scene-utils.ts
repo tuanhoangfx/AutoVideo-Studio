@@ -1,5 +1,5 @@
 import type { Job } from '@/lib/api';
-import type { ScriptLine } from '@/components/studio';
+import type { ScriptLine } from '@/types/studio';
 
 export function sourceFolderName(file: File) {
   const relativePath = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
@@ -15,10 +15,7 @@ export function buildSceneLines(
   forceTexts = false
 ): ScriptLine[] {
   return imageIndexes.map((imageIndex, order) => {
-    const current =
-      existing[order]?.image_index === imageIndex
-        ? existing[order]
-        : existing.find((line) => line.image_index === imageIndex);
+    const current = existing[order]?.image_index === imageIndex ? existing[order] : undefined;
     return {
       text: forceTexts ? (nextTexts?.[order] ?? '') : (current?.text ?? nextTexts?.[order] ?? ''),
       image_index: imageIndex,

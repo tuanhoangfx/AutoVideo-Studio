@@ -36,22 +36,9 @@ import {
 } from '@/lib/google-drive';
 import { clearCachedDriveImages, loadCachedDriveImage, saveCachedDriveImage } from '@/lib/drive-cache';
 
-export type LibraryImage = {
-  file: File;
-  url: string; // ObjectURL
-  used: boolean;
-  sourceFolder?: string;
-  sourceKind?: 'local' | 'drive';
-  driveFolderId?: string;
-  driveFileId?: string;
-  thumbnailUrl?: string;
-  cacheStatus?: 'cached' | 'downloaded';
-};
+import type { LibraryImage, LibraryImageInput } from '@/types/studio';
 
-export type LibraryImageInput = Pick<
-  LibraryImage,
-  'file' | 'sourceFolder' | 'sourceKind' | 'driveFolderId' | 'driveFileId' | 'thumbnailUrl' | 'cacheStatus'
->;
+export type { LibraryImage, LibraryImageInput } from '@/types/studio';
 
 type FolderImage = {
   id: string;
@@ -871,11 +858,6 @@ export function ImageLibrary({
                       >
                         <Check size={8} strokeWidth={pending ? 3 : 2} />
                       </button>
-                      {renderSelected && (
-                        <div className="pointer-events-none absolute left-0.5 top-5 rounded bg-black/70 px-1 py-0.5 font-mono text-[6px] text-emerald-100">
-                          {imageDurationSec}s
-                        </div>
-                      )}
                       {img.sourceKind === 'drive' && (
                         <div className="pointer-events-none absolute right-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[6px] font-semibold uppercase tracking-wide text-cyan-100 ring-1 ring-cyan-300/30">
                           {img.cacheStatus === 'cached' ? 'cached' : 'downloaded'}

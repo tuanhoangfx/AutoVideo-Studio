@@ -9,10 +9,10 @@ import { voiceListPreviewText } from '@/lib/voice-preview-text';
 import { AudioPreview } from './AudioPreview';
 
 export const VOICE_OPTIONS = [
-  { id: 'vi-VN-HoaiMyNeural', label: 'Hoài My', gender: '♀', locale: 'VI', tone: 'warm, natural', recommended: true },
-  { id: 'vi-VN-NamMinhNeural', label: 'Nam Minh', gender: '♂', locale: 'VI', tone: 'clear, strong', recommended: true },
-  { id: 'en-US-AriaNeural', label: 'Aria', gender: '♀', locale: 'EN-US', tone: 'expressive' },
   { id: 'en-US-JennyNeural', label: 'Jenny', gender: '♀', locale: 'EN-US', tone: 'friendly', recommended: true },
+  { id: 'vi-VN-HoaiMyNeural', label: 'Hoài My', gender: '♀', locale: 'VI', tone: 'warm, natural' },
+  { id: 'vi-VN-NamMinhNeural', label: 'Nam Minh', gender: '♂', locale: 'VI', tone: 'clear, strong' },
+  { id: 'en-US-AriaNeural', label: 'Aria', gender: '♀', locale: 'EN-US', tone: 'expressive' },
   { id: 'en-US-GuyNeural', label: 'Guy', gender: '♂', locale: 'EN-US', tone: 'news' },
   { id: 'en-US-DavisNeural', label: 'Davis', gender: '♂', locale: 'EN-US', tone: 'business' },
   { id: 'en-US-JaneNeural', label: 'Jane', gender: '♀', locale: 'EN-US', tone: 'confident' },

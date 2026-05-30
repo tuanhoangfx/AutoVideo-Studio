@@ -5,11 +5,8 @@ import * as api from '@/lib/api';
 import type { Job } from '@/lib/api';
 import { formatDuration } from '@/lib/format-duration';
 import { JOB_METRICS_UPDATED_EVENT } from '@/lib/job-metrics';
-import {
-  JOB_POLLED_EVENT,
-  JOB_TERMINAL_EVENT,
-  registerRunningJobs,
-} from '@/components/workspace/GlobalJobPoller';
+import { JOB_POLLED_EVENT } from '@/lib/job-events';
+import { registerRunningJobs } from '@/lib/job-events';
 import {
   countRunningJobs,
   exportSlotsFull,
@@ -19,6 +16,7 @@ import {
 } from '@/lib/worker-capacity';
 import { bindJobToSlot } from '@/lib/job-project-slot';
 import { jobDurationMismatchMs } from './studio-scene-utils';
+import { mergeDraftJobsWithServerList } from './merge-draft-jobs';
 
 export function useStudioJobs(showToast: (text: string) => void) {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -29,24 +27,13 @@ export function useStudioJobs(showToast: (text: string) => void) {
   const [probingOutput, setProbingOutput] = useState(false);
 
   useEffect(() => {
-    void api.initializeDesktopWorkerUrl();
-  }, []);
-
-  useEffect(() => {
     (async () => {
       try {
         await api.initializeDesktopWorkerUrl();
         await api.getRoot();
         setServerOk(true);
         const list = await api.listJobs();
-        setJobs((prev) => {
-          const drafts = prev.filter((j) => j.id.startsWith('draft-'));
-          const merged = [...drafts];
-          for (const job of list) {
-            if (!merged.some((j) => j.id === job.id)) merged.push(job);
-          }
-          return merged;
-        });
+        setJobs((prev) => mergeDraftJobsWithServerList(prev, list));
         for (const job of list) {
           bindJobToSlot(job.id, job.id, { labelAt: job.created_at });
         }
@@ -154,14 +141,7 @@ export function useStudioJobs(showToast: (text: string) => void) {
       } catch (e: unknown) {
         try {
           const list = await api.listJobs();
-          setJobs((prev) => {
-            const drafts = prev.filter((j) => j.id.startsWith('draft-'));
-            const merged = [...drafts];
-            for (const job of list) {
-              if (!merged.some((j) => j.id === job.id)) merged.push(job);
-            }
-            return merged;
-          });
+          setJobs((prev) => mergeDraftJobsWithServerList(prev, list));
         } catch {
           /* ignore */
         }

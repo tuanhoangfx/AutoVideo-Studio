@@ -1,9 +1,9 @@
 'use client';
 
-import type { LibraryImage, ScriptLine, SequenceTiming } from '@/components/studio';
+import type { LibraryImage, ScriptLine, SequenceTiming } from '@/types/studio';
 import type { Job, SubtitleStyle, TTSProvider } from '@/lib/api';
 import { isRunningJob } from '@/lib/job-running';
-import { DEFAULT_STUDIO_VOICE } from '@/lib/studio-defaults';
+import { DEFAULT_STUDIO_SUBTITLE_STYLE, DEFAULT_STUDIO_VOICE } from '@/lib/studio-defaults';
 
 export type StudioDownloadState = 'idle' | 'exporting' | 'downloading' | 'downloaded' | 'error';
 
@@ -72,7 +72,7 @@ export function applyJobConfigToSnapshot(job: Job, base?: Partial<EditorSnapshot
     videoQuality: c.video_quality ?? base?.videoQuality ?? 'auto',
     outputFormat: c.output_format ?? base?.outputFormat ?? 'mp4',
     bgmVolume: c.bgm_volume ?? base?.bgmVolume ?? 0.18,
-    subtitleStyle: c.subtitle_style ?? base?.subtitleStyle ?? 'off',
+    subtitleStyle: c.subtitle_style ?? base?.subtitleStyle ?? DEFAULT_STUDIO_SUBTITLE_STYLE,
     images: base?.images ?? [],
     lines: base?.lines ?? [],
     selectedImageIndexes: base?.selectedImageIndexes ?? [],

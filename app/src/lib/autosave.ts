@@ -7,7 +7,7 @@
  * File objects are dynamic and base64 can exceed quota. Save metadata only.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { ScriptLine } from '@/components/studio';
+import type { ScriptLine } from '@/types/studio';
 import type { SubtitleStyle, TTSProvider } from './api';
 
 export const DRAFT_KEY = 'p0021:studio:draft:v1';
@@ -79,14 +79,4 @@ export function clearDraft() {
   try {
     localStorage.removeItem(DRAFT_KEY);
   } catch {}
-}
-
-/** Relative time formatter ("just now", "5s ago", "2 minutes ago") */
-export function timeAgo(ms: number | null): string {
-  if (ms == null) return '—';
-  const diff = Date.now() - ms;
-  if (diff < 1500) return 'just now';
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  return `${Math.floor(diff / 3_600_000)}h ago`;
 }

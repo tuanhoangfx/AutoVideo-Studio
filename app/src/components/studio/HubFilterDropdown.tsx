@@ -90,6 +90,7 @@ export function HubFilterDropdown<T extends string>({
 
   const isInline = variant === 'inline';
   const isCommand = buttonVariant === 'command';
+  const fillCell = /\bw-full\b/.test(className);
   const menuWidth = isInline ? 192 : compact ? 224 : 288;
 
   useLayoutEffect(() => {
@@ -238,7 +239,7 @@ export function HubFilterDropdown<T extends string>({
         onClick={() => setOpen((v) => !v)}
         className={
           isInline
-            ? `inline-flex h-[18px] max-w-[5.5rem] items-center gap-0.5 rounded border px-1 text-[8px] leading-none transition ${
+            ? `inline-flex h-[18px] ${fillCell ? 'w-full max-w-none' : 'max-w-[5.5rem]'} items-center gap-0.5 rounded border px-1 text-[8px] leading-none transition ${
                 open
                   ? 'border-indigo-300/45 bg-indigo-500/15 text-indigo-100'
                   : 'border-white/10 bg-black/30 text-white/70 hover:border-white/20 hover:bg-white/[.06] hover:text-white'

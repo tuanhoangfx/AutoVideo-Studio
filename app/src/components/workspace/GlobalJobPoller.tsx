@@ -3,13 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '@/lib/api';
 import type { Job } from '@/lib/api';
-import { handleCompletedJobExport } from '@/lib/job-auto-download';
+import { JOB_POLLED_EVENT, JOB_TERMINAL_EVENT, REGISTER_RUNNING_JOBS_EVENT } from '@/lib/job-events';
+import { performJobAutoDownload } from '@/lib/job-auto-download';
 import { isRunningJob, runningJobIds } from '@/lib/job-running';
 import { dispatchWorkerInfo, fetchWorkerConcurrentLimit } from '@/lib/worker-capacity';
-
-const REGISTER_EVENT = 'autovideo:register-running-jobs';
-export const JOB_POLLED_EVENT = 'autovideo:jobs-polled';
-export const JOB_TERMINAL_EVENT = 'autovideo:job-terminal';
 
 function mergeRunningKeys(prev: string, ids: string[]): string {
   const set = new Set(prev.split('|').filter(Boolean));
@@ -55,8 +52,8 @@ export function GlobalJobPoller() {
       if (!ids.length) return;
       setRunningKey((prev) => mergeRunningKeys(prev, ids));
     };
-    window.addEventListener(REGISTER_EVENT, onRegister);
-    return () => window.removeEventListener(REGISTER_EVENT, onRegister);
+    window.addEventListener(REGISTER_RUNNING_JOBS_EVENT, onRegister);
+    return () => window.removeEventListener(REGISTER_RUNNING_JOBS_EVENT, onRegister);
   }, []);
 
   useEffect(() => {
@@ -97,7 +94,7 @@ export function GlobalJobPoller() {
                 /* probe optional */
               }
             }
-            await handleCompletedJobExport(enriched);
+            await performJobAutoDownload(enriched);
           })();
         }
       }
@@ -111,8 +108,4 @@ export function GlobalJobPoller() {
   return null;
 }
 
-export function registerRunningJobs(jobs: Job[]) {
-  if (typeof window === 'undefined') return;
-  const ids = runningJobIds(jobs);
-  window.dispatchEvent(new CustomEvent(REGISTER_EVENT, { detail: { ids } }));
-}
+export { registerRunningJobs } from '@/lib/job-events';

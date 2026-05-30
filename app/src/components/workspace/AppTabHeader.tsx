@@ -25,6 +25,7 @@ import {
   type StudioExportSettings,
   type VideoNameTemplate,
 } from '@/lib/studio-export-settings';
+import { VIDEO_NAME_TEMPLATES } from '@/lib/studio/studio-types';
 import {
   chooseStudioDownloadDirectory,
   clearStudioDownloadDirectory,
@@ -466,11 +467,11 @@ function HeaderOutputSettings() {
                   onChange={(e) => setVideoNameTemplate(e.target.value as VideoNameTemplate)}
                   className="h-9 min-w-[14rem] rounded-xl border border-white/10 bg-black/20 px-3 text-[12px] font-semibold text-white/80 outline-none hover:bg-black/25 focus:border-indigo-300/40"
                 >
-                  <option value="time-date-yy">hh:mm:ss dd/mm/yy</option>
-                  <option value="time-date-yy-images">hh:mm:ss dd/mm/yy + images</option>
-                  <option value="date-yy-time">dd/mm/yy hh:mm</option>
-                  <option value="topic-time-date">topic + hh:mm:ss dd/mm/yy</option>
-                  <option value="jobid">job id</option>
+                  {VIDEO_NAME_TEMPLATES.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </SettingsMenuRow>
               <SettingsMenuRow
