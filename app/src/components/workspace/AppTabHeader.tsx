@@ -7,6 +7,7 @@ import {
   Clock,
   Download,
   FileVideo,
+  Film,
   Gauge,
   MonitorPlay,
   RefreshCw,
@@ -22,6 +23,7 @@ import {
   DEFAULT_STUDIO_EXPORT_SETTINGS,
   STUDIO_EXPORT_SETTINGS_EVENT,
   type StudioExportSettings,
+  type VideoNameTemplate,
 } from '@/lib/studio-export-settings';
 import {
   chooseStudioDownloadDirectory,
@@ -40,7 +42,8 @@ export type TabHeaderMetaItem = {
 
 export type TabHeaderStatItem = {
   key: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  dotClass?: string;
   label: string;
   value: number;
   toneClass: string;
@@ -86,12 +89,15 @@ export function AppTabHeader({
         role="status"
         aria-label={`${title} summary`}
       >
-        {centerStats.map((stat, index) => (
-          <span key={stat.key} className="inline-flex items-center gap-x-2.5">
-            {index > 0 ? <Rule /> : null}
-            <StatLine {...stat} />
-          </span>
-        ))}
+        {centerStats.map((stat, index) => {
+          const { key, ...rest } = stat;
+          return (
+            <span key={key} className="inline-flex items-center gap-x-2.5">
+              {index > 0 ? <Rule /> : null}
+              <StatLine key={key} {...rest} />
+            </span>
+          );
+        })}
       </div>
 
       <div className="flex shrink-0 items-center justify-self-end gap-2 text-[13px] leading-none text-[var(--muted)]">
@@ -125,12 +131,16 @@ function MetaLine({ icon: Icon, title, value, live }: TabHeaderMetaItem) {
   );
 }
 
-function StatLine({ icon: Icon, value, label, toneClass }: TabHeaderStatItem) {
+function StatLine({ icon: Icon, dotClass, value, label, toneClass }: TabHeaderStatItem) {
   return (
-    <div className="inline-flex items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]" title={label}>
-      <Icon size={14} className={`shrink-0 ${toneClass}`} />
+    <div className="inline-flex items-center gap-1 text-[12px] leading-none text-[var(--muted)]" title={label}>
+      {dotClass ? (
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
+      ) : Icon ? (
+        <Icon size={13} className={`shrink-0 ${toneClass}`} />
+      ) : null}
       <span className="font-semibold tabular-nums text-[var(--text)]/90">{value}</span>
-      <span>{label}</span>
+      <span className="text-[var(--muted)]/80">{label}</span>
     </div>
   );
 }
@@ -305,6 +315,12 @@ function HeaderOutputSettings() {
   const [downloadFolderNotice, setDownloadFolderNotice] = useState('');
 
   useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener('studio-output-settings-open', onOpen);
+    return () => window.removeEventListener('studio-output-settings-open', onOpen);
+  }, []);
+
+  useEffect(() => {
     const onSettings = (event: Event) => {
       setSettings((event as CustomEvent<StudioExportSettings>).detail ?? readStudioExportSettings());
     };
@@ -334,6 +350,7 @@ function HeaderOutputSettings() {
   const setVideoQuality = (videoQuality: StudioExportSettings['videoQuality']) => update({ ...settings, videoQuality });
   const setOutputFormat = (outputFormat: StudioExportSettings['outputFormat']) => update({ ...settings, outputFormat });
   const setAutoDownload = (autoDownload: StudioExportSettings['autoDownload']) => update({ ...settings, autoDownload });
+  const setVideoNameTemplate = (videoNameTemplate: VideoNameTemplate) => update({ ...settings, videoNameTemplate });
   const chooseDownloadFolder = async () => {
     setDownloadFolderNotice('');
     try {
@@ -437,6 +454,35 @@ function HeaderOutputSettings() {
                   value={settings.autoDownload ? 'on' : 'off'}
                   onChange={(value) => setAutoDownload(value === 'on')}
                   transform={(value) => String(value).toUpperCase()}
+                />
+              </SettingsMenuRow>
+              <SettingsMenuRow
+                icon={<FileVideo size={14} />}
+                title="Video Name"
+                description="Template used by Export & Download."
+              >
+                <select
+                  value={settings.videoNameTemplate ?? 'time-date-yy-images'}
+                  onChange={(e) => setVideoNameTemplate(e.target.value as VideoNameTemplate)}
+                  className="h-9 min-w-[14rem] rounded-xl border border-white/10 bg-black/20 px-3 text-[12px] font-semibold text-white/80 outline-none hover:bg-black/25 focus:border-indigo-300/40"
+                >
+                  <option value="time-date-yy-images">hh:mm dd/mm/yy + images</option>
+                  <option value="time-date-yy">hh:mm dd/mm/yy</option>
+                  <option value="date-yy-time">dd/mm/yy hh:mm</option>
+                  <option value="topic-time-date">topic + hh:mm dd/mm</option>
+                  <option value="jobid">job id</option>
+                </select>
+              </SettingsMenuRow>
+              <SettingsMenuRow
+                icon={<Film size={14} />}
+                title="Video Export Length"
+                description="Image: total image time. Script: read time — trim or stop vs images."
+              >
+                <Segmented
+                  options={['image', 'script'] as const}
+                  value={settings.exportDurationMode}
+                  onChange={(value) => update({ ...settings, exportDurationMode: value })}
+                  transform={(value) => (value === 'image' ? 'Image' : 'Script')}
                 />
               </SettingsMenuRow>
               <SettingsMenuRow

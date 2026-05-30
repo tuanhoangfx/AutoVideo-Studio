@@ -39,28 +39,31 @@ export function supportsStudioDownloadDirectory(): boolean {
   return typeof window !== 'undefined' && (Boolean(window.autovideo?.chooseOutputDirectory) || typeof (window as any).showDirectoryPicker === 'function');
 }
 
-export async function saveBlobToStudioDirectory(filename: string, blob: Blob): Promise<boolean> {
+export async function saveBlobToStudioDirectory(
+  filename: string,
+  blob: Blob
+): Promise<{ saved: boolean; filePath?: string }> {
   if (typeof window !== 'undefined' && window.autovideo?.saveOutputFile) {
     const result = await window.autovideo.saveOutputFile(filename, await blob.arrayBuffer());
-    return result.ok;
+    return result.ok ? { saved: true, filePath: result.path } : { saved: false };
   }
   if (!downloadDirectoryHandle) {
     await restoreStudioDownloadDirectory().catch(() => null);
   }
-  if (!downloadDirectoryHandle) return false;
+  if (!downloadDirectoryHandle) return { saved: false };
   try {
     const permission = await ensureWritePermission(downloadDirectoryHandle);
-    if (!permission) return false;
+    if (!permission) return { saved: false };
     const fileHandle = await downloadDirectoryHandle.getFileHandle(filename, { create: true });
     const writable = await fileHandle.createWritable();
     await writable.write(blob);
     await writable.close();
-    return true;
+    return { saved: true, filePath: `${downloadDirectoryHandle.name}/${filename}` };
   } catch (error) {
     console.warn('[download-folder] save failed, falling back to browser download:', error);
     downloadDirectoryHandle = null;
     await idbDelete(DOWNLOAD_DIR_HANDLE_KEY).catch(() => {});
-    return false;
+    return { saved: false };
   }
 }
 

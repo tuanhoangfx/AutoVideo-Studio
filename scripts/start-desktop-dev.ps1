@@ -65,7 +65,8 @@ if ((Test-Port $AppPort) -and -not (Test-AppAssets $AppPort)) {
 
 if (-not (Test-Port $AppPort)) {
   Write-Host "==> Starting Next.js app on port $AppPort" -ForegroundColor Cyan
-  Start-Process -FilePath "pnpm" -ArgumentList @("dev", "--port", "$AppPort") -WorkingDirectory $AppDir -RedirectStandardOutput $NextLog -RedirectStandardError $NextErrorLog -WindowStyle Hidden
+  # On Windows, pnpm is commonly a PowerShell shim (pnpm.ps1) which Start-Process cannot execute directly.
+  Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "pnpm dev --port $AppPort") -WorkingDirectory $AppDir -RedirectStandardOutput $NextLog -RedirectStandardError $NextErrorLog -WindowStyle Hidden
 }
 
 Wait-For-App "http://127.0.0.1:$AppPort/studio"
@@ -73,6 +74,8 @@ Wait-For-App "http://127.0.0.1:$AppPort/studio"
 Write-Host "==> Starting AutoVideo Desktop shell" -ForegroundColor Cyan
 $env:AUTOVIDEO_APP_URL = "http://127.0.0.1:$AppPort/studio"
 $env:AUTOVIDEO_WORKER_PORT = "$WorkerPort"
+if (-not $env:AUTOVIDEO_VIDEO_ENCODER) { $env:AUTOVIDEO_VIDEO_ENCODER = "libx264" }
+if (-not $env:AUTOVIDEO_RENDER_WORKERS) { $env:AUTOVIDEO_RENDER_WORKERS = "1" }
 
 Push-Location $AppDir
 try {

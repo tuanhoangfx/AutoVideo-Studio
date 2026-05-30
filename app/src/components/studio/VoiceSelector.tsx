@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Bot, Check, ChevronDown, Gauge, Globe2, Search, SlidersHorizontal, Star, UserRound, X } from 'lucide-react';
 import type { TTSProvider } from '@/lib/api';
 import { voicePreviewUrl } from '@/lib/api';
+import { voiceListPreviewText } from '@/lib/voice-preview-text';
 import { AudioPreview } from './AudioPreview';
 
 export const VOICE_OPTIONS = [
@@ -105,15 +106,17 @@ export function VoiceSelector({
   const [localeFilters, setLocaleFilters] = useState<LocaleFilter[]>([]);
   const [genderFilters, setGenderFilters] = useState<GenderFilter[]>([]);
   const [favoriteOnly, setFavoriteOnly] = useState(false);
-  const [favoriteVoiceIds, setFavoriteVoiceIds] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
+  const [mounted, setMounted] = useState(false);
+  const [favoriteVoiceIds, setFavoriteVoiceIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
     try {
       const parsed = JSON.parse(localStorage.getItem(FAVORITE_VOICES_KEY) || '[]');
-      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
+      const next = Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+      setFavoriteVoiceIds(next);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -259,7 +262,7 @@ export function VoiceSelector({
             <Star size={12} className={favoriteOnly ? 'fill-amber-300 text-amber-200' : 'text-[var(--muted)]'} />
             Favorites
             <span className="rounded-full bg-black/20 px-1 font-mono text-[9px] text-[var(--muted)]">
-              {favoriteVoiceIds.length}
+              {mounted ? favoriteVoiceIds.length : 0}
             </span>
           </button>
           <div className="hub-filter-meta ml-auto font-mono">
@@ -310,7 +313,10 @@ export function VoiceSelector({
                   <Star size={12} className={favorite ? 'fill-amber-300' : ''} />
                 </button>
                 <span onClick={(e) => e.stopPropagation()}>
-                  <AudioPreview src={voicePreviewUrl(text, v.id, rate)} compact />
+                  <AudioPreview
+                    src={voicePreviewUrl(voiceListPreviewText(v.id), v.id, rate)}
+                    compact
+                  />
                 </span>
               </div>
             );

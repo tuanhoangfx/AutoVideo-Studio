@@ -12,12 +12,20 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import imageio_ffmpeg
+from .ffmpeg_util import (
+    FFmpegRenderError,
+    called_process_to_ffmpeg_error,
+    get_ffmpeg,
+    probe_duration_ms,
+    run_ffmpeg_checked,
+)
+from .pipeline_constants import TRANSITION_S
 
-FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
-TRANSITION_S = 0.4
+FFMPEG = get_ffmpeg()
 _XF_FILTER_AVAILABLE: bool | None = None
+_ENCODER_PICK: tuple[str, list[str]] | None = None
 
 RESOLUTION_TO_LONG_EDGE = {
     "720p": 1280,
@@ -46,6 +54,85 @@ def _target_size(aspect: str, resolution: str = "1080p") -> tuple[int, int]:
 def _video_bitrate_args(video_quality: str = "auto") -> list[str]:
     bitrate = QUALITY_TO_BITRATE.get(video_quality)
     return ["-b:v", bitrate] if bitrate else []
+
+def _encoder_preset_args(encoder: str) -> list[str]:
+    import os
+
+    if encoder == "libx264":
+        preset = (os.getenv("AUTOVIDEO_X264_PRESET") or "veryfast").strip() or "veryfast"
+        return ["-preset", preset]
+    if encoder == "h264_nvenc":
+        preset = (os.getenv("AUTOVIDEO_NVENC_PRESET") or "p2").strip() or "p2"
+        return ["-preset", preset]
+    if encoder == "h264_qsv":
+        return ["-preset", "veryfast"]
+    if encoder == "h264_amf":
+        return ["-quality", "speed"]
+    return []
+
+
+def reset_encoder_to_libx264() -> None:
+    """Force CPU encoder after HW encode failure (parallel NVENC saturation, etc.)."""
+    global _ENCODER_PICK
+    _ENCODER_PICK = ("libx264", _encoder_preset_args("libx264"))
+
+
+def refresh_encoder_for_job() -> None:
+    """Re-read encoder env each job — avoids stale NVENC cache and zombie worker configs."""
+    global _ENCODER_PICK
+    import os
+    import sys
+
+    forced = (os.getenv("AUTOVIDEO_VIDEO_ENCODER") or "").strip()
+    if forced:
+        _ENCODER_PICK = (forced, _encoder_preset_args(forced))
+        return
+    # Windows desktop default: CPU (NVENC often fails; see job logs with h264_nvenc errors).
+    if sys.platform == "win32" and os.getenv("AUTOVIDEO_PREFER_HW_ENCODER") != "1":
+        _ENCODER_PICK = ("libx264", _encoder_preset_args("libx264"))
+        return
+    _ENCODER_PICK = None
+
+
+def _pick_h264_encoder() -> tuple[str, list[str]]:
+    """Pick the best available H.264 encoder for the current PC.
+
+    On Windows defaults to libx264 unless AUTOVIDEO_PREFER_HW_ENCODER=1.
+    Returns (encoder_name, extra_args).
+    """
+    global _ENCODER_PICK
+    if _ENCODER_PICK is not None:
+        return _ENCODER_PICK
+
+    refresh_encoder_for_job()
+    if _ENCODER_PICK is not None:
+        return _ENCODER_PICK
+
+    import os
+
+    encoders_text = ""
+    try:
+        result = subprocess.run([FFMPEG, "-hide_banner", "-encoders"], check=True, capture_output=True, text=True)
+        encoders_text = (result.stdout or "") + "\n" + (result.stderr or "")
+    except Exception:
+        encoders_text = ""
+
+    def has(name: str) -> bool:
+        return f" {name} " in encoders_text or f"\t{name} " in encoders_text or f" {name}\t" in encoders_text
+
+    # Conservative presets for stability; quality controlled by bitrate mapping.
+    if has("h264_nvenc"):
+        _ENCODER_PICK = ("h264_nvenc", _encoder_preset_args("h264_nvenc"))
+        return _ENCODER_PICK
+    if has("h264_qsv"):
+        _ENCODER_PICK = ("h264_qsv", _encoder_preset_args("h264_qsv"))
+        return _ENCODER_PICK
+    if has("h264_amf"):
+        _ENCODER_PICK = ("h264_amf", _encoder_preset_args("h264_amf"))
+        return _ENCODER_PICK
+
+    _ENCODER_PICK = ("libx264", _encoder_preset_args("libx264"))
+    return _ENCODER_PICK
 
 
 @dataclass
@@ -96,6 +183,55 @@ def _zoompan_filter(effect: str, duration_s: float, fps: int, w: int, h: int) ->
     return base
 
 
+def _is_static_effect(effect: str) -> bool:
+    return (effect or "none").lower() in ("none", "static", "still")
+
+
+def _render_scene_once(
+    scene: SceneInput,
+    out_path: Path,
+    *,
+    aspect: str,
+    fps: int,
+    resolution: str,
+    video_quality: str,
+    encoder: str,
+    encoder_args: list[str],
+) -> None:
+    w, h = _target_size(aspect, resolution)
+    dur_s = max(0.5, scene.duration_ms / 1000.0)
+    # Ken Burns at 60fps is very heavy; cap filter fps, keep output -r.
+    filter_fps = fps if _is_static_effect(scene.effect) else min(fps, 30)
+    if _is_static_effect(scene.effect):
+        vf = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
+    else:
+        vf = _zoompan_filter(scene.effect, dur_s, filter_fps, w, h)
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    run_ffmpeg_checked(
+        [
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(scene.image_path),
+            "-t",
+            f"{dur_s:.3f}",
+            "-vf",
+            vf,
+            "-c:v",
+            encoder,
+            *encoder_args,
+            *_video_bitrate_args(video_quality),
+            "-pix_fmt",
+            "yuv420p",
+            "-r",
+            str(fps),
+            str(out_path),
+        ]
+    )
+
+
 def render_scene(
     scene: SceneInput,
     out_path: Path,
@@ -104,25 +240,40 @@ def render_scene(
     resolution: str = "1080p",
     video_quality: str = "auto",
 ) -> Path:
-    w, h = _target_size(aspect, resolution)
-    dur_s = max(0.5, scene.duration_ms / 1000.0)
-    vf = _zoompan_filter(scene.effect, dur_s, fps, w, h)
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        FFMPEG, "-y",
-        "-loop", "1",
-        "-i", str(scene.image_path),
-        "-t", f"{dur_s:.3f}",
-        "-vf", vf,
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        *_video_bitrate_args(video_quality),
-        "-pix_fmt", "yuv420p",
-        "-r", str(fps),
-        str(out_path),
-    ]
-    subprocess.run(cmd, check=True, capture_output=True)
+    encoder, encoder_args = _pick_h264_encoder()
+    try:
+        _render_scene_once(
+            scene,
+            out_path,
+            aspect=aspect,
+            fps=fps,
+            resolution=resolution,
+            video_quality=video_quality,
+            encoder=encoder,
+            encoder_args=encoder_args,
+        )
+    except (subprocess.CalledProcessError, FFmpegRenderError) as err:
+        if encoder == "libx264":
+            if isinstance(err, subprocess.CalledProcessError):
+                raise called_process_to_ffmpeg_error(err) from err
+            raise
+        reset_encoder_to_libx264()
+        encoder, encoder_args = _pick_h264_encoder()
+        try:
+            _render_scene_once(
+                scene,
+                out_path,
+                aspect=aspect,
+                fps=fps,
+                resolution=resolution,
+                video_quality=video_quality,
+                encoder=encoder,
+                encoder_args=encoder_args,
+            )
+        except (subprocess.CalledProcessError, FFmpegRenderError) as retry_err:
+            if isinstance(retry_err, subprocess.CalledProcessError):
+                raise called_process_to_ffmpeg_error(retry_err) from retry_err
+            raise
     return out_path
 
 
@@ -171,6 +322,7 @@ def xfade_segments(
     video_quality: str = "auto",
 ) -> Path:
     """Join segments with xfade transitions while preserving requested timeline duration."""
+    encoder, encoder_args = _pick_h264_encoder()
     cmd = [FFMPEG, "-y"]
     for seg in segments:
         cmd.extend(["-i", str(seg)])
@@ -191,8 +343,8 @@ def xfade_segments(
         "-filter_complex", ";".join(filters),
         "-map", f"[{last_label}]",
         "-an",
-        "-c:v", "libx264",
-        "-preset", "veryfast",
+        "-c:v", encoder,
+        *encoder_args,
         *_video_bitrate_args(video_quality),
         "-pix_fmt", "yuv420p",
         str(out_path),
@@ -251,24 +403,31 @@ def mux_audio(
             "-c:v", "copy",
             "-c:a", "aac",
             "-b:a", "192k",
+            # Ensure the video timeline isn't truncated when TTS audio
+            # is shorter than the requested scene durations.
+            "-af", "apad",
             "-shortest",
+            "-movflags", "+faststart",
             str(out_path),
         ]
     else:
         # ffmpeg subtitles filter requires POSIX path on Windows.
         sub_for_filter = str(subtitle_path.resolve()).replace("\\", "/").replace(":", "\\:")
+        encoder, encoder_args = _pick_h264_encoder()
         cmd = [
             FFMPEG, "-y",
             "-i", str(video_path),
             "-i", str(audio_path),
             "-vf", f"subtitles='{sub_for_filter}'",
-            "-c:v", "libx264",
-            "-preset", "veryfast",
+            "-c:v", encoder,
+            *encoder_args,
             *_video_bitrate_args(video_quality),
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
             "-b:a", "192k",
+            "-af", "apad",
             "-shortest",
+            "-movflags", "+faststart",
             str(out_path),
         ]
     subprocess.run(cmd, check=True, capture_output=True)
@@ -286,6 +445,7 @@ def compose_video(
     workdir: Path | None = None,
     subtitle_path: Path | None = None,
 ) -> Path:
+    refresh_encoder_for_job()
     workdir = workdir or out_path.parent / "_work"
     workdir.mkdir(parents=True, exist_ok=True)
 
@@ -293,6 +453,9 @@ def compose_video(
     scene_durations_s: list[float] = []
     transitions: list[str] = []
     use_xfade = len(scenes) > 1
+
+    # Pre-compute timeline + output segment paths (keeps order stable).
+    render_jobs: list[tuple[int, SceneInput, Path]] = []
     for i, sc in enumerate(scenes):
         seg = workdir / f"scene_{i:03d}.mp4"
         scene_durations_s.append(max(0.5, sc.duration_ms / 1000.0))
@@ -305,8 +468,77 @@ def compose_video(
             effect=sc.effect,
             transition=sc.transition,
         )
-        render_scene(render_input, seg, aspect=aspect, fps=fps, resolution=resolution, video_quality=video_quality)
-        segments.append(seg)
+        render_jobs.append((i, render_input, seg))
+
+    # Render scenes in parallel (no quality change; just concurrency).
+    # Limit concurrency to avoid disk thrash / GPU encoder saturation.
+    encoder, _encoder_args = _pick_h264_encoder()
+    using_hw = encoder in ("h264_nvenc", "h264_qsv", "h264_amf")
+    max_workers = 1
+    try:
+        import os
+
+        override = int(os.getenv("AUTOVIDEO_RENDER_WORKERS") or "0")
+        if override > 0:
+            max_workers = override
+        else:
+            # HW: 2 parallel scene encodes when multiple scenes (NVENC sessions are usually fine).
+            if using_hw:
+                max_workers = min(2, len(render_jobs)) if len(render_jobs) >= 2 else 1
+            else:
+                max_workers = min(4, len(render_jobs)) if len(render_jobs) >= 4 else 2 if len(render_jobs) >= 2 else 1
+    except Exception:
+        max_workers = 1
+
+    if max_workers <= 1:
+        for _, render_input, seg in render_jobs:
+            render_scene(render_input, seg, aspect=aspect, fps=fps, resolution=resolution, video_quality=video_quality)
+            segments.append(seg)
+    else:
+        futures = []
+        errors: list[Exception] = []
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            for _, render_input, seg in render_jobs:
+                futures.append(
+                    ex.submit(
+                        render_scene,
+                        render_input,
+                        seg,
+                        aspect,
+                        fps,
+                        resolution,
+                        video_quality,
+                    )
+                )
+            for f in as_completed(futures):
+                try:
+                    f.result()
+                except Exception as e:
+                    errors.append(e)
+        if errors:
+            # HW encoders can saturate under parallel load — fall back to CPU, sequential.
+            if using_hw:
+                reset_encoder_to_libx264()
+                segments = []
+                for _, render_input, seg in render_jobs:
+                    render_scene(
+                        render_input,
+                        seg,
+                        aspect=aspect,
+                        fps=fps,
+                        resolution=resolution,
+                        video_quality=video_quality,
+                    )
+                    segments.append(seg)
+            else:
+                first = errors[0]
+                if isinstance(first, FFmpegRenderError):
+                    raise first
+                if isinstance(first, subprocess.CalledProcessError):
+                    raise called_process_to_ffmpeg_error(first) from first
+                raise first
+        if not segments:
+            segments = [seg for _, _, seg in render_jobs]
 
     silent_video = workdir / "video_silent.mp4"
     concat_segments(

@@ -1,3 +1,12 @@
+export type ExportDurationMode = 'image' | 'script';
+
+export type VideoNameTemplate =
+  | 'time-date-yy-images'
+  | 'time-date-yy'
+  | 'date-yy-time'
+  | 'topic-time-date'
+  | 'jobid';
+
 export type StudioExportSettings = {
   aspect: '9:16' | '16:9' | '1:1';
   fps: number;
@@ -5,7 +14,9 @@ export type StudioExportSettings = {
   videoQuality: 'auto' | 'low' | 'medium' | 'high';
   outputFormat: 'mp4' | 'mov';
   autoDownload: boolean;
+  exportDurationMode: ExportDurationMode;
   downloadDirectoryName?: string;
+  videoNameTemplate?: VideoNameTemplate;
 };
 
 export const STUDIO_EXPORT_SETTINGS_EVENT = 'studio-export-settings-change';
@@ -13,11 +24,13 @@ const STUDIO_EXPORT_SETTINGS_KEY = 'p0021:studio-export-settings';
 
 export const DEFAULT_STUDIO_EXPORT_SETTINGS: StudioExportSettings = {
   aspect: '16:9',
-  fps: 60,
+  fps: 30,
   resolution: '1080p',
   videoQuality: 'auto',
   outputFormat: 'mp4',
   autoDownload: true,
+  exportDurationMode: 'image',
+  videoNameTemplate: 'time-date-yy-images',
 };
 
 export function readStudioExportSettings(): StudioExportSettings {
@@ -33,7 +46,13 @@ export function readStudioExportSettings(): StudioExportSettings {
       videoQuality: isVideoQuality(parsed.videoQuality) ? parsed.videoQuality : DEFAULT_STUDIO_EXPORT_SETTINGS.videoQuality,
       outputFormat: isOutputFormat(parsed.outputFormat) ? parsed.outputFormat : DEFAULT_STUDIO_EXPORT_SETTINGS.outputFormat,
       autoDownload: typeof parsed.autoDownload === 'boolean' ? parsed.autoDownload : DEFAULT_STUDIO_EXPORT_SETTINGS.autoDownload,
+      exportDurationMode: isExportDurationMode(parsed.exportDurationMode)
+        ? parsed.exportDurationMode
+        : DEFAULT_STUDIO_EXPORT_SETTINGS.exportDurationMode,
       downloadDirectoryName: typeof parsed.downloadDirectoryName === 'string' ? parsed.downloadDirectoryName : undefined,
+      videoNameTemplate: isVideoNameTemplate(parsed.videoNameTemplate)
+        ? parsed.videoNameTemplate
+        : DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate,
     };
   } catch {
     return DEFAULT_STUDIO_EXPORT_SETTINGS;
@@ -64,4 +83,18 @@ function isVideoQuality(value: unknown): value is StudioExportSettings['videoQua
 
 function isOutputFormat(value: unknown): value is StudioExportSettings['outputFormat'] {
   return value === 'mp4' || value === 'mov';
+}
+
+function isExportDurationMode(value: unknown): value is ExportDurationMode {
+  return value === 'image' || value === 'script';
+}
+
+function isVideoNameTemplate(value: unknown): value is VideoNameTemplate {
+  return (
+    value === 'time-date-yy-images' ||
+    value === 'time-date-yy' ||
+    value === 'date-yy-time' ||
+    value === 'topic-time-date' ||
+    value === 'jobid'
+  );
 }

@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Pause, Square, Loader2, AlertCircle, RotateCcw, X } from 'lucide-react';
 import { voicePreviewUrl } from '@/lib/api';
+import { TRANSITION_S, resolveAutoEffect } from '@/lib/pipeline-constants';
 
 export type SequenceScene = {
   text: string;
@@ -34,16 +35,12 @@ export type SequenceTiming = {
 
 type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
 
-const EFFECTS_CYCLE = ['zoom_in', 'pan_right', 'flash', 'sparkle'];
-
-/** Crossfade duration between scenes: matches ffmpeg render (compose.py transition=0.4). */
-const TRANSITION_S = 0.4;
-
 export function SequencePreview({
   scenes,
   voice,
   rate,
   aspect,
+  narrationText,
   onClose,
   onProgress,
   onTimingReady,
@@ -53,6 +50,8 @@ export function SequencePreview({
   voice: string;
   rate: string;
   aspect: '9:16' | '16:9' | '1:1';
+  /** Full narration script (Paste Full Script) when scene lines have no per-image text. */
+  narrationText?: string;
   onClose?: () => void;
   onProgress?: (elapsedSec: number) => void;
   onTimingReady?: (timing: SequenceTiming) => void;
@@ -68,6 +67,8 @@ export function SequencePreview({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const buffersRef = useRef<AudioBuffer[]>([]);
+  const narrationBufferRef = useRef<AudioBuffer | null>(null);
+  const singleNarrationRef = useRef(false);
   const sourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const startTimeRef = useRef<number>(0);
@@ -100,31 +101,52 @@ export function SequencePreview({
       ctxRef.current = ctx;
 
       const nextWarnings: string[] = [];
-      const buffers = await Promise.all(
-        scenes.map(async (s, i) => {
-          if (s.durationSec) {
-            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
-            return makeSilentBuffer(ctx, s.durationSec);
-          }
-          if (!s.text.trim()) {
-            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
-            return makeSilentBuffer(ctx, estimateDurationSec(s.text));
-          }
-          const url = voicePreviewUrl(s.text, voice, rate);
-          try {
-            const resp = await fetch(url);
-            if (!resp.ok) throw new Error(`tts ${resp.status}`);
-            const ab = await resp.arrayBuffer();
-            const buf = await ctx.decodeAudioData(ab);
-            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
-            return buf;
-          } catch {
-            nextWarnings.push(`Scene ${i + 1}: voice preview failed, using estimated timing.`);
-            setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
-            return makeSilentBuffer(ctx, estimateDurationSec(s.text));
-          }
-        })
-      );
+      const narration = narrationText?.trim() ?? '';
+      const hasPerSceneText = scenes.some((s) => s.text.trim());
+      singleNarrationRef.current = Boolean(narration && !hasPerSceneText);
+      narrationBufferRef.current = null;
+
+      let buffers: AudioBuffer[];
+
+      if (singleNarrationRef.current) {
+        const sceneDur = (s: SequenceScene) => Math.max(0.5, s.durationSec ?? estimateDurationSec(s.text));
+        try {
+          const url = voicePreviewUrl(narration, voice, rate);
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`tts ${resp.status}`);
+          const ab = await resp.arrayBuffer();
+          narrationBufferRef.current = await ctx.decodeAudioData(ab);
+        } catch {
+          nextWarnings.push('Narration preview failed — video timing only (no voice).');
+          narrationBufferRef.current = null;
+        }
+        buffers = scenes.map((s) => makeSilentBuffer(ctx, sceneDur(s)));
+        setLoadProgress({ done: scenes.length, total: scenes.length });
+      } else {
+        buffers = await Promise.all(
+          scenes.map(async (s, i) => {
+            const slotSec = Math.max(0.5, s.durationSec ?? estimateDurationSec(s.text));
+            if (!s.text.trim()) {
+              setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+              return makeSilentBuffer(ctx, slotSec);
+            }
+            const url = voicePreviewUrl(s.text, voice, rate);
+            try {
+              const resp = await fetch(url);
+              if (!resp.ok) throw new Error(`tts ${resp.status}`);
+              const ab = await resp.arrayBuffer();
+              const buf = await ctx.decodeAudioData(ab);
+              setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+              return buf;
+            } catch {
+              nextWarnings.push(`Scene ${i + 1}: voice preview failed, using estimated timing.`);
+              setLoadProgress((p) => ({ ...p, done: p.done + 1 }));
+              return makeSilentBuffer(ctx, slotSec);
+            }
+          })
+        );
+      }
+
       buffersRef.current = buffers;
       setWarnings(nextWarnings);
       const durations = buffers.map((b) => b.duration);
@@ -146,12 +168,14 @@ export function SequencePreview({
 
       let cum = 0;
       const starts: number[] = [];
-      for (const b of buffers) {
+      for (const s of scenes) {
         starts.push(cum);
-        cum += b.duration;
+        cum += Math.max(0.5, s.durationSec ?? 5);
       }
       sceneStartsRef.current = starts;
-      totalRef.current = cum;
+      totalRef.current = singleNarrationRef.current
+        ? Math.max(cum, narrationBufferRef.current?.duration ?? 0)
+        : cum;
       pausedAtRef.current = 0;
       lastProgressEmitRef.current = -1;
       onProgress?.(0);
@@ -166,7 +190,7 @@ export function SequencePreview({
       setStatus('error');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onProgress, onTimingReady, scenes, voice, rate]);
+  }, [narrationText, onProgress, onTimingReady, scenes, voice, rate]);
 
   // ─── Play / Pause / Stop ────────────────────────────────────────────
   const play = useCallback(() => {
@@ -183,21 +207,35 @@ export function SequencePreview({
     const offset = pausedAtRef.current;
     startTimeRef.current = ctx.currentTime - offset;
 
-    buffers.forEach((buf, i) => {
-      const sceneStart = sceneStartsRef.current[i];
-      const sceneEnd = sceneStart + buf.duration;
-      if (sceneEnd <= offset) return;
+    if (singleNarrationRef.current && narrationBufferRef.current) {
       const src = ctx.createBufferSource();
-      src.buffer = buf;
+      src.buffer = narrationBufferRef.current;
       src.connect(ctx.destination);
-      if (sceneStart >= offset) {
-        src.start(startTimeRef.current + sceneStart);
-      } else {
-        const inSceneOffset = offset - sceneStart;
-        src.start(ctx.currentTime, inSceneOffset);
+      const playDuration = Math.min(
+        narrationBufferRef.current.duration,
+        Math.max(0, totalRef.current - offset)
+      );
+      if (playDuration > 0) {
+        src.start(ctx.currentTime, Math.min(offset, narrationBufferRef.current.duration - 0.05));
       }
       sourcesRef.current.push(src);
-    });
+    } else {
+      buffers.forEach((buf, i) => {
+        const sceneStart = sceneStartsRef.current[i];
+        const sceneEnd = sceneStart + buf.duration;
+        if (sceneEnd <= offset) return;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        if (sceneStart >= offset) {
+          src.start(startTimeRef.current + sceneStart);
+        } else {
+          const inSceneOffset = offset - sceneStart;
+          src.start(ctx.currentTime, inSceneOffset);
+        }
+        sourcesRef.current.push(src);
+      });
+    }
 
     setStatus('playing');
     loopRef.current();
@@ -254,13 +292,11 @@ export function SequencePreview({
       idx = Math.max(0, idx);
 
       const sceneStart = starts[idx];
-      const sceneDur = buffers[idx].duration;
+      const sceneDur =
+        idx + 1 < starts.length ? starts[idx + 1] - sceneStart : totalRef.current - sceneStart;
       const sceneT = e - sceneStart;
       const progress = Math.min(1, sceneT / sceneDur);
-      const effect =
-        scenes[idx].effect && scenes[idx].effect !== 'auto'
-          ? scenes[idx].effect!
-          : EFFECTS_CYCLE[idx % EFFECTS_CYCLE.length];
+      const effect = resolveAutoEffect(scenes[idx].effect, idx);
 
       // Detect transition zone: last TRANSITION_S of current scene
       const remaining = sceneDur - sceneT;
@@ -278,10 +314,7 @@ export function SequencePreview({
         const fadeProgress = (TRANSITION_S - remaining) / TRANSITION_S; // 0 → 1
         const nextIdx = idx + 1;
         const nextImg = imagesRef.current[nextIdx];
-        const nextEffect =
-          scenes[nextIdx]?.effect && scenes[nextIdx].effect !== 'auto'
-            ? scenes[nextIdx].effect!
-            : EFFECTS_CYCLE[nextIdx % EFFECTS_CYCLE.length];
+        const nextEffect = resolveAutoEffect(scenes[nextIdx]?.effect, nextIdx);
         if ((transition === 'slide_left' || transition === 'slide_right') && img && nextImg) {
           const direction = transition === 'slide_left' ? -1 : 1;
           cnvCtx.save();

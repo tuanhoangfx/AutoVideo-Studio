@@ -1,56 +1,48 @@
 # P0021 — AutoVideo Studio
 
-Auto-generate videos: topic → script → images → voice-over → subtitle → effects → MP4.
+Auto-generate videos from images + narration script → TTS → optional BGM/subtitles → MP4.
 
 ## Tech stack
 
-- **Frontend:** Next.js 14 App Router + Tailwind (port 3021)
-- **Worker:** Python 3.11 + FastAPI + MoviePy + FFmpeg (port 8021)
-- **Pipeline:**
-  - **Script:** LLM (Gemini Flash / OpenAI / Ollama)
-  - **Image source:** (A) user upload (drag-drop) OR (B) auto-gen (Stable Diffusion local / DALL·E / Flux API)
-  - **TTS:** edge-tts (free, giọng VN `vi-VN-HoaiMyNeural` / `vi-VN-NamMinhNeural`) — fallback ElevenLabs
-  - **Subtitle align:** Whisper (base/small) → SRT word-level
-  - **Effects:** Ken Burns (zoom/pan), fade in/out, slide transition
-  - **Render:** FFmpeg via MoviePy
+| Layer | Stack |
+|-------|--------|
+| **UI** | Next.js 14 App Router + Tailwind (port **3021**) |
+| **Desktop** | Electron + bundled worker (`autovideo-worker.exe`) |
+| **Worker** | Python 3.11 + FastAPI + imageio-ffmpeg (port **8021**) |
+| **TTS** | edge-tts (primary), gTTS (fallback) |
+| **Render** | FFmpeg — Ken Burns (`zoompan`), xfade (0.4s), HW encoders (NVENC/QSV/AMF) |
 
 ## Folder structure
 
 ```
 P0021-AutoVideo-Studio/
-├── app/                              # Next.js 14 UI
-│   └── src/app/
-│       ├── design-preview/auto-video/  # 5 mockups V1–V5 (design-first rule)
-│       ├── projects/                 # job list + create
-│       ├── render/[id]/              # progress + preview player
-│       └── layout.tsx
-├── worker/                           # Python FastAPI
-│   ├── main.py
-│   ├── pipeline/
-│   │   ├── script.py
-│   │   ├── image_gen.py              # SD / DALL-E / Flux
-│   │   ├── image_upload.py           # user uploads
-│   │   ├── tts.py                    # edge-tts
-│   │   ├── subtitle.py               # whisper
-│   │   ├── effects.py                # Ken Burns + transitions
-│   │   └── compose.py                # ffmpeg final render
-│   ├── storage/                      # /jobs/<id>/{images,audio,output}
-│   └── requirements.txt
-├── docs/ARCHITECTURE.md
+├── app/                    # Next.js UI + Electron
+│   └── src/
+│       ├── app/studio/     # Main editor (single screen)
+│       ├── app/system/     # Overview + Design Template tab
+│       ├── components/studio/
+│       └── lib/studio/     # Hooks + shared studio utils
+├── worker/
+│   ├── main.py             # FastAPI job API
+│   └── pipeline/
+│       ├── runner.py       # tts → audio → subtitle → compose
+│       ├── compose.py      # FFmpeg video
+│       ├── tts.py, subtitle.py, ffmpeg_util.py
+│       └── script_gen.py   # Optional offline CLI (Gemini/template)
+├── docs/
 ├── tool.manifest.json
-├── README.md
-└── CLAUDE.md
+└── README.md
 ```
 
 ## Quick start
 
 ```bash
-# 1. App UI
+# App UI
 cd app
 pnpm install
-pnpm dev                    # http://localhost:3021
+pnpm dev                    # http://localhost:3021/studio
 
-# 2. Worker
+# Worker
 cd worker
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
@@ -59,10 +51,18 @@ python -m venv .venv
 
 ## Workflow
 
-1. **Design phase (hiện tại):** Xem 5 mockup ở `/design-preview/auto-video`, chốt 1 layout.
-2. **Promote:** Variant đã chọn → wire vào `/projects/new`.
-3. **Job lifecycle:** create → script → images → tts → subtitle → compose → done.
+1. Open **Studio** — add images (local or Google Drive), write narration script.
+2. Configure voice, BGM, subtitles, export settings (aspect/fps/resolution).
+3. **Preview** — client-side canvas preview (fast, approximate).
+4. **Export & Download** — worker render; `GlobalJobPoller` tracks jobs and auto-downloads when done.
+
+## Smoke test (worker)
+
+```bash
+cd worker
+.venv\Scripts\python scripts\smoke_e2e.py
+```
 
 ## Status
 
-🚧 Bootstrap. Chưa wire worker. Đang ở giai đoạn design preview.
+**v0.3.x** — Production studio UI at `/studio`, worker wired, desktop + Vercel deploy paths documented in `docs/DEPLOYMENT.md`.

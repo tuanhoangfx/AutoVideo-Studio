@@ -238,6 +238,90 @@ html, body {
   align-items: center;
   gap: 0.35rem;
 }
+/* Studio compact controls — unified 26px row height */
+.studio-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 26px;
+  padding: 0 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.studio-control:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+.studio-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+.studio-control--active {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;
+}
+.studio-control-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+.studio-search {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 26px;
+  min-width: 0;
+  flex: 1;
+  padding: 0 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.45);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.studio-search:focus-within {
+  border-color: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+.studio-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 10px;
+}
+.studio-search input::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.studio-page .hub-filter-chip {
+  height: 26px;
+  padding: 0 0.5rem;
+  font-size: 10px;
+  border-radius: 6px;
+}
+.studio-page .hub-search-box {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 0.5rem;
+}
+.studio-page .hub-search-box input {
+  font-size: 10px;
+}
+
 .hub-filter-chip {
   display: inline-flex;
   align-items: center;

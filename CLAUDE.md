@@ -83,16 +83,10 @@ Xem [DEPLOY.md](DEPLOY.md):
 ## Don'ts
 - ❌ KHÔNG render trong Next.js process (memory leak với ffmpeg) — always delegate worker
 - ❌ KHÔNG hardcode `NEXT_PUBLIC_WORKER_URL` — env-driven cho cloud-portability
-- ❌ KHÔNG remove các variant không chọn trong design-preview — giữ làm thư viện
 - ❌ KHÔNG dùng moviepy (đã thử, slow + heavy deps) — pure ffmpeg subprocess
 
-## Design archive (5 directions × 5 = 25 mockups)
-Giữ tham khảo, KHÔNG xóa:
-- `/design-preview/auto-video` — Workflow V1–V5
-- `/design-preview/auto-video-pro` — Pro Editor P1–P5
-- `/design-preview/auto-video-hybrid` — Hybrid H1–H5
-- `/design-preview/auto-video-refined` — Refined R1–R5 (R4 từng được chốt rồi đổi sang S2)
-- `/design-preview/auto-video-studio-v2` — Studio v2 S1–S5 (**S2 ★**)
+## Design (locked)
+Production UI: `/studio` (single-screen editor). Design preview routes removed after lock; new UI reviews use **System → Design Template** tab per workspace rules.
 
 ## Smoke test verified
 ```

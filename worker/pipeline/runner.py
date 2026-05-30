@@ -12,18 +12,20 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
 
-from .compose import SceneInput, compose_video
+from .compose import SceneInput, compose_video, refresh_encoder_for_job
+from .duration_text import trim_text_for_duration
+from .ffmpeg_util import probe_duration_ms, run_ffmpeg
 from .paths import worker_storage_root
+from .pipeline_constants import EFFECTS_CYCLE
 from .subtitle import SceneCaption, write_ass_lines, write_ass_words, write_srt
 from .tts import synthesize
 
 STORAGE_ROOT = worker_storage_root()
-
-EFFECTS_CYCLE = ["zoom_in", "pan_right", "flash", "sparkle"]
 
 SubtitleStyle = Literal["off", "line", "word_capcut"]
 
@@ -53,6 +55,7 @@ class JobSpec:
     bgm_path: str | None = None
     bgm_volume: float = 0.18           # 0.0 - 1.0 (default ~ -15dB)
     subtitle_style: SubtitleStyle = "off"
+    narration_text: str = ""
 
 
 @dataclass
@@ -68,38 +71,23 @@ ProgressCB = Callable[[JobProgress], None]
 def _noop_cb(_: JobProgress) -> None: ...
 
 
-async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
+async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int]]:
     job_dir = STORAGE_ROOT / spec.job_id
     audio_dir = job_dir / "audio"
     sub_dir = job_dir / "subtitle"
     job_dir.mkdir(parents=True, exist_ok=True)
+    run_started = time.perf_counter()
+    phase_timing_ms: dict[str, int] = {}
 
-    # ── Step 1: TTS per scene + collect captions ────────────────────────
+    # ── Step 1: visual timeline + single narration track ───────────────
+    tts_started = time.perf_counter()
     cb(JobProgress("tts", 5, f"Chuẩn bị timeline ({len(spec.scenes)} ảnh)..."))
     scene_inputs: list[SceneInput] = []
-    audio_segments: list[Path] = []
     captions: list[SceneCaption] = []
-    cumulative_ms = 0
+    total_ms = 0
 
     for i, sc in enumerate(spec.scenes):
         target_ms = max(500, sc.duration_ms or 5000)
-        result = None
-        if sc.text.strip():
-            audio_out = audio_dir / f"scene_{i:03d}.mp3"
-            # Only Edge is wired today; other provider choices are persisted for upcoming adapters.
-            result = await synthesize(sc.text, audio_out, voice=spec.voice, rate=spec.rate, prefer="edge")
-            audio_segments.append(audio_out)
-
-        if sc.text.strip():
-            captions.append(
-                SceneCaption(
-                    text=sc.text,
-                    start_ms=cumulative_ms,
-                    duration_ms=target_ms,
-                    words=result.words if result else [],
-                )
-            )
-
         effect = sc.effect or EFFECTS_CYCLE[i % len(EFFECTS_CYCLE)]
         scene_inputs.append(
             SceneInput(
@@ -109,17 +97,41 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
                 transition=sc.transition or "slide_left",
             )
         )
-        cumulative_ms += target_ms
-        cb(JobProgress("tts", 5 + int(35 * (i + 1) / len(spec.scenes)),
-                       f"Ảnh {i+1}/{len(spec.scenes)} · {target_ms / 1000:g}s"))
+        total_ms += target_ms
 
-    # ── Step 2: concat audio + (optional) mix BGM ──────────────────────
-    cb(JobProgress("audio", 45, "Ghép audio..."))
+    narration = (spec.narration_text or "").strip()
+    if not narration:
+        narration = " ".join(s.text.strip() for s in spec.scenes if s.text.strip())
+
+    cb(JobProgress("tts", 15, "Đọc narration (một track)..."))
     full_audio = audio_dir / "full.mp3"
-    if audio_segments:
-        _concat_audio(audio_segments, full_audio)
+    if narration:
+        tts_text = trim_text_for_duration(narration, total_ms, spec.rate)
+        result = await synthesize(
+            tts_text, full_audio, voice=spec.voice, rate=spec.rate, prefer="edge"
+        )
+        if full_audio.exists():
+            _fit_audio_to_duration(full_audio, total_ms)
+            _pad_audio_to_duration(full_audio, total_ms)
+            captions.append(
+                SceneCaption(
+                    text=tts_text,
+                    start_ms=0,
+                    duration_ms=total_ms,
+                    words=result.words if result else [],
+                )
+            )
+        else:
+            _make_silent_audio(total_ms, full_audio)
     else:
-        _make_silent_audio(cumulative_ms, full_audio)
+        _make_silent_audio(total_ms, full_audio)
+
+    cb(JobProgress("tts", 40, f"Narration · {total_ms / 1000:g}s timeline"))
+    phase_timing_ms["tts_ms"] = int((time.perf_counter() - tts_started) * 1000)
+
+    # ── Step 2: optional BGM mix ───────────────────────────────────────
+    audio_started = time.perf_counter()
+    cb(JobProgress("audio", 45, "Ghép audio..."))
 
     final_audio = full_audio
     if spec.bgm_path:
@@ -132,8 +144,10 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
             bgm_volume=spec.bgm_volume,
         )
         final_audio = bgm_mixed
+    phase_timing_ms["audio_ms"] = int((time.perf_counter() - audio_started) * 1000)
 
     # ── Step 3: subtitle (optional) ─────────────────────────────────────
+    subtitle_started = time.perf_counter()
     subtitle_file: Path | None = None
     if spec.subtitle_style != "off" and captions:
         cb(JobProgress("compose", 55, f"Tạo subtitle ({spec.subtitle_style})..."))
@@ -143,8 +157,11 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
             subtitle_file = write_ass_lines(captions, sub_dir / "captions.ass")
         # Also write SRT for download convenience
         write_srt(captions, sub_dir / "captions.srt")
+    phase_timing_ms["subtitle_ms"] = int((time.perf_counter() - subtitle_started) * 1000)
 
     # ── Step 4: compose video ──────────────────────────────────────────
+    refresh_encoder_for_job()
+    compose_started = time.perf_counter()
     cb(JobProgress("compose", 60, "Export video..."))
     output_ext = "mov" if spec.output_format == "mov" else "mp4"
     out_path = job_dir / f"output.{output_ext}"
@@ -157,6 +174,15 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
         resolution=spec.resolution,
         video_quality=spec.video_quality,
         subtitle_path=subtitle_file,
+    )
+    actual_ms = probe_duration_ms(out_path)
+    if actual_ms is not None:
+        (job_dir / "output_duration_ms.txt").write_text(str(actual_ms), encoding="utf-8")
+    phase_timing_ms["compose_ms"] = int((time.perf_counter() - compose_started) * 1000)
+    phase_timing_ms["total_ms"] = int((time.perf_counter() - run_started) * 1000)
+    (job_dir / "phase_timing_ms.json").write_text(
+        json.dumps(phase_timing_ms, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
 
     # ── Save manifest ──────────────────────────────────────────────────
@@ -186,6 +212,9 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
                     for c in captions
                 ],
                 "output": str(out_path),
+                "expected_duration_ms": sum(si.duration_ms for si in scene_inputs),
+                "output_duration_ms": actual_ms,
+                "phase_timing_ms": phase_timing_ms,
             },
             ensure_ascii=False,
             indent=2,
@@ -194,58 +223,89 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> Path:
     )
 
     cb(JobProgress("done", 100, "Xong"))
-    return out_path
+    return out_path, phase_timing_ms
 
 
-def _concat_audio(segments: list[Path], out_path: Path) -> None:
-    """Concat MP3 via concat demuxer (works for same-codec)."""
-    import imageio_ffmpeg, subprocess
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    list_file = out_path.parent / "audio_concat.txt"
-    list_file.write_text(
-        "\n".join(f"file '{seg.resolve().as_posix()}'" for seg in segments),
-        encoding="utf-8",
+def _fit_audio_to_duration(audio: Path, target_ms: int) -> None:
+    """Trim scene TTS so it never exceeds the export slot duration."""
+    actual = probe_duration_ms(audio)
+    if actual is None:
+        return
+    target_ms = max(500, int(target_ms))
+    if actual <= target_ms + 80:
+        return
+    dur_s = target_ms / 1000.0
+    tmp = audio.with_name(f"{audio.stem}_fit.mp3")
+    run_ffmpeg(
+        [
+            "-y",
+            "-i",
+            str(audio),
+            "-t",
+            f"{dur_s:.3f}",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            str(tmp),
+        ]
     )
-    subprocess.run(
-        [ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
-         "-c", "copy", str(out_path)],
-        check=True, capture_output=True,
+    tmp.replace(audio)
+
+
+def _pad_audio_to_duration(audio: Path, target_ms: int) -> None:
+    """Pad short TTS with silence so each scene matches the export slot."""
+    actual = probe_duration_ms(audio)
+    if actual is None:
+        return
+    target_ms = max(500, int(target_ms))
+    if actual >= target_ms - 80:
+        return
+    dur_s = target_ms / 1000.0
+    tmp = audio.with_name(f"{audio.stem}_pad.mp3")
+    run_ffmpeg(
+        [
+            "-y",
+            "-i",
+            str(audio),
+            "-af",
+            f"apad=pad_dur={dur_s:.3f}",
+            "-t",
+            f"{dur_s:.3f}",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            str(tmp),
+        ]
     )
+    tmp.replace(audio)
 
 
 def _make_silent_audio(duration_ms: int, out_path: Path) -> None:
     """Create silent audio so image-only slideshows keep their exact duration."""
-    import imageio_ffmpeg, subprocess
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     duration_s = max(0.5, duration_ms / 1000)
-    subprocess.run(
+    run_ffmpeg(
         [
-            ffmpeg, "-y",
-            "-f", "lavfi",
-            "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-            "-t", f"{duration_s:.3f}",
-            "-c:a", "libmp3lame",
-            "-b:a", "192k",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-t",
+            f"{duration_s:.3f}",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
             str(out_path),
-        ],
-        check=True, capture_output=True,
+        ]
     )
 
 
 def _mix_bgm(voice: Path, bgm: Path, out: Path, bgm_volume: float = 0.18) -> None:
-    """Mix voice + bgm with sidechain ducking.
-
-    BGM is auto-ducked when voice is loud (sidechaincompress).
-    voice stays at 100%, bgm drops to ~30% of bgm_volume when voice present.
-    """
-    import imageio_ffmpeg, subprocess
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    # Filter graph:
-    #   [bgm] loop + volume → bgm_lv
-    #   sidechain: voice activity → duck bgm_lv
-    #   amix voice + ducked bgm → out
+    """Mix voice + bgm with sidechain ducking."""
     fc = (
         f"[1:a]aloop=loop=-1:size=2e+09,volume={bgm_volume}[bgm_lv];"
         f"[0:a]asplit=2[voice_a][voice_sc];"
@@ -253,21 +313,26 @@ def _mix_bgm(voice: Path, bgm: Path, out: Path, bgm_volume: float = 0.18) -> Non
         f"threshold=0.05:ratio=8:level_sc=0.5:attack=20:release=400[duck_bgm];"
         f"[voice_a][duck_bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
     )
-    subprocess.run(
+    run_ffmpeg(
         [
-            ffmpeg, "-y",
-            "-i", str(voice),
-            "-i", str(bgm),
-            "-filter_complex", fc,
-            "-map", "[aout]",
-            "-c:a", "libmp3lame",
-            "-b:a", "192k",
+            "-y",
+            "-i",
+            str(voice),
+            "-i",
+            str(bgm),
+            "-filter_complex",
+            fc,
+            "-map",
+            "[aout]",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
             str(out),
-        ],
-        check=True, capture_output=True,
+        ]
     )
 
 
-def run_job(spec: JobSpec, cb: ProgressCB = _noop_cb) -> Path:
+def run_job(spec: JobSpec, cb: ProgressCB = _noop_cb) -> tuple[Path, dict[str, int]]:
     """Sync entry — chạy được trong ThreadPoolExecutor."""
     return asyncio.run(_run_async(spec, cb))

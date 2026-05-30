@@ -1,4 +1,6 @@
-"""Script generation — match câu thoại tới ảnh.
+"""Script generation — match câu thoại tới ảnh (standalone CLI / future API).
+
+Not imported by main.py or runner.py. Run: python -m pipeline.script_gen
 
 Two modes:
   - Gemini Flash (if GEMINI_API_KEY env var set) — high quality

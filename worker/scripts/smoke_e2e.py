@@ -57,13 +57,14 @@ def main():
     )
 
     def cb(p: JobProgress):
-        print(f"  [{p.percent:3d}%] {p.step:8s} {p.message}")
+        msg = p.message.encode("ascii", "replace").decode("ascii")
+        print(f"  [{p.percent:3d}%] {p.step:8s} {msg}")
 
     t0 = time.time()
-    out = run_job(spec, cb)
+    out, _phase_timing = run_job(spec, cb)
     dt = time.time() - t0
     size_mb = out.stat().st_size / 1024 / 1024
-    print(f"\n✓ Done in {dt:.1f}s — {out} ({size_mb:.2f} MB)")
+    print(f"\nOK Done in {dt:.1f}s - {out} ({size_mb:.2f} MB)")
 
 
 if __name__ == "__main__":

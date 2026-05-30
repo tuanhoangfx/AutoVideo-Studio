@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
+import { formatInteger } from '@/lib/format-count';
 import { formatReadTime, scriptMetrics } from '@/lib/script-metrics';
 
 export type Effect = 'auto' | 'zoom_in' | 'zoom_out' | 'pan_right' | 'pan_left' | 'flash' | 'sparkle' | 'none';
@@ -33,33 +34,23 @@ export type ScriptLine = {
 };
 
 export function ScriptPanel({
-  onBulkScript,
+  onApplyNarration,
   scriptText,
   onScriptText,
-  onScriptLines,
   imagesCount,
   voice,
   rate,
 }: {
-  onBulkScript: (lines: string[]) => void;
+  /** Apply full script as one narration track (not split per image). */
+  onApplyNarration: (script: string) => void;
   scriptText: string;
   onScriptText: (value: string) => void;
-  onScriptLines: (lines: string[]) => void;
   imagesCount: number;
   voice: string;
   rate: string;
 }) {
-  const bulkLines = useMemo(() => parseBulkScript(scriptText, imagesCount), [imagesCount, scriptText]);
   const metrics = useMemo(() => scriptMetrics(scriptText, voice, rate), [rate, scriptText, voice]);
-  const canApplyBulk = bulkLines.length > 0;
-
-  useEffect(() => {
-    onScriptLines(bulkLines);
-  }, [bulkLines, onScriptLines]);
-
-  const applyBulkScript = () => {
-    onBulkScript(bulkLines);
-  };
+  const canApply = scriptText.trim().length > 0;
 
   return (
     <section className="flex flex-1 flex-col">
@@ -67,7 +58,7 @@ export function ScriptPanel({
         <div className="mb-1 flex items-center justify-between gap-2 text-[10px]">
           <span className="font-semibold text-[var(--accent-2)]">Paste Full Script</span>
           <span className="font-mono text-white/40">
-            {bulkLines.length} lines / {imagesCount} selected images
+            1 narration · {imagesCount} image{imagesCount === 1 ? '' : 's'}
           </span>
         </div>
         <textarea
@@ -79,17 +70,18 @@ export function ScriptPanel({
         />
         <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px]">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[9px]">
-            <MetricChip label="Chars" value={metrics.chars.toLocaleString()} />
-            <MetricChip label="Tokens" value={`~${metrics.tokens.toLocaleString()}`} />
+            <MetricChip label="Chars" value={formatInteger(metrics.chars)} />
+            <MetricChip label="Tokens" value={`~${formatInteger(metrics.tokens)}`} />
             <MetricChip label="Read" value={formatReadTime(metrics.readSeconds)} />
           </div>
           <button
-            onClick={applyBulkScript}
+            type="button"
+            onClick={() => onApplyNarration(scriptText.trim())}
             className={`rounded px-2.5 py-1 font-semibold text-white hover:brightness-110 ${
-              canApplyBulk ? 'bg-[var(--accent)]' : 'bg-white/[.08] text-white/55'
+              canApply ? 'bg-[var(--accent)]' : 'bg-white/[.08] text-white/55'
             }`}
           >
-            {canApplyBulk ? 'Apply Script' : 'Import Empty'}
+            {canApply ? 'Apply narration' : 'Enter script'}
           </button>
         </div>
       </div>
@@ -104,51 +96,5 @@ function MetricChip({ label, value }: { label: string; value: string }) {
       <span className="text-[var(--accent-2)]">{value}</span>
     </span>
   );
-}
-
-function parseBulkScript(value: string, sceneCount: number) {
-  const lines = value
-    .split(/\r?\n+/)
-    .map((line) =>
-      line
-        .replace(/^\s*(?:scene|cảnh)\s*\d+\s*[:.)-]\s*/i, '')
-        .replace(/^\s*(?:\d+[\).:-]|[-*•])\s*/, '')
-        .trim()
-    )
-    .filter(Boolean);
-  if (sceneCount <= 0 || lines.length === sceneCount) return lines;
-  if (lines.length > sceneCount) return chunkItems(lines, sceneCount).map((chunk) => chunk.join(' '));
-
-  const sentences = splitSentences(lines.join(' '));
-  if (sentences.length >= sceneCount) {
-    return chunkItems(sentences, sceneCount).map((chunk) => chunk.join(' '));
-  }
-  return chunkWords(lines.join(' '), sceneCount);
-}
-
-function splitSentences(value: string) {
-  return value
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?。！？])\s+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function chunkItems(items: string[], count: number) {
-  return Array.from({ length: count }, (_, index) => {
-    const start = Math.floor((index * items.length) / count);
-    const end = Math.floor(((index + 1) * items.length) / count);
-    return items.slice(start, Math.max(start + 1, end));
-  });
-}
-
-function chunkWords(value: string, count: number) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-  return Array.from({ length: count }, (_, index) => {
-    const start = Math.floor((index * words.length) / count);
-    const end = Math.floor(((index + 1) * words.length) / count);
-    return words.slice(start, Math.max(start + 1, end)).join(' ');
-  }).filter(Boolean);
 }
 

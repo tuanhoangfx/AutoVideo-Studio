@@ -27,6 +27,27 @@ export type AutoVideoUpdateStatus = {
   } | null;
 };
 
+export type AutoVideoSystemStats = {
+  cpu: {
+    percent: number | null;
+    cores: number | null;
+  };
+  memory: {
+    totalBytes: number;
+    freeBytes: number;
+    usedBytes: number;
+  };
+  processes: {
+    desktop: {
+      pid: number;
+      cpuPercent: number | null;
+      rssBytes: number;
+    };
+    worker: { pid: number } | null;
+  };
+  at: number;
+};
+
 declare global {
   interface Window {
     autovideo?: {
@@ -44,6 +65,7 @@ declare global {
           workerErrorLog: string;
         };
       }>;
+      getSystemStats: () => Promise<AutoVideoSystemStats>;
       restartWorker: () => Promise<string>;
       chooseOutputDirectory: () => Promise<{ name: string; path: string } | null>;
       saveOutputFile: (
@@ -51,6 +73,9 @@ declare global {
         bytes: ArrayBuffer
       ) => Promise<{ ok: true; name: string; path: string } | { ok: false; reason: string }>;
       openOutputDirectory: () => Promise<boolean>;
+      openOutputFile: (
+        filename: string
+      ) => Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
       getUpdateStatus: () => Promise<AutoVideoUpdateStatus>;
       checkForUpdates: () => Promise<AutoVideoUpdateStatus>;
       downloadUpdate: () => Promise<AutoVideoUpdateStatus>;

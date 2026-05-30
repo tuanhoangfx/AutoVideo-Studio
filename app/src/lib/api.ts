@@ -51,6 +51,8 @@ export type JobConfig = {
   tts_provider?: TTSProvider;
   subtitle_style?: SubtitleStyle;
   bgm_volume?: number;
+  /** Full script read once; not split per scene/image. */
+  narration_script?: string;
 };
 
 export type Job = {
@@ -61,7 +63,13 @@ export type Job = {
   config: JobConfig;
   scenes_count: number;
   created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  render_duration_ms?: number | null;
+  phase_timing_ms?: Record<string, number> | null;
   output_url: string | null;
+  expected_duration_ms?: number | null;
+  output_duration_ms?: number | null;
   error: string | null;
 };
 
@@ -120,6 +128,18 @@ export async function getJob(id: string) {
   return handle<Job>(await fetch(workerUrl(`/jobs/${id}`)));
 }
 
+export async function deleteJob(id: string) {
+  return handle<{ ok: true }>(
+    await fetch(workerUrl(`/jobs/${id}`), { method: 'DELETE' })
+  );
+}
+
+export async function probeJobOutput(id: string) {
+  return handle<Job>(
+    await fetch(workerUrl(`/jobs/${id}/probe`), { method: 'POST' })
+  );
+}
+
 export async function createJob(payload: CreateJobPayload): Promise<Job> {
   const fd = new FormData();
   fd.append('scenes', JSON.stringify(payload.scenes));
@@ -130,24 +150,6 @@ export async function createJob(payload: CreateJobPayload): Promise<Job> {
     await fetch(workerUrl('/jobs'), { method: 'POST', body: fd })
   );
 }
-
-// ──────────────────── Export presets (frontend-only, sets aspect+fps) ────
-export type ExportPreset = {
-  id: 'tiktok' | 'reels' | 'shorts' | 'youtube' | 'square';
-  label: string;
-  icon: string;
-  aspect: '9:16' | '16:9' | '1:1';
-  fps: number;
-  hint: string;
-};
-
-export const EXPORT_PRESETS: ExportPreset[] = [
-  { id: 'tiktok', label: 'TikTok', icon: '◤', aspect: '9:16', fps: 30, hint: '9:16 · 30fps · 1080p' },
-  { id: 'reels', label: 'Instagram Reels', icon: '◆', aspect: '9:16', fps: 30, hint: '9:16 · 30fps' },
-  { id: 'shorts', label: 'YouTube Shorts', icon: '▶', aspect: '9:16', fps: 30, hint: '9:16 · 30fps' },
-  { id: 'youtube', label: 'YouTube', icon: '◢', aspect: '16:9', fps: 60, hint: '16:9 · 60fps · 1080p' },
-  { id: 'square', label: 'Square', icon: '■', aspect: '1:1', fps: 30, hint: '1:1 · 30fps' },
-];
 
 export async function cancelJob(id: string) {
   return handle<{ ok: true }>(
@@ -161,9 +163,13 @@ export function outputUrl(id: string): string {
 }
 
 export function voicePreviewUrl(text: string, voice: string, rate = '+0%'): string {
-  if (!WORKER_URL) return '';
-  const params = new URLSearchParams({ text, voice, rate });
-  return workerUrl(`/voices/preview?${params.toString()}`);
+  const base = getWorkerUrl();
+  if (!base) return '';
+  const trimmed = text.trim();
+  const safeText =
+    trimmed.length > 800 ? trimmed.slice(0, 800) : trimmed || 'Hello, this is a voice preview.';
+  const params = new URLSearchParams({ text: safeText, voice, rate });
+  return `${base.replace(/\/$/, '')}/voices/preview?${params.toString()}`;
 }
 
 function workerUrl(path: string) {

@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { Database, LayoutDashboard, Palette, Settings2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DeploymentCheck } from '@/components/system/DeploymentCheck';
+import { ExportBenchmarkPanel } from '@/components/system/ExportBenchmarkPanel';
+import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
 
 type SystemTab = 'overview' | 'template';
 
@@ -20,7 +22,7 @@ export default function SystemPage({
             <div className="inline-flex items-center gap-2 text-sm font-semibold text-violet-200">
               <Settings2 size={17} /> System
             </div>
-            <div className="mt-1 text-xs text-[var(--muted)]">Build v0.3 · Workspace shell cloned from P0020</div>
+            <div className="mt-1 text-xs text-[var(--muted)]">Build {formatAppVersionWithUpdateDate()}</div>
           </div>
         </div>
       </section>
@@ -69,6 +71,10 @@ function SystemOverview() {
   return (
     <div className="space-y-4">
       <DeploymentCheck />
+      <ExportBenchmarkPanel />
+      <section className="rounded-2xl border border-white/10 bg-[var(--panel)] px-5 py-4 text-xs text-[var(--muted)]">
+        Workspace preferences (system stats refresh, etc.) are in the sidebar footer → <strong className="text-amber-200/90">Setting</strong>.
+      </section>
       <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-6">
         <div className="flex items-start gap-4">
           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-500/20 text-indigo-100">

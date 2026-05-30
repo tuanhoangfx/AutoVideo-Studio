@@ -16,7 +16,9 @@ Run:
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import subprocess
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -32,6 +34,7 @@ from pipeline.paths import worker_preview_root, worker_storage_root
 from pipeline.runner import JobProgress, JobSpec, SceneSpec, run_job
 from pipeline.storage_backend import publish_output, storage_status
 from pipeline.tts import list_vi_voices
+from pipeline.ffmpeg_util import FFmpegRenderError, called_process_to_ffmpeg_error, probe_duration_ms
 
 app = FastAPI(title="AutoVideo Studio Worker", version="0.2.0")
 
@@ -51,7 +54,7 @@ app.add_middleware(
 STORAGE_ROOT = worker_storage_root()
 STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
 
-MAX_CONCURRENT = 2
+MAX_CONCURRENT = max(1, min(8, int(os.getenv("AUTOVIDEO_MAX_CONCURRENT", "4"))))
 executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT, thread_name_prefix="render")
 
 
@@ -63,12 +66,120 @@ def _persist_job(job: "Job") -> None:
     (job_dir / "job.json").write_text(job.model_dump_json(indent=2), encoding="utf-8")
 
 
+def _parse_iso_pair_ms(started: str | None, completed: str | None) -> int | None:
+    if not started or not completed:
+        return None
+    for normalize in (lambda s: s.replace("Z", "+00:00"), lambda s: s):
+        try:
+            start = datetime.fromisoformat(normalize(started))
+            end = datetime.fromisoformat(normalize(completed))
+            delta = int((end - start).total_seconds() * 1000)
+            return delta if delta > 0 else None
+        except Exception:
+            continue
+    return None
+
+
+def _read_manifest_metrics(job_dir: Path) -> dict:
+    manifest_path = job_dir / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _probe_output_file_ms(job_dir: Path, output_format: str = "mp4") -> int | None:
+    for name in (f"output.{output_format}", "output.mp4", "output.mov"):
+        out = job_dir / name
+        if out.exists():
+            ms = probe_duration_ms(out)
+            if ms is not None and ms > 0:
+                return ms
+    return None
+
+
+def _enrich_job_from_disk(j: "Job", job_dir: Path) -> None:
+    """Backfill timing fields for jobs saved before metrics were persisted."""
+    manifest = _read_manifest_metrics(job_dir)
+
+    if j.expected_duration_ms is None or j.expected_duration_ms <= 0:
+        expected = manifest.get("expected_duration_ms")
+        if isinstance(expected, (int, float)) and expected > 0:
+            j.expected_duration_ms = int(expected)
+
+    if j.output_duration_ms is None or j.output_duration_ms <= 0:
+        txt = job_dir / "output_duration_ms.txt"
+        if txt.exists():
+            try:
+                j.output_duration_ms = int(txt.read_text(encoding="utf-8").strip())
+            except Exception:
+                pass
+    if j.output_duration_ms is None or j.output_duration_ms <= 0:
+        probed = manifest.get("output_duration_ms")
+        if isinstance(probed, (int, float)) and probed > 0:
+            j.output_duration_ms = int(probed)
+    if j.output_duration_ms is None or j.output_duration_ms <= 0:
+        fmt = j.config.output_format if j.config else "mp4"
+        probed_file = _probe_output_file_ms(job_dir, fmt or "mp4")
+        if probed_file is not None:
+            j.output_duration_ms = probed_file
+
+    if j.phase_timing_ms is None:
+        pt = job_dir / "phase_timing_ms.json"
+        if pt.exists():
+            try:
+                j.phase_timing_ms = json.loads(pt.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+    if j.phase_timing_ms is None:
+        manifest_pt = manifest.get("phase_timing_ms")
+        if isinstance(manifest_pt, dict):
+            j.phase_timing_ms = {
+                str(k): int(v)
+                for k, v in manifest_pt.items()
+                if isinstance(v, (int, float)) and v >= 0
+            }
+
+    if j.render_duration_ms is None or j.render_duration_ms <= 0:
+        parsed = _parse_iso_pair_ms(j.started_at, j.completed_at)
+        if parsed is not None:
+            j.render_duration_ms = parsed
+    if (j.render_duration_ms is None or j.render_duration_ms <= 0) and j.phase_timing_ms:
+        total = j.phase_timing_ms.get("total_ms")
+        if isinstance(total, (int, float)) and total > 0:
+            j.render_duration_ms = int(total)
+    if (j.render_duration_ms is None or j.render_duration_ms <= 0) and j.phase_timing_ms:
+        tts = int(j.phase_timing_ms.get("tts_ms") or 0)
+        audio = int(j.phase_timing_ms.get("audio_ms") or 0)
+        subtitle = int(j.phase_timing_ms.get("subtitle_ms") or 0)
+        compose = int(j.phase_timing_ms.get("compose_ms") or 0)
+        summed = tts + audio + subtitle + compose
+        if summed > 0:
+            j.render_duration_ms = summed
+
+
+def _ensure_job_metrics(j: "Job") -> "Job":
+    job_dir = STORAGE_ROOT / j.id
+    if not job_dir.is_dir():
+        return j
+    before = j.model_dump()
+    _enrich_job_from_disk(j, job_dir)
+    if j.model_dump() != before:
+        _persist_job(j)
+    return j
+
+
 def _load_jobs() -> dict[str, "Job"]:
     """Scan storage/jobs/*/job.json on startup, restore in-memory state."""
     out: dict[str, "Job"] = {}
     for job_json in STORAGE_ROOT.glob("J*/job.json"):
         try:
             j = Job.model_validate_json(job_json.read_text(encoding="utf-8"))
+            job_dir = job_json.parent
+            _enrich_job_from_disk(j, job_dir)
             # Jobs left mid-render get marked error (process died, not resumable)
             if j.status not in ("done", "error"):
                 j.status = "error"
@@ -95,6 +206,7 @@ class JobConfig(BaseModel):
     # v0.3 features
     subtitle_style: Literal["off", "line", "word_capcut"] = "off"
     bgm_volume: float = 0.18  # 0.0 – 1.0
+    narration_script: str = ""
 
 
 class SceneIn(BaseModel):
@@ -113,8 +225,19 @@ class Job(BaseModel):
     config: JobConfig
     scenes_count: int = 0
     created_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    render_duration_ms: int | None = None
+    phase_timing_ms: dict[str, int] | None = None
     output_url: str | None = None
+    expected_duration_ms: int | None = None
+    output_duration_ms: int | None = None
     error: str | None = None
+
+
+def expected_duration_ms_from_scenes(scenes: list[SceneIn]) -> int:
+    """Sum scene durations as sent by Studio (image-based export timeline)."""
+    return sum(max(500, s.duration_ms or 5000) for s in scenes)
 
 
 JOBS: dict[str, Job] = {}
@@ -159,7 +282,7 @@ PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
 @app.get("/voices/preview")
 async def voice_preview(
-    text: str = Query(..., description="Text to synthesize, max 200 chars"),
+    text: str = Query(..., description="Text to synthesize, max 800 chars"),
     voice: str = Query("vi-VN-HoaiMyNeural"),
     rate: str = Query("+0%"),
 ):
@@ -170,8 +293,8 @@ async def voice_preview(
     """
     if not text.strip():
         raise HTTPException(400, "empty text")
-    if len(text) > 200:
-        text = text[:200]
+    if len(text) > 800:
+        text = text[:800]
     # Cache key
     key = _hashlib.sha1(f"{voice}|{rate}|{text}".encode("utf-8")).hexdigest()[:16]
     out = PREVIEW_DIR / f"{key}.mp3"
@@ -230,12 +353,16 @@ async def create_job(
         for s in raw_scenes
     ]
 
+    expected_ms = expected_duration_ms_from_scenes(raw_scenes)
+
     job = Job(
         id=job_id,
         status="pending",
         config=cfg,
         scenes_count=len(scene_specs),
         created_at=datetime.utcnow().isoformat() + "Z",
+        started_at=datetime.utcnow().isoformat() + "Z",
+        expected_duration_ms=expected_ms,
     )
     JOBS[job_id] = job
     _persist_job(job)
@@ -254,6 +381,7 @@ async def create_job(
         bgm_path=bgm_path,
         bgm_volume=cfg.bgm_volume,
         subtitle_style=cfg.subtitle_style,
+        narration_text=(cfg.narration_script or "").strip(),
     )
 
     def progress_cb(p: JobProgress):
@@ -265,17 +393,29 @@ async def create_job(
             _persist_job(j)
 
     def runner_task():
+        started_ms = int(datetime.utcnow().timestamp() * 1000)
         try:
-            out = run_job(spec, progress_cb)
+            out, phase_timing = run_job(spec, progress_cb)
             j = JOBS[job_id]
             j.status = "done"
             j.progress = 100
             j.output_url = publish_output(job_id, out) or f"/jobs/{job_id}/output"
+            j.output_duration_ms = probe_duration_ms(out)
+            j.phase_timing_ms = phase_timing
+            j.completed_at = datetime.utcnow().isoformat() + "Z"
+            j.render_duration_ms = max(0, int(datetime.utcnow().timestamp() * 1000) - started_ms)
             _persist_job(j)
         except Exception as e:
             j = JOBS[job_id]
             j.status = "error"
-            j.error = f"{type(e).__name__}: {e}"
+            if isinstance(e, FFmpegRenderError):
+                j.error = str(e)
+            elif isinstance(e, subprocess.CalledProcessError):
+                j.error = str(called_process_to_ffmpeg_error(e))
+            else:
+                j.error = f"{type(e).__name__}: {e}"
+            j.completed_at = datetime.utcnow().isoformat() + "Z"
+            j.render_duration_ms = max(0, int(datetime.utcnow().timestamp() * 1000) - started_ms)
             _persist_job(j)
 
     executor.submit(runner_task)
@@ -285,7 +425,7 @@ async def create_job(
 @app.get("/jobs", response_model=list[Job])
 def list_jobs():
     # Newest first by created_at
-    return sorted(JOBS.values(), key=lambda j: j.created_at, reverse=True)
+    return sorted((_ensure_job_metrics(j) for j in JOBS.values()), key=lambda j: j.created_at, reverse=True)
 
 
 @app.delete("/jobs/{job_id}")
@@ -303,7 +443,29 @@ def delete_job(job_id: str):
 def get_job(job_id: str):
     if job_id not in JOBS:
         raise HTTPException(404, "job not found")
-    return JOBS[job_id]
+    return _ensure_job_metrics(JOBS[job_id])
+
+
+@app.post("/jobs/{job_id}/probe", response_model=Job)
+def probe_job_output(job_id: str):
+    """Re-probe output file duration (ffprobe via ffmpeg stderr)."""
+    if job_id not in JOBS:
+        raise HTTPException(404, "job not found")
+    j = JOBS[job_id]
+    if j.status != "done":
+        raise HTTPException(400, "job not done")
+    output_format = j.config.output_format or "mp4"
+    out = STORAGE_ROOT / job_id / f"output.{output_format}"
+    if not out.exists():
+        out = STORAGE_ROOT / job_id / "output.mp4"
+    if not out.exists():
+        raise HTTPException(404, "output file not found")
+    ms = probe_duration_ms(out)
+    if ms is None:
+        raise HTTPException(500, "could not probe output duration")
+    j.output_duration_ms = ms
+    _persist_job(j)
+    return _ensure_job_metrics(j)
 
 
 @app.get("/jobs/{job_id}/output")

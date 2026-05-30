@@ -4,6 +4,7 @@ const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
 const net = require('node:net');
+const os = require('node:os');
 const path = require('node:path');
 
 const packaged = app.isPackaged;
@@ -36,6 +37,77 @@ let updateStatus = {
   releaseDate: '',
   progress: null,
 };
+
+let lastCpuSampleAtMs = 0;
+let lastCpuTimes = null;
+let lastCpuEma = null;
+
+function sampleCpuPercent() {
+  const now = Date.now();
+  const cpus = os.cpus();
+  if (!cpus || cpus.length === 0) return null;
+
+  const total = cpus.reduce(
+    (acc, cpu) => {
+      const t = cpu.times;
+      acc.user += t.user || 0;
+      acc.nice += t.nice || 0;
+      acc.sys += t.sys || 0;
+      acc.idle += t.idle || 0;
+      acc.irq += t.irq || 0;
+      return acc;
+    },
+    { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 }
+  );
+
+  const totalTicks = total.user + total.nice + total.sys + total.idle + total.irq;
+  const idleTicks = total.idle;
+
+  if (!lastCpuTimes || !lastCpuSampleAtMs) {
+    lastCpuTimes = { totalTicks, idleTicks };
+    lastCpuSampleAtMs = now;
+    return null;
+  }
+
+  const dtTotal = totalTicks - lastCpuTimes.totalTicks;
+  const dtIdle = idleTicks - lastCpuTimes.idleTicks;
+  lastCpuTimes = { totalTicks, idleTicks };
+  lastCpuSampleAtMs = now;
+  if (dtTotal <= 0) return null;
+
+  const busy = Math.max(0, Math.min(1, 1 - dtIdle / dtTotal));
+  const pct = Math.round(busy * 1000) / 10;
+  const alpha = 0.25;
+  lastCpuEma = typeof lastCpuEma === 'number' ? lastCpuEma * (1 - alpha) + pct * alpha : pct;
+  return Math.round(lastCpuEma * 10) / 10;
+}
+
+let lastProcSampleAtMs = 0;
+let lastProcCpu = null;
+let lastProcEma = null;
+
+function sampleProcessCpuPercent() {
+  const now = Date.now();
+  const cpu = process.cpuUsage();
+  if (!lastProcCpu || !lastProcSampleAtMs) {
+    lastProcCpu = cpu;
+    lastProcSampleAtMs = now;
+    return null;
+  }
+
+  const dtMs = now - lastProcSampleAtMs;
+  const dtUserUs = cpu.user - lastProcCpu.user;
+  const dtSystemUs = cpu.system - lastProcCpu.system;
+  lastProcCpu = cpu;
+  lastProcSampleAtMs = now;
+  if (dtMs <= 0) return null;
+
+  const dtCpuUs = dtUserUs + dtSystemUs;
+  const pct = (dtCpuUs / (dtMs * 1000)) * 100;
+  const alpha = 0.25;
+  lastProcEma = typeof lastProcEma === 'number' ? lastProcEma * (1 - alpha) + pct * alpha : pct;
+  return Math.round(lastProcEma * 10) / 10;
+}
 
 fs.mkdirSync(runtimeDir, { recursive: true });
 loadDesktopConfig();
@@ -239,13 +311,20 @@ async function startWorker() {
   const args = exe
     ? ['--host', '127.0.0.1', '--port', String(workerPort)]
     : ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', String(workerPort)];
+  const workerEnv = {
+    ...process.env,
+    AUTOVIDEO_WORKER_STORAGE_ROOT: workerStorageDir,
+    AUTOVIDEO_WORKER_PREVIEW_ROOT: workerPreviewDir,
+    AUTOVIDEO_VIDEO_ENCODER: process.env.AUTOVIDEO_VIDEO_ENCODER || 'libx264',
+    AUTOVIDEO_RENDER_WORKERS: process.env.AUTOVIDEO_RENDER_WORKERS || '1',
+    PYTHONIOENCODING: 'utf-8',
+  };
+  console.log(
+    `[worker] ${exe ? 'exe' : 'python'} port=${workerPort} encoder=${workerEnv.AUTOVIDEO_VIDEO_ENCODER}`
+  );
   workerProcess = spawn(command, args, {
     cwd: exe ? path.dirname(exe) : workerDir,
-    env: {
-      ...process.env,
-      AUTOVIDEO_WORKER_STORAGE_ROOT: workerStorageDir,
-      AUTOVIDEO_WORKER_PREVIEW_ROOT: workerPreviewDir,
-    },
+    env: workerEnv,
     stdio: ['ignore', stdout, stderr],
     windowsHide: true,
   });
@@ -328,11 +407,20 @@ async function saveOutputFile(_event, payload) {
   const bytes = payload?.bytes;
   if (!bytes) return { ok: false, reason: 'missing-bytes' };
   const filePath = path.join(outputDirectory, filename);
-  await fs.promises.writeFile(filePath, Buffer.from(new Uint8Array(bytes)));
+  const partPath = `${filePath}.part`;
+  const buffer = Buffer.from(new Uint8Array(bytes));
+  await fs.promises.writeFile(partPath, buffer);
+  const stat = await fs.promises.stat(partPath);
+  if (stat.size < 50_000) {
+    await fs.promises.unlink(partPath).catch(() => {});
+    return { ok: false, reason: 'file-too-small' };
+  }
+  await fs.promises.rename(partPath, filePath);
   return {
     ok: true,
     name: path.basename(outputDirectory),
     path: filePath,
+    size: stat.size,
   };
 }
 
@@ -445,6 +533,33 @@ ipcMain.handle('autovideo:get-runtime-profile', async () => ({
   workerExecutable: workerExecutable() || pythonExe(),
   logs: { workerLog, workerErrorLog },
 }));
+ipcMain.handle('autovideo:get-system-stats', async () => {
+  const totalMemBytes = os.totalmem();
+  const freeMemBytes = os.freemem();
+  const cpuPercent = sampleCpuPercent();
+  const procCpuPercent = sampleProcessCpuPercent();
+  const procMem = process.memoryUsage();
+  return {
+    cpu: {
+      percent: cpuPercent,
+      cores: Array.isArray(os.cpus()) ? os.cpus().length : null,
+    },
+    memory: {
+      totalBytes: totalMemBytes,
+      freeBytes: freeMemBytes,
+      usedBytes: Math.max(0, totalMemBytes - freeMemBytes),
+    },
+    processes: {
+      desktop: {
+        pid: process.pid,
+        cpuPercent: procCpuPercent,
+        rssBytes: procMem.rss,
+      },
+      worker: workerProcess?.pid ? { pid: workerProcess.pid } : null,
+    },
+    at: Date.now(),
+  };
+});
 ipcMain.handle('autovideo:restart-worker', async () => restartWorker());
 ipcMain.handle('autovideo:choose-output-directory', chooseOutputDirectory);
 ipcMain.handle('autovideo:save-output-file', saveOutputFile);
@@ -452,6 +567,13 @@ ipcMain.handle('autovideo:open-output-directory', async () => {
   if (!outputDirectory) return false;
   await shell.openPath(outputDirectory);
   return true;
+});
+ipcMain.handle('autovideo:open-output-file', async (_event, filename) => {
+  if (!outputDirectory) return { ok: false, reason: 'missing-directory' };
+  const filePath = path.join(outputDirectory, safeFilename(filename || ''));
+  if (!fs.existsSync(filePath)) return { ok: false, reason: 'missing-file' };
+  shell.showItemInFolder(filePath);
+  return { ok: true, path: filePath };
 });
 ipcMain.handle('autovideo:get-update-status', async () => updateStatus);
 ipcMain.handle('autovideo:check-for-updates', checkForDesktopUpdates);

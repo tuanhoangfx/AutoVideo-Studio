@@ -2,9 +2,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 
+function mediaErrorLabel(audio: HTMLAudioElement | null): string {
+  const code = audio?.error?.code;
+  if (code === MediaError.MEDIA_ERR_NETWORK) return 'Network error — check worker is running';
+  if (code === MediaError.MEDIA_ERR_DECODE) return 'Audio decode failed';
+  if (code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+    return 'Preview unavailable — worker offline or invalid response';
+  }
+  return 'Preview unavailable';
+}
+
 /**
- * Inline audio preview button — fetches src lazily on first play.
- * Used cho voice preview + BGM preview.
+ * Inline audio preview — fetches MP3 via worker on play (clear errors vs raw &lt;audio src&gt;).
  */
 export function AudioPreview({
   src,
@@ -18,6 +27,7 @@ export function AudioPreview({
   compact?: boolean;
 }) {
   const ref = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,24 +37,82 @@ export function AudioPreview({
     setError(null);
     if (ref.current) {
       ref.current.pause();
-      ref.current.currentTime = 0;
+      ref.current.removeAttribute('src');
+      ref.current.load();
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
     }
   }, [src]);
 
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, []);
+
   const toggle = async () => {
-    if (!src || !ref.current) return;
+    if (!src?.trim() || !ref.current) {
+      setError('Worker URL not configured');
+      return;
+    }
+    const audio = ref.current;
     try {
       if (playing) {
-        ref.current.pause();
+        audio.pause();
         setPlaying(false);
         return;
       }
       setLoading(true);
       setError(null);
-      await ref.current.play();
+
+      const resp = await fetch(src);
+      if (!resp.ok) {
+        throw new Error(`Preview failed (${resp.status})`);
+      }
+      const blob = await resp.blob();
+      if (blob.size < 64) {
+        throw new Error('Worker did not return audio');
+      }
+
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+      blobUrlRef.current = URL.createObjectURL(blob);
+      audio.src = blobUrlRef.current;
+      audio.load();
+
+      await new Promise<void>((resolve, reject) => {
+        const onReady = () => {
+          cleanup();
+          resolve();
+        };
+        const onFail = () => {
+          cleanup();
+          reject(new Error(mediaErrorLabel(audio)));
+        };
+        const cleanup = () => {
+          audio.removeEventListener('canplay', onReady);
+          audio.removeEventListener('error', onFail);
+        };
+        audio.addEventListener('canplay', onReady, { once: true });
+        audio.addEventListener('error', onFail, { once: true });
+        if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+          cleanup();
+          resolve();
+        }
+      });
+
+      await audio.play();
       setPlaying(true);
-    } catch (e: any) {
-      setError(e?.message || 'play failed');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Play failed';
+      setError(message);
+      setPlaying(false);
     } finally {
       setLoading(false);
     }
@@ -54,8 +122,8 @@ export function AudioPreview({
     <div className={`inline-flex items-center gap-2 ${className}`}>
       <button
         type="button"
-        onClick={toggle}
-        disabled={!src}
+        onClick={() => void toggle()}
+        disabled={!src?.trim() || loading}
         className={`grid place-items-center rounded-full bg-[var(--accent)]/20 text-[var(--accent-2)] ring-1 ring-[var(--accent)]/40 transition hover:bg-[var(--accent)]/30 disabled:opacity-30 ${
           compact ? 'h-6 w-6' : 'h-7 w-7'
         }`}
@@ -71,10 +139,13 @@ export function AudioPreview({
         )}
       </button>
       {label && <span className="text-[10px] text-[var(--muted)]">{label}</span>}
-      {error && <span className="text-[10px] text-[var(--danger)]">{error}</span>}
+      {error && (
+        <span className="max-w-[9rem] truncate text-[10px] text-[var(--danger)]" title={error}>
+          {error}
+        </span>
+      )}
       <audio
         ref={ref}
-        src={src ?? undefined}
         preload="none"
         onEnded={() => setPlaying(false)}
         onPause={() => setPlaying(false)}

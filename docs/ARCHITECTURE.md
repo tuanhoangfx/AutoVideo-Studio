@@ -4,66 +4,66 @@
 
 ```
 [USER INPUT]
-  topic | script | uploaded_images[]
+  images[] + narration script + voice/BGM/subtitle config
        │
        ▼
 ┌────────────────────────────────────────────────┐
-│  Next.js UI (port 3021)                        │
-│  - /projects: create + list                    │
-│  - /render/[id]: progress + preview            │
+│  Next.js UI (port 3021) — /studio              │
+│  - Image library, script, timeline, export     │
+│  - GlobalJobPoller + auto-download             │
 └─────────────────┬──────────────────────────────┘
-                  │ POST /jobs
+                  │ POST /jobs (multipart)
                   ▼
 ┌────────────────────────────────────────────────┐
 │  Python Worker (FastAPI port 8021)             │
 │                                                │
-│  ① script.py     → LLM gen script              │
-│  ② image_*.py    → gen (SD/DALL-E) OR upload   │
-│  ③ tts.py        → edge-tts mp3 per scene      │
-│  ④ subtitle.py   → whisper align → SRT         │
-│  ⑤ effects.py    → ken burns + transitions     │
-│  ⑥ compose.py    → ffmpeg final MP4            │
+│  ① tts.py        → edge-tts narration track    │
+│  ② runner.py     → trim/pad audio, BGM duck    │
+│  ③ subtitle.py   → ASS/SRT (line / word_capcut)│
+│  ④ compose.py    → Ken Burns + xfade + mux MP4 │
 └─────────────────┬──────────────────────────────┘
-                  │ GET /jobs/:id (status poll)
+                  │ GET /jobs/:id (poll)
                   ▼
               storage/jobs/<id>/output.mp4
 ```
 
-## Scene model
+## Frontend modules (`app/src/lib/studio/`)
 
-```ts
-type Scene = {
-  index: number;
-  text: string;              // câu thoại
-  image: { source: 'upload' | 'gen'; path?: string; prompt?: string };
-  duration_ms: number;       // = TTS audio length per scene
-  effect: 'ken_burns_in' | 'ken_burns_out' | 'pan_left' | 'pan_right' | 'none';
-  transition: 'fade' | 'slide' | 'cut';
-};
+| Module | Role |
+|--------|------|
+| `use-studio-jobs.ts` | Worker connection, job list, polling hooks |
+| `use-studio-export-settings.ts` | Aspect/fps/resolution from settings |
+| `use-studio-project-tabs.ts` | Tab switch, draft projects, editor cache |
+| `use-studio-toast.ts` | Toast notifications |
+| `studio-scene-utils.ts` | Scene line builders, reorder helpers |
+| `pipeline-constants.ts` | `EFFECTS_CYCLE`, `TRANSITION_S` (sync with worker) |
 
-type Job = {
-  id: string;                // J260525-a3f2c1
-  status: 'pending' | 'script' | 'images' | 'tts' | 'subtitle' | 'compose' | 'done' | 'error';
-  topic: string;
-  config: { aspect: '9:16' | '16:9'; voice: string; bgm?: string };
-  scenes: Scene[];
-  output_url?: string;
-  error?: string;
-};
-```
+## Worker modules (`worker/pipeline/`)
 
-## API contract
+| Module | Role |
+|--------|------|
+| `runner.py` | Orchestrate tts → audio → subtitle → compose |
+| `compose.py` | FFmpeg scene render + concat/xfade |
+| `ffmpeg_util.py` | Shared `run_ffmpeg`, `probe_duration_ms` |
+| `pipeline_constants.py` | Shared effect/transition constants |
+| `script_gen.py` | Optional offline CLI (not wired to API) |
 
-| Method | Path | Body | Returns |
-|---|---|---|---|
-| POST | `/jobs` | `{ topic, config, images?: File[] }` | `{ job_id }` |
-| GET | `/jobs/:id` | — | `Job` |
-| GET | `/jobs/:id/output.mp4` | — | binary |
-| GET | `/jobs/:id/preview` | — | thumbnail PNG |
-| POST | `/jobs/:id/cancel` | — | `{ ok }` |
+## API (current)
 
-## Decisions to confirm (asked user)
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/` | Health + storage |
+| GET | `/voices`, `/voices/preview` | TTS voice list + preview MP3 |
+| GET/POST | `/jobs` | List / create job |
+| GET | `/jobs/{id}` | Status + metrics |
+| POST | `/jobs/{id}/probe` | Re-probe output duration |
+| GET | `/jobs/{id}/output` | MP4 stream |
+| POST | `/jobs/{id}/cancel` | Cancel running job |
+| DELETE | `/jobs/{id}` | Remove job |
 
-- **Render engine:** MoviePy (Python, nhanh prototype) vs Remotion (React, đẹp + debug bằng browser).
-- **Image gen default:** local SD (free, cần GPU) vs DALL-E (paid, không cần GPU).
-- **LLM default:** Gemini Flash free tier vs OpenAI gpt-4o-mini paid.
+## Design decisions (locked)
+
+- **Render:** FFmpeg subprocess only (no MoviePy in worker).
+- **Images:** User upload / Google Drive — no AI image generation.
+- **TTS:** edge-tts primary; single narration track per export.
+- **UI:** Single-screen `/studio` (design previews removed after lock).

@@ -1,6 +1,31 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, ChevronRight, Cloud, Folder, FolderOpen, HardDrive, Search, Square } from 'lucide-react';
+import {
+  CheckSquare,
+  ChevronRight,
+  Cloud,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  HardDrive,
+  Check,
+  LayoutGrid,
+  ListChecks,
+  Search,
+  Square,
+  RefreshCw,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
+import { formatDuration } from '@/lib/format-duration';
+import {
+  StudioToolbarButton,
+  StudioToolbarGroup,
+  StudioToolbarRow,
+  StudioToolbarSearch,
+  TOOLBAR_ROW,
+} from './StudioToolbar';
 import {
   downloadDriveImage,
   getPublicDriveFolder,
@@ -52,6 +77,14 @@ type FolderError = {
 
 type FileWithRelativePath = File & { relativePath?: string };
 
+const LAST_LOCAL_FOLDER_ID_KEY = 'p0021:studio:last-local-folder-id';
+
+const LIBRARY_SOURCE_FILTERS = [
+  { id: 'all' as const, label: 'All', icon: LayoutGrid, iconClass: 'text-white/55' },
+  { id: 'local' as const, label: 'Local', icon: HardDrive, iconClass: 'text-indigo-300/90' },
+  { id: 'drive' as const, label: 'Drive', icon: Cloud, iconClass: 'text-cyan-300/90' },
+];
+
 export function ImageLibrary({
   images,
   onAdd,
@@ -86,6 +119,36 @@ export function ImageLibrary({
   const [driveNotice, setDriveNotice] = useState<string | null>(null);
   const [pendingIndexes, setPendingIndexes] = useState<number[]>([]);
   const [folderConfirmOpen, setFolderConfirmOpen] = useState(false);
+  const lastClickIndexRef = useRef<number | null>(null);
+  const sweepSelectRef = useRef<{
+    active: boolean;
+    anchor: number | null;
+    pointerIndex: number | null;
+    selecting: boolean;
+    additive: boolean;
+    shiftKey: boolean;
+    ctrlKey: boolean;
+    metaKey: boolean;
+    moved: boolean;
+  }>({
+    active: false,
+    anchor: null,
+    pointerIndex: null,
+    selecting: true,
+    additive: false,
+    shiftKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    moved: false,
+  });
+  const [lastLocalFolderId, setLastLocalFolderId] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      return window.localStorage.getItem(LAST_LOCAL_FOLDER_ID_KEY) ?? '';
+    } catch {
+      return '';
+    }
+  });
 
   useEffect(() => {
     const input = folderInputRef.current;
@@ -110,6 +173,24 @@ export function ImageLibrary({
   const syncedKeys = useMemo(() => new Set(images.map((img) => imageSyncKey(img))), [images]);
   const selectedRenderSet = useMemo(() => new Set(selectedForRender ?? []), [selectedForRender]);
   const pendingSet = useMemo(() => new Set(pendingIndexes), [pendingIndexes]);
+  const visibleLibraryEntries = useMemo(
+    () =>
+      images
+        .map((img, index) => ({ img, index }))
+        .filter(({ img }) => {
+          if (sourceFilter === 'all') return true;
+          return (img.sourceKind ?? 'local') === sourceFilter;
+        }),
+    [images, sourceFilter]
+  );
+  const visibleIndexSet = useMemo(
+    () => new Set(visibleLibraryEntries.map((entry) => entry.index)),
+    [visibleLibraryEntries]
+  );
+  const visiblePendingCount = useMemo(
+    () => pendingIndexes.filter((index) => visibleIndexSet.has(index)).length,
+    [pendingIndexes, visibleIndexSet]
+  );
   const filteredFolders = useMemo(
     () => filterWorkspaces(folders, sourceFilter, workspaceQuery),
     [folders, sourceFilter, workspaceQuery]
@@ -126,6 +207,15 @@ export function ImageLibrary({
     [filteredFolders, syncedKeys]
   );
 
+  const pendingDotClass =
+    pendingIndexes.length === 0
+      ? 'bg-slate-400/70'
+      : pendingIndexes.length < 20
+      ? 'bg-amber-400'
+      : pendingIndexes.length < 50
+      ? 'bg-cyan-400'
+      : 'bg-violet-400';
+
   const addFolders = (files: FileList | File[] | null, fallbackFolderName = 'Local folder') => {
     if (!files) return;
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
@@ -137,10 +227,12 @@ export function ImageLibrary({
       grouped.set(folderName, [...(grouped.get(folderName) ?? []), file]);
     });
 
+    let selectedId: string | null = null;
     setFolders((prev) => {
       const next = [...prev];
       grouped.forEach((groupFiles, name) => {
         const bucketId = folderId(name);
+        selectedId = bucketId;
         const existing = next.find((folder) => folder.id === bucketId);
         const existingKeys = new Set(existing?.files.map((item) => item.id) ?? []);
         const nextFiles = groupFiles
@@ -162,8 +254,22 @@ export function ImageLibrary({
       if (!activeFolderId && next.length > 0) setActiveFolderId(next[0].id);
       return next;
     });
+    if (selectedId) {
+      setLastLocalFolderId(selectedId);
+      try {
+        window.localStorage.setItem(LAST_LOCAL_FOLDER_ID_KEY, selectedId);
+      } catch {}
+    }
     if (folderInputRef.current) folderInputRef.current.value = '';
   };
+
+  useEffect(() => {
+    if (sourceFilter !== 'local') return;
+    if (!lastLocalFolderId) return;
+    if (filteredFolders.some((f) => f.id === lastLocalFolderId)) {
+      setActiveFolderId(lastLocalFolderId);
+    }
+  }, [filteredFolders, lastLocalFolderId, sourceFilter]);
 
   const openFolderPicker = async () => {
     setFolderConfirmOpen(false);
@@ -345,11 +451,115 @@ export function ImageLibrary({
     }
   };
 
-  const togglePendingImage = (index: number) => {
-    setPendingIndexes((prev) =>
-      prev.includes(index) ? prev.filter((item) => item !== index) : [...prev, index]
-    );
-    onSelect(index);
+  const togglePendingImage = useCallback(
+    (index: number, additive = false) => {
+      setPendingIndexes((prev) => {
+        const has = prev.includes(index);
+        if (additive) return has ? prev.filter((item) => item !== index) : [...prev, index];
+        return has ? prev.filter((item) => item !== index) : [...prev, index];
+      });
+      onSelect(index);
+    },
+    [onSelect]
+  );
+
+  const applySweepRange = useCallback(
+    (from: number, to: number, selecting: boolean, additive: boolean) => {
+      const start = Math.max(0, Math.min(from, to));
+      const end = Math.min(images.length - 1, Math.max(from, to));
+      const range = Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
+      setPendingIndexes((prev) => {
+        const next = new Set(additive ? prev : []);
+        if (selecting) {
+          range.forEach((idx) => next.add(idx));
+        } else if (additive) {
+          range.forEach((idx) => next.delete(idx));
+        } else {
+          prev.forEach((idx) => next.add(idx));
+          range.forEach((idx) => next.delete(idx));
+        }
+        return [...next].sort((a, b) => a - b);
+      });
+      onSelect(range[range.length - 1] ?? 0);
+    },
+    [images.length, onSelect]
+  );
+
+  const startLibrarySweep = useCallback(
+    (index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => {
+      const additive = event.ctrlKey || event.metaKey || event.shiftKey;
+      const selecting = event.shiftKey ? true : !pendingSet.has(index);
+      const anchor = event.shiftKey && lastClickIndexRef.current != null ? lastClickIndexRef.current : index;
+      sweepSelectRef.current = {
+        active: true,
+        anchor,
+        pointerIndex: index,
+        selecting,
+        additive,
+        shiftKey: event.shiftKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        moved: false,
+      };
+    },
+    [pendingSet]
+  );
+
+  const updateLibrarySweep = useCallback(
+    (index: number) => {
+      const sweep = sweepSelectRef.current;
+      if (!sweep.active || sweep.anchor == null) return;
+      if (index === sweep.pointerIndex && !sweep.moved) return;
+      sweep.moved = true;
+      applySweepRange(sweep.anchor, index, sweep.selecting, sweep.additive);
+    },
+    [applySweepRange]
+  );
+
+  const finishLibrarySweep = useCallback(() => {
+    const sweep = sweepSelectRef.current;
+    if (!sweep.active) return;
+
+    if (!sweep.moved && sweep.pointerIndex != null) {
+      const index = sweep.pointerIndex;
+      if (sweep.shiftKey && lastClickIndexRef.current != null) {
+        applySweepRange(lastClickIndexRef.current, index, true, true);
+      } else {
+        togglePendingImage(index, sweep.ctrlKey || sweep.metaKey);
+      }
+      lastClickIndexRef.current = index;
+    }
+
+    sweepSelectRef.current = {
+      active: false,
+      anchor: null,
+      pointerIndex: null,
+      selecting: true,
+      additive: false,
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      moved: false,
+    };
+  }, [applySweepRange, togglePendingImage]);
+
+  useEffect(() => {
+    window.addEventListener('mouseup', finishLibrarySweep);
+    return () => window.removeEventListener('mouseup', finishLibrarySweep);
+  }, [finishLibrarySweep]);
+
+  const allVisibleSelected =
+    visibleLibraryEntries.length > 0 &&
+    visibleLibraryEntries.every((entry) => pendingSet.has(entry.index));
+
+  const toggleSelectAllPending = () => {
+    const visible = visibleLibraryEntries.map((entry) => entry.index);
+    if (visible.length === 0) return;
+    if (allVisibleSelected) {
+      setPendingIndexes((prev) => prev.filter((index) => !visible.includes(index)));
+      return;
+    }
+    setPendingIndexes((prev) => [...new Set([...prev, ...visible])].sort((a, b) => a - b));
   };
 
   const addPendingToKeyframe = () => {
@@ -359,41 +569,18 @@ export function ImageLibrary({
     setPendingIndexes([]);
   };
 
+  const deletePendingFromLibrary = () => {
+    const next = pendingIndexes.filter((index) => index >= 0 && index < images.length);
+    if (next.length === 0) return;
+    next
+      .slice()
+      .sort((a, b) => b - a)
+      .forEach((idx) => onRemove(idx));
+    setPendingIndexes([]);
+  };
+
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="mx-1 mt-1 flex shrink-0 flex-wrap items-center justify-between gap-1.5 rounded-xl border border-white/10 bg-black/10 px-2 py-1">
-        <div className="flex items-center gap-1" role="group" aria-label="Image source filters">
-          {(['all', 'local', 'drive'] as const).map((source) => (
-            <button
-              key={source}
-              onClick={() => setSourceFilter(source)}
-              className={`rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${
-                sourceFilter === source
-                  ? 'border-indigo-300/35 bg-indigo-500/20 text-indigo-100'
-                  : 'border-white/10 bg-white/[.03] text-white/55 hover:bg-white/[.06] hover:text-white'
-              }`}
-            >
-              {source === 'all' ? 'All' : source === 'local' ? 'Local' : 'Drive'}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => inputRef.current?.click()} className="hub-filter-chip">
-            + Upload
-          </button>
-          <button onClick={() => setFolderConfirmOpen(true)} className="hub-filter-chip">
-            + Folder
-          </button>
-          <button
-            onClick={() => setPublicDriveOpen((open) => !open)}
-            disabled={driveBusy || !googleDriveConfigured()}
-            className="hub-filter-chip disabled:cursor-not-allowed disabled:opacity-35"
-            title={googleDriveConfigured() ? 'Paste a public Google Drive folder link' : googleDriveConfigHint()}
-          >
-            {driveBusy ? 'Drive...' : '+ Drive'}
-          </button>
-        </div>
-      </div>
       <input
         ref={inputRef}
         type="file"
@@ -416,21 +603,23 @@ export function ImageLibrary({
           <div className="mt-0.5 text-white/55">
             AutoVideo will scan image files only, then show them inside Image Library for review before adding to Keyframe.
           </div>
-          <div className="mt-2 flex items-center justify-end gap-1.5">
-            <button
-              type="button"
+          <div className="mt-2 flex items-center justify-end gap-1">
+            <StudioToolbarButton
+              tone="neutral"
+              icon={X}
+              grow={false}
               onClick={() => setFolderConfirmOpen(false)}
-              className="hub-filter-chip"
             >
               Cancel
-            </button>
-            <button
-              type="button"
+            </StudioToolbarButton>
+            <StudioToolbarButton
+              tone="amber"
+              icon={FolderPlus}
+              grow={false}
               onClick={() => void openFolderPicker()}
-              className="hub-filter-chip active"
             >
               Import folder
-            </button>
+            </StudioToolbarButton>
           </div>
         </div>
       )}
@@ -454,20 +643,18 @@ export function ImageLibrary({
               className="min-h-16 resize-none rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-white/75 outline-none placeholder:text-white/25 focus:border-[var(--accent)]/60"
             />
             <div className="flex justify-end gap-1">
-              <button
-                type="button"
-                onClick={clearDriveCache}
-                className="hub-filter-chip"
-              >
+              <StudioToolbarButton type="button" tone="neutral" grow={false} onClick={clearDriveCache}>
                 Clear cache
-              </button>
-              <button
+              </StudioToolbarButton>
+              <StudioToolbarButton
                 type="submit"
+                tone="cyan"
+                icon={Cloud}
+                grow={false}
                 disabled={driveBusy || !publicDriveInput.trim()}
-                className="hub-filter-chip active disabled:cursor-not-allowed disabled:opacity-35"
               >
                 {driveBusy ? 'Loading...' : `Load ${parseDriveFolderInputs(publicDriveInput).length || ''}`}
-              </button>
+              </StudioToolbarButton>
             </div>
           </div>
         </form>
@@ -499,112 +686,231 @@ export function ImageLibrary({
           </div>
         </div>
       )}
-      <div className="m-1 grid min-h-0 flex-1 grid-cols-[minmax(12rem,0.72fr)_minmax(0,1fr)] gap-1.5 overflow-hidden">
-        <div className="order-2 flex h-full min-w-0 flex-col rounded-xl border border-white/10 bg-black/15">
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-2 py-1 text-[9px] text-white/45">
-            <span className="font-semibold uppercase tracking-[0.14em]">Library</span>
-            {images.length > 0 ? (
-              <span>
-                Keyframe <span className="font-semibold text-white">{selectedRenderSet.size}</span>/{images.length}
-                <span className="ml-1 font-mono text-[var(--accent-2)]">{formatDuration(selectedRenderSet.size * imageDurationSec)}</span>
-              </span>
-            ) : null}
-          </div>
+      <div className="m-1 grid min-h-0 flex-1 grid-cols-[minmax(12rem,0.72fr)_minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)] gap-x-1.5 gap-y-1 overflow-hidden">
+        {/* Row 1 — Workspace: import only */}
+        <StudioToolbarRow className="col-start-1 row-start-1 shrink-0" aria-label="Import to workspace">
+          <StudioToolbarGroup>
+            <StudioToolbarButton
+              tone="indigo"
+              icon={Upload}
+              onClick={() => inputRef.current?.click()}
+              title="Upload image files"
+            >
+              Upload
+            </StudioToolbarButton>
+            <StudioToolbarButton
+              tone="amber"
+              icon={FolderPlus}
+              onClick={() => setFolderConfirmOpen(true)}
+              title="Import a local folder"
+            >
+              Folder
+            </StudioToolbarButton>
+            <StudioToolbarButton
+              tone="cyan"
+              icon={Cloud}
+              onClick={() => setPublicDriveOpen((open) => !open)}
+              disabled={driveBusy || !googleDriveConfigured()}
+              title={googleDriveConfigured() ? 'Import from Google Drive' : googleDriveConfigHint()}
+            >
+              {driveBusy ? 'Drive…' : 'Drive'}
+            </StudioToolbarButton>
+          </StudioToolbarGroup>
+        </StudioToolbarRow>
+
+        {/* Row 1 — Library: source filter only */}
+        <StudioToolbarRow className="col-start-2 row-start-1 shrink-0" aria-label="Library source">
+          <StudioToolbarGroup>
+            {LIBRARY_SOURCE_FILTERS.map((source) => {
+              const active = sourceFilter === source.id;
+              return (
+                <StudioToolbarButton
+                  key={source.id}
+                  tone="neutral"
+                  active={active}
+                  icon={source.icon}
+                  iconClassName={active ? 'text-white' : source.iconClass}
+                  onClick={() => setSourceFilter(source.id)}
+                  title={
+                    source.id === 'all'
+                      ? 'All images in library'
+                      : source.id === 'local'
+                      ? 'Local files only'
+                      : 'Google Drive imports only'
+                  }
+                >
+                  {source.label}
+                </StudioToolbarButton>
+              );
+            })}
+          </StudioToolbarGroup>
+        </StudioToolbarRow>
+
+        {/* Row 2 — Workspace: search only */}
+        <StudioToolbarRow className="col-start-1 row-start-2 shrink-0 min-w-0">
+          <StudioToolbarSearch
+            value={workspaceQuery}
+            onChange={setWorkspaceQuery}
+            placeholder="Search workspace, folder..."
+            icon={<Search size={12} strokeWidth={2.25} />}
+          />
+        </StudioToolbarRow>
+
+        {/* Row 2 — Library: select / delete only */}
+        <div className={`col-start-2 row-start-2 flex shrink-0 min-w-0 items-center gap-1 ${TOOLBAR_ROW}`}>
+          <StudioToolbarGroup className="min-w-0 flex-1">
+            <StudioToolbarButton
+              tone="sky"
+              active={allVisibleSelected}
+              icon={ListChecks}
+              onClick={toggleSelectAllPending}
+              disabled={visibleLibraryEntries.length === 0}
+              title={
+                visibleLibraryEntries.length === 0
+                  ? 'No images for this source'
+                  : allVisibleSelected
+                  ? 'Deselect all visible images'
+                  : 'Select all visible images'
+              }
+            >
+              {allVisibleSelected ? 'Deselect' : 'Select all'}
+            </StudioToolbarButton>
+            <StudioToolbarButton
+              tone="rose"
+              icon={Trash2}
+              onClick={deletePendingFromLibrary}
+              disabled={images.length === 0 || pendingIndexes.length === 0}
+              title={images.length === 0 ? 'No images yet' : 'Delete selected images from library'}
+            >
+              Delete ({pendingIndexes.length})
+            </StudioToolbarButton>
+          </StudioToolbarGroup>
+          <span className="inline-flex shrink-0 items-center gap-1 px-1 text-[10px] text-white/60">
+            <span className={`h-1.5 w-1.5 rounded-full ${pendingDotClass}`} />
+            <span className="font-mono tabular-nums text-white/70" title="Selected / visible (total in library)">
+              {visiblePendingCount}/{visibleLibraryEntries.length}
+              {sourceFilter !== 'all' && visibleLibraryEntries.length !== images.length ? (
+                <span className="text-white/35"> · {images.length}</span>
+              ) : null}
+            </span>
+          </span>
+        </div>
+
+        <div className="col-start-2 row-start-3 flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-black/15">
           {images.length === 0 ? (
             <button
+              type="button"
               onClick={() => inputRef.current?.click()}
               className="grid min-h-0 flex-1 place-items-center rounded-b-xl border border-dashed border-transparent bg-white/[.02] text-center transition hover:border-[var(--accent)]/60 hover:bg-white/[.04]"
             >
               <div>
-                <div className="text-xl opacity-50">📤</div>
-                <div className="mt-0.5 text-[10px] text-white/60">Drop images here</div>
+                <Upload size={22} className="mx-auto text-white/35" />
+                <div className="mt-1 text-[10px] text-white/60">Upload or import from workspace</div>
                 <div className="text-[9px] text-white/40">PNG · JPG · WebP</div>
               </div>
             </button>
+          ) : visibleLibraryEntries.length === 0 ? (
+            <div className="grid min-h-0 flex-1 place-content-center px-3 text-center text-[10px] text-white/40">
+              No {sourceFilter === 'drive' ? 'Drive' : 'local'} images in library. Switch source or import more.
+            </div>
           ) : (
-            <>
-              <div className="grid min-h-0 flex-1 grid-cols-6 content-start gap-1 overflow-y-auto p-1.5">
-                {images.map((img, i) => {
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="grid min-h-0 flex-1 select-none grid-cols-6 content-start gap-1.5 overflow-y-auto p-1.5">
+                {visibleLibraryEntries.map(({ img, index: i }) => {
                   const renderSelected = selectedRenderSet.has(i);
                   const pending = pendingSet.has(i);
                   return (
                     <div
                       key={i}
-                      className={`group relative aspect-square cursor-pointer overflow-hidden rounded-md ring-1 transition ${
-                        i === selectedIndex
-                          ? 'ring-[var(--accent)] ring-2 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]'
-                          : pending
-                          ? 'ring-sky-300/70 ring-2'
+                      data-library-index={i}
+                      role="button"
+                      tabIndex={0}
+                      className={`group relative aspect-square cursor-pointer overflow-hidden rounded-md ring-1 transition-all duration-150 ease-out ${
+                        pending
+                          ? 'ring-emerald-400/80 ring-2 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                          : i === selectedIndex
+                          ? 'ring-[var(--accent)]/70 ring-2'
                           : renderSelected
-                          ? 'ring-emerald-400/50'
-                          : 'ring-white/10 hover:ring-white/30'
+                          ? 'ring-emerald-400/35'
+                          : 'ring-white/10 hover:ring-white/25 hover:brightness-105'
                       }`}
-                      onClick={() => togglePendingImage(i)}
+                      onMouseDown={(e) => {
+                        if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+                        startLibrarySweep(i, e);
+                      }}
+                      onMouseEnter={() => updateLibrarySweep(i)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          togglePendingImage(i, e.ctrlKey || e.metaKey);
+                          lastClickIndexRef.current = i;
+                        }
+                      }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.url} alt={img.file.name} className="h-full w-full object-cover" />
-                      {(renderSelected || pending) && (
-                        <div className={`absolute left-0.5 top-0.5 grid h-3.5 w-3.5 place-items-center rounded text-[8px] font-bold text-white ${
-                          pending ? 'bg-sky-500/90' : 'bg-emerald-500/85'
-                        }`}>
-                          ✓
-                        </div>
-                      )}
+                      <img
+                        src={img.url}
+                        alt={img.file.name}
+                        draggable={false}
+                        className="h-full w-full object-cover pointer-events-none"
+                      />
+                      <button
+                        type="button"
+                        aria-pressed={pending}
+                        aria-label={pending ? 'Deselect image' : 'Select image'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePendingImage(i, e.ctrlKey || e.metaKey);
+                          lastClickIndexRef.current = i;
+                        }}
+                        className={`absolute left-0.5 top-0.5 z-10 grid h-3.5 w-3.5 place-items-center rounded-full transition-all duration-150 ${
+                          pending
+                            ? 'bg-emerald-500 text-white shadow-[0_0_6px_rgba(16,185,129,0.45)] ring-1 ring-white/20'
+                            : 'bg-black/55 text-white/28 ring-1 ring-white/10 hover:bg-black/70 hover:text-white/50'
+                        }`}
+                      >
+                        <Check size={8} strokeWidth={pending ? 3 : 2} />
+                      </button>
                       {renderSelected && (
-                        <div className="absolute left-0.5 top-4 rounded bg-black/70 px-1 py-0.5 font-mono text-[6px] text-emerald-100">
+                        <div className="pointer-events-none absolute left-0.5 top-5 rounded bg-black/70 px-1 py-0.5 font-mono text-[6px] text-emerald-100">
                           {imageDurationSec}s
                         </div>
                       )}
                       {img.sourceKind === 'drive' && (
-                        <div className="absolute right-4 top-0.5 rounded bg-black/70 px-1 py-0.5 text-[6px] font-semibold uppercase tracking-wide text-cyan-100 ring-1 ring-cyan-300/30">
+                        <div className="pointer-events-none absolute right-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[6px] font-semibold uppercase tracking-wide text-cyan-100 ring-1 ring-cyan-300/30">
                           {img.cacheStatus === 'cached' ? 'cached' : 'downloaded'}
                         </div>
                       )}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1 py-0.5">
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1 py-0.5">
                         <div className="truncate font-mono text-[7px] text-white/85">{String(i + 1).padStart(2, '0')}</div>
                         {img.sourceFolder && <div className="truncate text-[6px] text-white/45">{img.sourceFolder}</div>}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemove(i);
-                        }}
-                        className="absolute right-0.5 top-0.5 grid h-3 w-3 place-items-center rounded-full bg-black/60 text-[8px] text-white opacity-0 hover:bg-rose-500 group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
                     </div>
                   );
                 })}
               </div>
-              <div className="shrink-0 border-t border-white/10 p-1">
+              <div className="shrink-0 border-t border-white/10 bg-[#0d1228]/95 p-1 shadow-[0_-8px_24px_rgba(0,0,0,0.35)] backdrop-blur-sm">
                 <button
                   onClick={addPendingToKeyframe}
                   disabled={pendingIndexes.length === 0 || !onAddToKeyframe}
-                  className="w-full rounded bg-[var(--accent)] px-2 py-1 text-[9px] font-semibold text-white disabled:opacity-30"
+                  className="w-full rounded bg-[var(--accent)] px-2 py-1.5 text-[10px] font-semibold text-white disabled:opacity-30"
                 >
                   Add to Keyframe ({pendingIndexes.length})
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
 
-        <div className="order-1 flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-black/20">
-          <div className="shrink-0 border-b border-white/10 p-1">
-            <label className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] text-white/45">
-              <Search size={11} />
-              <input
-                value={workspaceQuery}
-                onChange={(event) => setWorkspaceQuery(event.target.value)}
-                placeholder="Search workspace, folder..."
-                className="min-w-0 flex-1 bg-transparent text-[10px] text-white/70 outline-none placeholder:text-white/25"
-              />
-            </label>
-          </div>
+        <div className="col-start-1 row-start-3 flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-black/20">
           {filteredFolders.length === 0 ? (
-            <div className="grid min-h-0 flex-1 place-items-center px-3 text-center text-[10px] leading-5 text-white/35">
-              Folder workspace will appear here after importing a local folder or Drive folder.
+            <div className="grid min-h-0 flex-1 place-content-center gap-2 px-3 py-4 text-center text-[10px] leading-5 text-white/35">
+              <div className="mx-auto flex items-center justify-center gap-2 text-white/25">
+                <FolderPlus size={16} />
+                <Cloud size={16} />
+                <Upload size={16} />
+              </div>
+              <p>Use Upload, Folder, or Drive above to add images to the workspace, then sync into the library.</p>
             </div>
           ) : (
             <>
@@ -623,14 +929,6 @@ export function ImageLibrary({
                       }`}
                     >
                       <div className="flex items-center gap-1.5 px-2 py-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setFolderSelection(folder.id, !checked)}
-                          className="grid h-4 w-4 place-items-center rounded text-white/55 hover:text-white"
-                          title={checked ? 'Unselect workspace' : 'Select workspace'}
-                        >
-                          {checked ? <CheckSquare size={13} className="text-emerald-200" /> : <Square size={13} />}
-                        </button>
                         <button
                           type="button"
                           onClick={() => setActiveFolderId(folder.id)}
@@ -673,13 +971,15 @@ export function ImageLibrary({
                 })}
               </div>
               <div className="shrink-0 border-t border-white/10 p-1">
-                <button
+                <StudioToolbarButton
+                  tone="emerald"
+                  icon={RefreshCw}
+                  className="w-full"
                   onClick={syncSelectedWorkspaceImages}
                   disabled={selectedWorkspaceFiles.length === 0 || syncingDrive}
-                  className="w-full rounded-lg bg-[var(--accent)] px-2 py-1.5 text-[9px] font-semibold text-white transition hover:brightness-110 disabled:opacity-30"
                 >
-                  {syncingDrive ? 'Syncing...' : `Sync selected folders (${selectedWorkspaceFiles.length})`}
-                </button>
+                  {syncingDrive ? 'Syncing...' : `Sync selected (${selectedWorkspaceFiles.length})`}
+                </StudioToolbarButton>
               </div>
             </>
           )}
@@ -881,14 +1181,3 @@ function driveErrorMessage(error: unknown) {
   return message;
 }
 
-function formatDuration(totalSec: number) {
-  const safe = Math.max(0, Math.round(totalSec));
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60);
-    const remainMinutes = minutes % 60;
-    return `${hours}h${String(remainMinutes).padStart(2, '0')}m`;
-  }
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}

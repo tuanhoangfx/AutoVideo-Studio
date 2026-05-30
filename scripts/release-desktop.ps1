@@ -54,6 +54,10 @@ try {
     pnpm desktop:worker
   }
 
+  Invoke-Step "Worker smoke test (libx264)" {
+    & (Join-Path $RepoRoot "scripts\test-worker-smoke.ps1")
+  }
+
   Invoke-Step "Build Next.js standalone app" {
     pnpm desktop:prepare
   }
