@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Bot, Check, ChevronDown, Gauge, Globe2, Search, SlidersHorizontal, Star, UserRound, X } from 'lucide-react';
 import type { TTSProvider } from '@/lib/api';
 import { voicePreviewUrl } from '@/lib/api';
+import { compareVoiceOptions } from '@/lib/voice-sort';
 import { voiceListPreviewText } from '@/lib/voice-preview-text';
 import { AudioPreview } from './AudioPreview';
 
@@ -11,7 +12,7 @@ export const VOICE_OPTIONS = [
   { id: 'vi-VN-HoaiMyNeural', label: 'Hoài My', gender: '♀', locale: 'VI', tone: 'warm, natural', recommended: true },
   { id: 'vi-VN-NamMinhNeural', label: 'Nam Minh', gender: '♂', locale: 'VI', tone: 'clear, strong', recommended: true },
   { id: 'en-US-AriaNeural', label: 'Aria', gender: '♀', locale: 'EN-US', tone: 'expressive' },
-  { id: 'en-US-JennyNeural', label: 'Jenny', gender: '♀', locale: 'EN-US', tone: 'friendly' },
+  { id: 'en-US-JennyNeural', label: 'Jenny', gender: '♀', locale: 'EN-US', tone: 'friendly', recommended: true },
   { id: 'en-US-GuyNeural', label: 'Guy', gender: '♂', locale: 'EN-US', tone: 'news' },
   { id: 'en-US-DavisNeural', label: 'Davis', gender: '♂', locale: 'EN-US', tone: 'business' },
   { id: 'en-US-JaneNeural', label: 'Jane', gender: '♀', locale: 'EN-US', tone: 'confident' },
@@ -158,7 +159,7 @@ export function VoiceSelector({
         genderFilters.some((item) => (item === 'female' && v.gender === '♀') || (item === 'male' && v.gender === '♂'));
       const haystack = `${v.label} ${v.id} ${v.locale} ${v.tone}`.toLowerCase();
       return providerMatch && localeMatch && genderMatch && (!q || haystack.includes(q));
-    });
+    }).sort(compareVoiceOptions);
   }, [favoriteOnly, favoriteVoiceIds, genderFilters, localeFilters, providerFilters, query]);
 
   const localeCounts = useMemo(

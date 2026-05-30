@@ -1,7 +1,7 @@
 import type { Job } from '@/lib/api';
 import type { VideoNameTemplate } from '@/lib/studio-export-settings';
 import { DEFAULT_STUDIO_EXPORT_SETTINGS } from '@/lib/studio-export-settings';
-import { formatJobDateTimeFilePart } from '@/lib/job-datetime-label';
+import { formatJobDateTimeFilePartWithSeconds } from '@/lib/job-datetime-label';
 
 function safeFilePart(value: string) {
   return value
@@ -15,7 +15,7 @@ export function buildVideoFilename({
   job,
   topic = '',
   imagesCount,
-  template = DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate ?? 'time-date-yy-images',
+  template = DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate ?? 'time-date-yy',
   exportIndex = 1,
 }: {
   job: Job;
@@ -26,7 +26,7 @@ export function buildVideoFilename({
   exportIndex?: number;
 }) {
   const stampIso = job.completed_at ?? job.created_at ?? new Date().toISOString();
-  const timeDate = formatJobDateTimeFilePart(stampIso);
+  const timeDate = formatJobDateTimeFilePartWithSeconds(stampIso);
   const dateTime = (() => {
     const d = new Date(stampIso);
     if (Number.isNaN(d.getTime())) return timeDate;

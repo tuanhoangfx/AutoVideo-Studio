@@ -26,3 +26,15 @@ export function formatJobDateTimeFilePart(iso?: string | null): string {
   const yy = String(d.getFullYear()).slice(-2);
   return `${hh}-${mm} ${dd}-${mo}-${yy}`;
 }
+
+/** Output filename stem with seconds: `20-45-30 30-05-26` (hh:mm:ss dd/mm/yy). */
+export function formatJobDateTimeFilePartWithSeconds(iso?: string | null): string {
+  const d = parseJobDate(iso);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${hh}-${mm}-${ss} ${dd}-${mo}-${yy}`;
+}

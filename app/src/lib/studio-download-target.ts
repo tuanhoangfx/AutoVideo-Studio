@@ -67,8 +67,30 @@ export async function saveBlobToStudioDirectory(
   }
 }
 
-export function triggerBrowserDownload(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
+type PendingBrowserDownload = { filename: string; blob: Blob; url: string };
+
+const pendingBrowserDownloads: PendingBrowserDownload[] = [];
+let browserDownloadFlushHooked = false;
+
+function flushPendingBrowserDownloads() {
+  if (typeof document === 'undefined' || document.hidden) return;
+  while (pendingBrowserDownloads.length > 0) {
+    const item = pendingBrowserDownloads.shift();
+    if (!item) break;
+    runBrowserDownloadAnchor(item.filename, item.url);
+  }
+}
+
+function hookBrowserDownloadFlush() {
+  if (browserDownloadFlushHooked || typeof document === 'undefined') return;
+  browserDownloadFlushHooked = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) flushPendingBrowserDownloads();
+  });
+  window.addEventListener('focus', () => flushPendingBrowserDownloads());
+}
+
+function runBrowserDownloadAnchor(filename: string, url: string) {
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
@@ -76,6 +98,21 @@ export function triggerBrowserDownload(filename: string, blob: Blob) {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 15_000);
+}
+
+/**
+ * Programmatic blob download. When the Studio tab is in the background, Chrome/Edge
+ * often shows a blocking Save As dialog — defer until the tab is visible.
+ */
+export function triggerBrowserDownload(filename: string, blob: Blob): 'immediate' | 'deferred' {
+  const url = URL.createObjectURL(blob);
+  if (typeof document !== 'undefined' && document.hidden) {
+    hookBrowserDownloadFlush();
+    pendingBrowserDownloads.push({ filename, blob, url });
+    return 'deferred';
+  }
+  runBrowserDownloadAnchor(filename, url);
+  return 'immediate';
 }
 
 async function ensureWritePermission(handle: any): Promise<boolean> {

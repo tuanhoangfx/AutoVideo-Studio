@@ -1,0 +1,38 @@
+---
+description: P0021 AutoVideo Studio — bắt buộc bump version khi sửa code (patch/minor/major theo workspace-version-bump)
+globs:
+  - "**/P0021-AutoVideo-Studio/**"
+alwaysApply: false
+---
+
+# P0021 — version bump (agent checklist)
+
+Đọc thêm: `e:\Dev\.cursor\rules\workspace-version-bump.mdc` (3 tầng patch / minor / major).
+
+## File phải cùng một số release
+
+| File |
+|------|
+| `app/package.json` → `version` |
+| `tool.manifest.json` → `release.version` (+ `release.updatedAt` nếu có thay đổi release) |
+| `CHANGELOG.md` → mục version mới (1–2 dòng) |
+| `app/src/lib/app-release.ts` → `APP_RELEASE_UPDATED_AT` khớp `release.updatedAt` |
+
+Không có `public/tool.manifest.json` — không tạo trừ khi user yêu cầu.
+
+## Khi nào bump
+
+| Tầng | Kích hoạt |
+|------|-----------|
+| **Patch** | Task xong có đổi code/UI (kể cả default voice, sort, filename, worker) |
+| **Minor** | User yêu cầu **commit** hoặc agent commit trong task |
+| **Major** | Push **official** `main` + release/deploy desktop |
+
+## Trước khi báo user “đã xong”
+
+- [ ] Đã bump đúng tầng?
+- [ ] `package.json` = `tool.manifest.json` `release.version`?
+- [ ] `CHANGELOG.md` có mục mới?
+- [ ] Tóm tắt có dòng **Version `cũ` → `mới`**?
+
+Ví dụ patch: `0.2.1` → `0.2.2`.

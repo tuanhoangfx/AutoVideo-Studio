@@ -3,6 +3,7 @@
 import type { LibraryImage, ScriptLine, SequenceTiming } from '@/components/studio';
 import type { Job, SubtitleStyle, TTSProvider } from '@/lib/api';
 import { isRunningJob } from '@/lib/job-running';
+import { DEFAULT_STUDIO_VOICE } from '@/lib/studio-defaults';
 
 export type StudioDownloadState = 'idle' | 'exporting' | 'downloading' | 'downloaded' | 'error';
 
@@ -62,7 +63,7 @@ export function applyJobConfigToSnapshot(job: Job, base?: Partial<EditorSnapshot
     ...base,
     topic: base?.topic ?? '',
     scriptText: c.narration_script ?? base?.scriptText ?? '',
-    voice: c.voice ?? base?.voice ?? 'vi-VN-HoaiMyNeural',
+    voice: c.voice ?? base?.voice ?? DEFAULT_STUDIO_VOICE,
     aspect: c.aspect ?? base?.aspect ?? '9:16',
     rate: c.rate ?? base?.rate ?? '+0%',
     ttsProvider: c.tts_provider ?? base?.ttsProvider ?? 'edge',

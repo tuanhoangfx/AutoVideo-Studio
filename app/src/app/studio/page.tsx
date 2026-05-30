@@ -49,6 +49,7 @@ import { buildVideoFilename } from '@/lib/video-filename';
 import { computeSceneDurationsSec, totalExportDurationSec } from '@/lib/export-duration';
 import { resolveNarrationScript } from '@/lib/narration-script';
 import { scriptMetrics } from '@/lib/script-metrics';
+import { DEFAULT_STUDIO_VOICE } from '@/lib/studio-defaults';
 import { clampVoicePreviewText } from '@/lib/voice-preview-text';
 import { useStudioJobs } from '@/lib/studio/use-studio-jobs';
 import { useStudioToast } from '@/lib/studio/use-studio-toast';
@@ -123,7 +124,7 @@ export default function StudioPage() {
   const [selectedImageIndexes, setSelectedImageIndexes] = useState<number[]>([]);
 
   /* ─── Config ─── */
-  const [voice, setVoice] = useState('vi-VN-HoaiMyNeural');
+  const [voice, setVoice] = useState(DEFAULT_STUDIO_VOICE);
   const [rate, setRate] = useState('+0%');
   const [ttsProvider, setTtsProvider] = useState<TTSProvider>('edge');
   const [imageDurationSec, setImageDurationSec] = useState(5);
@@ -286,7 +287,7 @@ export default function StudioPage() {
           message: 'Draft',
           config: {
             aspect: draft?.aspect ?? DEFAULT_STUDIO_EXPORT_SETTINGS.aspect,
-            voice: draft?.voice ?? 'vi-VN-HoaiMyNeural',
+            voice: draft?.voice ?? DEFAULT_STUDIO_VOICE,
             fps: draft?.fps ?? DEFAULT_STUDIO_EXPORT_SETTINGS.fps,
             resolution: draft?.resolution ?? DEFAULT_STUDIO_EXPORT_SETTINGS.resolution,
             video_quality: draft?.videoQuality ?? DEFAULT_STUDIO_EXPORT_SETTINGS.videoQuality,
@@ -312,7 +313,7 @@ export default function StudioPage() {
           selectedScene: 0,
           selectedImage: 0,
           selectedImageIndexes: [],
-          voice: draft?.voice ?? 'vi-VN-HoaiMyNeural',
+          voice: draft?.voice ?? DEFAULT_STUDIO_VOICE,
           aspect: draft?.aspect ?? DEFAULT_STUDIO_EXPORT_SETTINGS.aspect,
           rate: draft?.rate ?? '+0%',
           ttsProvider: draft?.ttsProvider ?? 'edge',

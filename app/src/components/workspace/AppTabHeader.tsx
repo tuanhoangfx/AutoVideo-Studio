@@ -462,14 +462,14 @@ function HeaderOutputSettings() {
                 description="Template used by Export & Download."
               >
                 <select
-                  value={settings.videoNameTemplate ?? 'time-date-yy-images'}
+                  value={settings.videoNameTemplate ?? 'time-date-yy'}
                   onChange={(e) => setVideoNameTemplate(e.target.value as VideoNameTemplate)}
                   className="h-9 min-w-[14rem] rounded-xl border border-white/10 bg-black/20 px-3 text-[12px] font-semibold text-white/80 outline-none hover:bg-black/25 focus:border-indigo-300/40"
                 >
-                  <option value="time-date-yy-images">hh:mm dd/mm/yy + images</option>
-                  <option value="time-date-yy">hh:mm dd/mm/yy</option>
+                  <option value="time-date-yy">hh:mm:ss dd/mm/yy</option>
+                  <option value="time-date-yy-images">hh:mm:ss dd/mm/yy + images</option>
                   <option value="date-yy-time">dd/mm/yy hh:mm</option>
-                  <option value="topic-time-date">topic + hh:mm dd/mm</option>
+                  <option value="topic-time-date">topic + hh:mm:ss dd/mm/yy</option>
                   <option value="jobid">job id</option>
                 </select>
               </SettingsMenuRow>

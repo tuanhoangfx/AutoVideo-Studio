@@ -196,7 +196,7 @@ Status = Literal["pending", "tts", "audio", "compose", "done", "error"]
 
 class JobConfig(BaseModel):
     aspect: Literal["9:16", "16:9", "1:1"] = "9:16"
-    voice: str = "vi-VN-HoaiMyNeural"
+    voice: str = "en-US-JennyNeural"
     fps: int = 30
     resolution: Literal["720p", "1080p", "2k", "4k"] = "1080p"
     video_quality: Literal["auto", "low", "medium", "high"] = "auto"
@@ -283,7 +283,7 @@ PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 @app.get("/voices/preview")
 async def voice_preview(
     text: str = Query(..., description="Text to synthesize, max 800 chars"),
-    voice: str = Query("vi-VN-HoaiMyNeural"),
+    voice: str = Query("en-US-JennyNeural"),
     rate: str = Query("+0%"),
 ):
     """Synthesize a short preview MP3 — cached by content hash.

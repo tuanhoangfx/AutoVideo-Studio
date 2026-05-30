@@ -22,7 +22,7 @@ export function useStudioExportSettings() {
   );
   const [downloadDirectoryName, setDownloadDirectoryName] = useState<string | undefined>(undefined);
   const [videoNameTemplate, setVideoNameTemplate] = useState<VideoNameTemplate>(
-    DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate ?? 'time-date-yy-images'
+    DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate ?? 'time-date-yy'
   );
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function useStudioExportSettings() {
       setAutoDownload(settings.autoDownload);
       setExportDurationMode(settings.exportDurationMode);
       setDownloadDirectoryName(settings.downloadDirectoryName);
-      setVideoNameTemplate(settings.videoNameTemplate ?? 'time-date-yy-images');
+      setVideoNameTemplate(settings.videoNameTemplate ?? 'time-date-yy');
     };
     apply(readStudioExportSettings());
     const onSettings = (event: Event) => {

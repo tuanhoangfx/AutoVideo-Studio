@@ -81,7 +81,7 @@
     "team": "tuanhoangfxs-projects"
   },
   "release": {
-    "version": "0.2.1",
+    "version": "0.2.4",
     "updatedAt": "2026-05-30",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps."

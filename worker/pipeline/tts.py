@@ -13,7 +13,7 @@ import edge_tts
 from gtts import gTTS
 from mutagen.mp3 import MP3
 
-DEFAULT_VOICE = "vi-VN-HoaiMyNeural"
+DEFAULT_VOICE = "en-US-JennyNeural"
 
 SUPPORTED_VOICES = [
     {"ShortName": "vi-VN-HoaiMyNeural", "Locale": "vi-VN", "Gender": "Female", "FriendlyName": "Hoai My"},
@@ -162,10 +162,25 @@ def synthesize_sync(text: str, out_path: Path, **kwargs) -> TTSResult:
     return asyncio.run(synthesize(text, out_path, **kwargs))
 
 
+def _voice_sort_key(v: dict) -> tuple[int, str]:
+  """en-US first, then other English, Vietnamese, then remaining locales."""
+  locale = str(v.get("Locale", ""))
+  short = str(v.get("ShortName", ""))
+  if locale == "en-US" or short.startswith("en-US-"):
+    tier = 0
+  elif locale.startswith("en-") or short.startswith("en-"):
+    tier = 1
+  elif locale == "vi-VN" or short.startswith("vi-"):
+    tier = 2
+  else:
+    tier = 3
+  return (tier, short)
+
+
 async def list_vi_voices() -> list[dict]:
     """Return curated voices supported by the Studio UI.
 
     The render path accepts any valid edge-tts voice. Keeping a curated list here
     avoids a slow network call just to populate voice options.
     """
-    return SUPPORTED_VOICES
+    return sorted(SUPPORTED_VOICES, key=_voice_sort_key)

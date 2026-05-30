@@ -248,11 +248,6 @@ export function KeyframeTimeline({
           <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/20 px-1.5 py-1">
             <TimelineStat icon={ImageIcon} label="Images" value={fmtTime(imageTimeSec)} tone="cyan" />
             <TimelineStat icon={Captions} label="Transcript" value={fmtTime(transcriptTimeSec)} tone="amber" />
-            {narrationScript.trim() && transcriptTimeSec < total ? (
-              <span className="text-[9px] text-amber-200/70" title="Voice plays from 0:00 across scenes until narration ends">
-                Voice → {fmtTime(transcriptTimeSec)} / {fmtTime(total)}
-              </span>
-            ) : null}
             <TimelineStat icon={Film} label="Video Export" value={fmtTime(displayExportSec)} tone="violet" active />
           </div>
         </div>

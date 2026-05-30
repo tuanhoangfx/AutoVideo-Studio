@@ -7,6 +7,10 @@ import { getSlotExportCount, incrementSlotDownloadCount } from '@/lib/job-projec
 import { buildVideoFilename } from '@/lib/video-filename';
 
 const AUTO_DOWNLOADED_KEY = 'autovideo:autoDownloadedJobIds';
+const AUTO_DOWNLOADED_SESSION_KEY = 'autovideo:autoDownloadedJobIds';
+
+/** Cross-tab dedupe (sessionStorage is per-tab and caused duplicate Save As dialogs). */
+const downloadInFlight = new Set<string>();
 export const JOB_DOWNLOAD_COMPLETE_EVENT = 'autovideo:job-download-complete';
 export const JOB_DOWNLOAD_FAILED_EVENT = 'autovideo:job-download-failed';
 export const JOB_EXPORT_READY_EVENT = 'autovideo:job-export-ready';
@@ -22,10 +26,14 @@ export type JobDownloadCompleteDetail = {
 function readDownloadedIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
-    const raw = sessionStorage.getItem(AUTO_DOWNLOADED_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw) as string[];
-    return new Set(Array.isArray(parsed) ? parsed : []);
+    const fromLocal = localStorage.getItem(AUTO_DOWNLOADED_KEY);
+    const fromSession = sessionStorage.getItem(AUTO_DOWNLOADED_SESSION_KEY);
+    const merge = (raw: string | null) => {
+      if (!raw) return [] as string[];
+      const parsed = JSON.parse(raw) as string[];
+      return Array.isArray(parsed) ? parsed : [];
+    };
+    return new Set([...merge(fromLocal), ...merge(fromSession)]);
   } catch {
     return new Set();
   }
@@ -33,8 +41,10 @@ function readDownloadedIds(): Set<string> {
 
 function writeDownloadedIds(ids: Set<string>) {
   if (typeof window === 'undefined') return;
+  const payload = JSON.stringify([...ids]);
   try {
-    sessionStorage.setItem(AUTO_DOWNLOADED_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(AUTO_DOWNLOADED_KEY, payload);
+    sessionStorage.setItem(AUTO_DOWNLOADED_SESSION_KEY, payload);
   } catch {}
 }
 
@@ -128,30 +138,40 @@ export async function performJobAutoDownload(
     return { ok: false, reason: 'Job output is not ready' };
   }
 
+  if (downloadInFlight.has(job.id)) {
+    return { ok: true, skipped: true, reason: 'already' };
+  }
+
   if (wasJobAutoDownloaded(job.id) && !options.force) {
     return { ok: true, skipped: true, reason: 'already' };
   }
 
-  const settings = readStudioExportSettings();
-  const force = Boolean(options.force) || consumeForceDownloadJob(job.id);
-  if (!settings.autoDownload && !force) {
-    window.dispatchEvent(new CustomEvent(JOB_EXPORT_READY_EVENT, { detail: { job } }));
-    return { ok: true, skipped: true, reason: 'auto-off' };
-  }
-
-  clearJobDownloadFailed(job.id);
-
-  const ext = job.config.output_format ?? settings.outputFormat ?? 'mp4';
-  const exportIndex = Math.max(1, getSlotExportCount(job.id));
-  const filename = `${buildVideoFilename({
-    job,
-    topic: options.topic ?? '',
-    imagesCount: job.scenes_count,
-    template: settings.videoNameTemplate,
-    exportIndex,
-  })}.${ext}`;
+  downloadInFlight.add(job.id);
 
   try {
+    const settings = readStudioExportSettings();
+    const force = Boolean(options.force) || consumeForceDownloadJob(job.id);
+    if (!settings.autoDownload && !force) {
+      window.dispatchEvent(new CustomEvent(JOB_EXPORT_READY_EVENT, { detail: { job } }));
+      return { ok: true, skipped: true, reason: 'auto-off' };
+    }
+
+    clearJobDownloadFailed(job.id);
+
+    const ext = job.config.output_format ?? settings.outputFormat ?? 'mp4';
+    const exportIndex = Math.max(1, getSlotExportCount(job.id));
+    const filename = `${buildVideoFilename({
+      job,
+      topic: options.topic ?? '',
+      imagesCount: job.scenes_count,
+      template: settings.videoNameTemplate,
+      exportIndex,
+    })}.${ext}`;
+
+    if (wasJobAutoDownloaded(job.id) && !options.force) {
+      return { ok: true, skipped: true, reason: 'already' };
+    }
+
     const blob = await fetchJobOutputBlob(job.id);
     let savedToFolder = false;
     let target = settings.downloadDirectoryName ?? 'Browser downloads';
@@ -165,8 +185,12 @@ export async function performJobAutoDownload(
     }
 
     if (!savedToFolder) {
-      triggerBrowserDownload(filename, blob);
-      target = 'Browser downloads';
+      const queued = triggerBrowserDownload(filename, blob);
+      if (queued === 'deferred') {
+        target = 'Browser downloads (when tab is visible)';
+      } else {
+        target = 'Browser downloads';
+      }
     }
 
     const detail: JobDownloadCompleteDetail = {
@@ -189,6 +213,8 @@ export async function performJobAutoDownload(
       new CustomEvent(JOB_DOWNLOAD_FAILED_EVENT, { detail: { jobId: job.id, reason } })
     );
     return { ok: false, reason };
+  } finally {
+    downloadInFlight.delete(job.id);
   }
 }
 

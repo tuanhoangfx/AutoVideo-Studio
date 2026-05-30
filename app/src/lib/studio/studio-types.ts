@@ -15,9 +15,9 @@ export type StudioDownloadRecord = {
 };
 
 export const VIDEO_NAME_TEMPLATES: { value: VideoNameTemplate; label: string }[] = [
-  { value: 'time-date-yy-images', label: 'hh:mm dd/mm/yy + images' },
-  { value: 'time-date-yy', label: 'hh:mm dd/mm/yy' },
+  { value: 'time-date-yy', label: 'hh:mm:ss dd/mm/yy' },
+  { value: 'time-date-yy-images', label: 'hh:mm:ss dd/mm/yy + images' },
   { value: 'date-yy-time', label: 'dd/mm/yy hh:mm' },
-  { value: 'topic-time-date', label: 'topic + hh:mm dd/mm' },
+  { value: 'topic-time-date', label: 'topic + hh:mm:ss dd/mm/yy' },
   { value: 'jobid', label: 'job id' },
 ];

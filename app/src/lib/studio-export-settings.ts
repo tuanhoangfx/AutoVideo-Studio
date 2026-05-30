@@ -30,7 +30,7 @@ export const DEFAULT_STUDIO_EXPORT_SETTINGS: StudioExportSettings = {
   outputFormat: 'mp4',
   autoDownload: true,
   exportDurationMode: 'image',
-  videoNameTemplate: 'time-date-yy-images',
+  videoNameTemplate: 'time-date-yy',
 };
 
 export function readStudioExportSettings(): StudioExportSettings {

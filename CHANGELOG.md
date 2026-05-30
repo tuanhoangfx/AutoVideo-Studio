@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.4
+
+- Remove redundant Voice duration hint on Timeline stats row.
+
+## 0.2.3
+
+- Fix duplicate Save As when auto-download runs on a background tab or second Studio tab; defer blob download until tab is visible; dedupe job downloads via localStorage.
+
+## 0.2.2
+
+- Default voice Jenny (en-US); voice list sorts en-US first; output filename `hh:mm:ss dd/mm/yy`; export defaults 30fps + time-date template.
+
 ## 0.2.1
 
 - Studio refactor (hooks, JobTabTooltip, export/download), FFmpeg libx264 default on Windows, desktop worker env hardening.

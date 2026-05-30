@@ -43,7 +43,7 @@ class SceneSpec:
 class JobSpec:
     job_id: str
     scenes: list[SceneSpec]
-    voice: str = "vi-VN-HoaiMyNeural"
+    voice: str = "en-US-JennyNeural"
     aspect: str = "9:16"
     fps: int = 30
     resolution: str = "1080p"
