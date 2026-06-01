@@ -46,6 +46,7 @@ function Test-AppAssets([int]$Port) {
   try {
     $html = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/studio" -TimeoutSec 3
     if ($html.StatusCode -ne 200) { return $false }
+    if ($html.Content -match 'Server Error|Cannot find module ''\./\d+\.js''') { return $false }
     $match = [regex]::Match($html.Content, '/_next/static/[^"''<>\s]+\.css[^"''<>\s]*')
     if (-not $match.Success) { return $true }
     $asset = $match.Value.TrimEnd('\')
