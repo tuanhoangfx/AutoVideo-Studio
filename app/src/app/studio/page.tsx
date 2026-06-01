@@ -1,16 +1,18 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Download, FolderOpen, Loader2, Music, Subtitles,
   Folder, FileText, Play, PlayCircle, Mic2,
 } from 'lucide-react';
 import * as api from '@/lib/api';
+import { normalizeTransitionForWorker } from '@/lib/pipeline-constants';
 import { formatDuration } from '@/lib/format-duration';
 import type { Job, SubtitleStyle, TTSProvider } from '@/lib/api';
-import { useAutoSave, clearDraft, loadDraft, type DraftState } from '@/lib/autosave';
+import { useAutoSave, loadDraft, type DraftState } from '@/lib/autosave';
 import {
-  saveImages, saveBgm, clearAllFiles, summarizeFiles, loadImages, loadBgm,
+  saveImages, saveBgm, summarizeFiles, loadImages, loadBgm,
 } from '@/lib/draft-files';
 import {
   cloneSnapshotImages,
@@ -21,15 +23,12 @@ import {
 } from '@/lib/studio-editor-snapshot';
 import {
   ProjectTabs,
-  ImageLibrary,
   ScriptPanel,
   KeyframeTimeline,
   BGMPanel,
   SubtitlePanel,
-  VoiceSelector,
   VOICE_OPTIONS,
   FlagBadge,
-  SequencePreview,
   AudioPreview,
   type LibraryImage,
   type LibraryImageInput,
@@ -38,6 +37,28 @@ import {
   type Transition,
   type SequenceTiming,
 } from '@/components/studio';
+
+const ImageLibrary = dynamic(
+  () => import('@/components/studio/ImageLibrary').then((m) => ({ default: m.ImageLibrary })),
+  { ssr: false, loading: () => <PanelLoading label="Image Library" /> }
+);
+const SequencePreview = dynamic(
+  () => import('@/components/studio/SequencePreview').then((m) => ({ default: m.SequencePreview })),
+  { ssr: false, loading: () => <PanelLoading label="Sequence Preview" /> }
+);
+const VoiceSelector = dynamic(
+  () => import('@/components/studio/VoiceSelector').then((m) => ({ default: m.VoiceSelector })),
+  { ssr: false, loading: () => <PanelLoading label="Voice" /> }
+);
+
+function PanelLoading({ label }: { label: string }) {
+  return (
+    <div className="grid min-h-[8rem] flex-1 place-items-center text-[11px] text-white/45">
+      <Loader2 size={16} className="animate-spin text-[var(--accent-2)]" />
+      <span className="mt-2">{label}</span>
+    </div>
+  );
+}
 import {
   DEFAULT_STUDIO_EXPORT_SETTINGS,
   readStudioExportSettings,
@@ -109,6 +130,8 @@ export default function StudioPage() {
 
   /* ─── Project doc state ─── */
   const [images, setImages] = useState<LibraryImage[]>([]);
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
   const [lines, setLines] = useState<ScriptLine[]>([]);
   const [scriptText, setScriptText] = useState('');
   const [topic, setTopic] = useState('');
@@ -234,6 +257,8 @@ export default function StudioPage() {
     setPreviewPlayhead(0);
     setSequenceTiming(null);
   }, []);
+
+  useEffect(() => () => revokeEditorImages(imagesRef.current), []);
 
   /* ─── Restore draft (localStorage + IDB) on mount ─── */
   useEffect(() => {
@@ -503,8 +528,11 @@ export default function StudioPage() {
   useEffect(() => {
     setLines((prev) => buildSceneLines(selectedImageIndexes, prev, imageDurationSec));
     setSelectedScene((prev) => Math.max(0, Math.min(prev, Math.max(0, selectedImageIndexes.length - 1))));
+  }, [imageDurationSec, selectedImageIndexes]);
+
+  useEffect(() => {
     setSelectedImage(selectedImageIndexes[selectedScene] ?? selectedImageIndexes[0] ?? 0);
-  }, [imageDurationSec, selectedImageIndexes, selectedScene]);
+  }, [selectedImageIndexes, selectedScene]);
 
   const renderLines = useMemo(
     () => lines.filter((line) => images[line.image_index]),
@@ -581,6 +609,8 @@ export default function StudioPage() {
     openJobOutput,
     openLatestJobOutput,
     triggerExportAndDownload,
+    cancelCurrentExport,
+    cancelingExport,
     renderSpeedLabel,
     currentJobRunning,
     displayJobError,
@@ -648,7 +678,7 @@ export default function StudioPage() {
           imageUrl: images[l.image_index].url,
           effect: l.effect,
           durationSec: l.durationSec ?? imageDurationSec,
-          transition: l.transition ?? 'slide_left',
+          transition: normalizeTransitionForWorker(l.transition),
         })),
     [lines, images, imageDurationSec]
   );
@@ -857,6 +887,8 @@ export default function StudioPage() {
                     }
                     detail={currentJobRunning || downloadState === 'exporting' || downloadState === 'downloading' ? renderSpeedLabel : undefined}
                     progress={currentJob?.progress ?? (currentJobRunning ? 8 : 0)}
+                    onCancel={() => void cancelCurrentExport()}
+                    cancelDisabled={cancelingExport}
                   />
                 )}
                 {downloadState === 'idle' &&

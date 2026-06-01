@@ -1,4 +1,5 @@
 import type { Job } from '@/lib/api';
+import { defaultSceneTransition } from '@/lib/pipeline-constants';
 import type { ScriptLine } from '@/types/studio';
 
 export function sourceFolderName(file: File) {
@@ -21,7 +22,7 @@ export function buildSceneLines(
       image_index: imageIndex,
       durationSec: current?.durationSec ?? durationSec,
       effect: current?.effect ?? 'none',
-      transition: current?.transition ?? 'slide_left',
+      transition: defaultSceneTransition(current?.transition),
     };
   });
 }

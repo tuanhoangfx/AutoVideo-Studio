@@ -107,8 +107,9 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
     full_audio = audio_dir / "full.mp3"
     if narration:
         tts_text = trim_text_for_duration(narration, total_ms, spec.rate)
+        tts_prefer = "edge" if spec.tts_provider in ("edge", "elevenlabs", "omnivoice-local") else spec.tts_provider
         result = await synthesize(
-            tts_text, full_audio, voice=spec.voice, rate=spec.rate, prefer="edge"
+            tts_text, full_audio, voice=spec.voice, rate=spec.rate, prefer=tts_prefer
         )
         if full_audio.exists():
             _fit_audio_to_duration(full_audio, total_ms)

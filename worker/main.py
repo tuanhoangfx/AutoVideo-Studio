@@ -195,7 +195,8 @@ Status = Literal["pending", "tts", "audio", "compose", "done", "error"]
 
 
 class JobConfig(BaseModel):
-    aspect: Literal["9:16", "16:9", "1:1"] = "9:16"
+    # Keep default aligned with UI settings (app/src/lib/studio-export-settings.ts).
+    aspect: Literal["9:16", "16:9", "1:1"] = "16:9"
     voice: str = "en-US-JennyNeural"
     fps: int = 30
     resolution: Literal["720p", "1080p", "2k", "4k"] = "1080p"

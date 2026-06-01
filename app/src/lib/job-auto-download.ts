@@ -7,7 +7,6 @@ import { getSlotExportCount, incrementSlotDownloadCount } from '@/lib/job-projec
 import { buildVideoFilename } from '@/lib/video-filename';
 
 const AUTO_DOWNLOADED_KEY = 'autovideo:autoDownloadedJobIds';
-const AUTO_DOWNLOADED_SESSION_KEY = 'autovideo:autoDownloadedJobIds';
 
 /** Cross-tab dedupe (sessionStorage is per-tab and caused duplicate Save As dialogs). */
 const downloadInFlight = new Set<string>();
@@ -27,7 +26,7 @@ function readDownloadedIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
     const fromLocal = localStorage.getItem(AUTO_DOWNLOADED_KEY);
-    const fromSession = sessionStorage.getItem(AUTO_DOWNLOADED_SESSION_KEY);
+    const fromSession = sessionStorage.getItem(AUTO_DOWNLOADED_KEY);
     const merge = (raw: string | null) => {
       if (!raw) return [] as string[];
       const parsed = JSON.parse(raw) as string[];
@@ -44,7 +43,7 @@ function writeDownloadedIds(ids: Set<string>) {
   const payload = JSON.stringify([...ids]);
   try {
     localStorage.setItem(AUTO_DOWNLOADED_KEY, payload);
-    sessionStorage.setItem(AUTO_DOWNLOADED_SESSION_KEY, payload);
+    sessionStorage.setItem(AUTO_DOWNLOADED_KEY, payload);
   } catch {}
 }
 

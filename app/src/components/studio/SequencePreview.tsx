@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Pause, Square, Loader2, AlertCircle, RotateCcw, X } from 'lucide-react';
 import { voicePreviewUrl } from '@/lib/api';
-import { TRANSITION_S, resolveAutoEffect } from '@/lib/pipeline-constants';
+import { TRANSITION_S, resolveAutoEffect, resolvePreviewTransition } from '@/lib/pipeline-constants';
 
 import type { SequenceScene, SequenceTiming } from '@/types/studio';
 
@@ -292,7 +292,7 @@ export function SequencePreview({
       const remaining = sceneDur - sceneT;
       const inCrossfade = remaining < TRANSITION_S && idx < scenes.length - 1;
       const img = imagesRef.current[idx];
-      const transition = resolveTransition(scenes[idx].transition, idx);
+      const transition = resolvePreviewTransition(scenes[idx].transition, idx);
 
       // Reset
       cnvCtx.globalAlpha = 1;
@@ -639,15 +639,6 @@ function drawKenBurns(
     }
     ctx.restore();
   }
-}
-
-function resolveTransition(value: string | undefined, index: number) {
-  if (value === 'none') return 'cut';
-  if (value === 'random') {
-    return (['slide_left', 'slide_right', 'fade', 'zoom'] as const)[index % 4];
-  }
-  if (value === 'slide') return 'slide_left';
-  return value ?? 'slide_left';
 }
 
 function drawCaption(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, text: string, alpha = 1) {

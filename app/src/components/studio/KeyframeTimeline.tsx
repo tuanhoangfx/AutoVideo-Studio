@@ -29,7 +29,7 @@ import type { LibraryImage } from './ImageLibrary';
 import { HubFilterDropdown } from './HubFilterDropdown';
 import { studioControlClass } from './StudioControl';
 import { StudioToolbarButton } from './StudioToolbar';
-import { EFFECTS_CYCLE } from '@/lib/pipeline-constants';
+import { coerceTransition, EFFECTS_CYCLE } from '@/lib/pipeline-constants';
 import {
   EFFECT_OPTIONS,
   TRANSITION_OPTIONS,
@@ -617,7 +617,7 @@ export function KeyframeTimeline({
                             <HubFilterDropdown
                               icon={<ArrowRightLeft size={10} />}
                               label="Transition"
-                              selected={[normalizeTransition(line.transition)]}
+                              selected={[coerceTransition(line.transition)]}
                               options={TRANSITION_FILTER_OPTIONS}
                               onChange={(values) => onChangeTransition(i, (values[0] as Transition) ?? 'slide_left')}
                               singleSelect
@@ -655,66 +655,6 @@ export function KeyframeTimeline({
         )}
       </div>
     </section>
-  );
-}
-
-type BulkTone = 'sky' | 'violet' | 'rose' | 'amber' | 'fuchsia' | 'teal';
-
-const BULK_TONE_CLASS: Record<BulkTone, string> = {
-  sky: 'border-sky-400/30 bg-sky-500/12 text-sky-100 hover:bg-sky-500/20 hover:border-sky-300/45',
-  violet: 'border-violet-400/30 bg-violet-500/12 text-violet-100 hover:bg-violet-500/20 hover:border-violet-300/45',
-  rose: 'border-rose-400/35 bg-rose-500/12 text-rose-100 hover:bg-rose-500/22 hover:border-rose-300/45',
-  amber: 'border-amber-400/30 bg-amber-500/12 text-amber-100 hover:bg-amber-500/20 hover:border-amber-300/45',
-  fuchsia: 'border-fuchsia-400/30 bg-fuchsia-500/12 text-fuchsia-100 hover:bg-fuchsia-500/20 hover:border-fuchsia-300/45',
-  teal: 'border-teal-400/30 bg-teal-500/12 text-teal-100 hover:bg-teal-500/20 hover:border-teal-300/45',
-};
-
-function TimelineBulkBtn({
-  tone,
-  icon,
-  children,
-  className = '',
-  ...props
-}: {
-  tone: BulkTone;
-  icon: ReactNode;
-  children: ReactNode;
-  className?: string;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      type="button"
-      className={`inline-flex h-[22px] shrink-0 items-center gap-1 rounded-md border px-1.5 text-[9px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-35 ${BULK_TONE_CLASS[tone]} ${className}`}
-      {...props}
-    >
-      <span className="opacity-90">{icon}</span>
-      {children}
-    </button>
-  );
-}
-
-function TimelineBulkGroup({
-  tone,
-  icon,
-  label,
-  children,
-}: {
-  tone: BulkTone;
-  icon: ReactNode;
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`inline-flex h-[22px] items-center gap-0.5 rounded-md border px-1 ${BULK_TONE_CLASS[tone]}`}
-      title={label}
-    >
-      <span className="inline-flex items-center gap-0.5 pl-0.5 opacity-85">
-        {icon}
-        <span className="text-[8px] font-semibold uppercase tracking-wide opacity-70">{label}</span>
-      </span>
-      {children}
-    </div>
   );
 }
 
@@ -783,14 +723,6 @@ function TimelineStat({
   );
 }
 
-function estimateDuration(text: string) {
-  return Math.max(2, Math.min(12, text.trim().length * 0.055 + 1.2));
-}
-
-function wordCount(text: string) {
-  return text.trim() ? text.trim().split(/\s+/).length : 0;
-}
-
 function silentWaveform(samples: number) {
   return Array.from({ length: samples }, () => 0.1);
 }
@@ -822,20 +754,6 @@ function MiniWaveform({ values }: { values: number[] }) {
 
 function effectLabel(effect: Effect) {
   return EFFECT_OPTIONS.find((o) => o.id === effect)?.label ?? effect;
-}
-
-function normalizeTransition(value: ScriptLine['transition']): Transition {
-  if (
-    value === 'slide_left' ||
-    value === 'slide_right' ||
-    value === 'fade' ||
-    value === 'zoom' ||
-    value === 'random' ||
-    value === 'none'
-  ) {
-    return value;
-  }
-  return 'slide_left';
 }
 
 function rangeRows(from: number, to: number) {

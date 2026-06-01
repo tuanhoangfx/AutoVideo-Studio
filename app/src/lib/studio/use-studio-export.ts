@@ -39,8 +39,8 @@ import {
   type ExportTimeModel,
 } from '@/lib/export-time-estimate';
 import type { EditorSnapshot, StudioDownloadState } from '@/lib/studio-editor-snapshot';
-import type { ScriptLine } from '@/types/studio';
-import type { LibraryImage } from '@/components/studio/ImageLibrary';
+import { normalizeTransitionForWorker } from '@/lib/pipeline-constants';
+import type { LibraryImage, ScriptLine } from '@/types/studio';
 import type { StudioAspect } from './studio-types';
 import { formatJobErrorForUi } from './format-job-error';
 import { findLatestDoneJob, revealStudioOutputFile } from '@/lib/studio-output-reveal';
@@ -87,9 +87,6 @@ export type UseStudioExportParams = {
 };
 
 export function useStudioExport(p: UseStudioExportParams) {
-  const [downloadHistory, setDownloadHistory] = useState<
-    Array<{ id: string; filename: string; url: string; target: string; size: number; at: number }>
-  >([]);
   const [exportTimeModel, setExportTimeModel] = useState<ExportTimeModel>(DEFAULT_EXPORT_TIME_MODEL);
   const [savedOutputFilenames, setSavedOutputFilenames] = useState<Record<string, string>>({});
   const forceExportDownloadRef = useRef(false);
@@ -138,17 +135,6 @@ export function useStudioExport(p: UseStudioExportParams) {
     (detail: JobDownloadCompleteDetail) => {
       const outputUrl = api.resolveWorkerAssetUrl(api.outputUrl(detail.jobId));
       setSavedOutputFilenames((prev) => ({ ...prev, [detail.jobId]: detail.filename }));
-      setDownloadHistory((prev) => [
-        {
-          id: detail.jobId,
-          filename: detail.filename,
-          url: outputUrl,
-          target: detail.target,
-          size: detail.size,
-          at: Date.now(),
-        },
-        ...prev.filter((item) => item.id !== detail.jobId),
-      ].slice(0, 4));
       if (detail.jobId !== p.activeJobId) return;
       p.setDownloadState('downloaded');
       p.setDownloadMessage(detail.filename);
@@ -353,7 +339,7 @@ export function useStudioExport(p: UseStudioExportParams) {
           text: '',
           image_index: order,
           duration_ms: Math.round(Math.max(1, p.sceneDurationsSec[order] ?? p.imageDurationSec) * 1000),
-          transition: l.transition ?? 'slide_left',
+          transition: normalizeTransitionForWorker(l.transition),
           effect: !l.effect || l.effect === 'auto' ? null : l.effect,
         })),
         config: {
@@ -461,10 +447,30 @@ export function useStudioExport(p: UseStudioExportParams) {
     void startRender();
   }, [startRender]);
 
+  const [cancelingExport, setCancelingExport] = useState(false);
+
+  const cancelCurrentExport = useCallback(async () => {
+    const job = p.currentJob;
+    if (!job || !isRunningJob(job)) return;
+    setCancelingExport(true);
+    try {
+      const updated = await api.cancelJob(job.id);
+      p.setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+      p.setDownloadState('idle');
+      p.setDownloadMessage('');
+      window.dispatchEvent(new CustomEvent(JOB_POLLED_EVENT, { detail: { jobs: [updated] } }));
+      p.showToast('Export canceled');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Could not cancel export.';
+      p.showToast(message);
+    } finally {
+      setCancelingExport(false);
+    }
+  }, [p]);
+
   const displayJobError = formatJobErrorForUi(p.currentJob?.error);
 
   return {
-    downloadHistory,
     savedOutputFilenames,
     exportTimeModel,
     exportEstimateMs,
@@ -476,6 +482,8 @@ export function useStudioExport(p: UseStudioExportParams) {
     openLatestJobOutput,
     startRender,
     triggerExportAndDownload,
+    cancelCurrentExport,
+    cancelingExport,
     renderSpeedLabel,
     currentJobRunning,
     displayJobError,

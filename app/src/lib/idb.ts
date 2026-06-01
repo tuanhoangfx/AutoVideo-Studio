@@ -9,7 +9,7 @@
  *   const file = await idbGet<File>('image:0');
  *   await idbDelete('image:0');
  *   const keys = await idbKeys();
- *   await idbClear();
+ *   // no clear() helper (avoid accidental data loss)
  */
 
 const DB_NAME = 'p0021-studio';
@@ -75,6 +75,4 @@ export async function idbKeys(): Promise<string[]> {
   );
 }
 
-export async function idbClear(): Promise<void> {
-  await tx('readwrite', (s) => s.clear());
-}
+// (intentionally no clear() export; keep API minimal and avoid accidental data loss)

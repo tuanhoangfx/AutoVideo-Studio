@@ -10,8 +10,6 @@ let runtimeWorkerUrl =
 
 export const WORKER_URL = runtimeWorkerUrl;
 
-export const WORKER_URL_CONFIGURED = Boolean(WORKER_URL);
-
 export function getWorkerUrl() {
   return runtimeWorkerUrl;
 }
@@ -134,6 +132,12 @@ export async function probeJobOutput(id: string) {
   );
 }
 
+export async function cancelJob(id: string) {
+  return handle<Job>(
+    await fetch(workerUrl(`/jobs/${id}/cancel`), { method: 'POST' })
+  );
+}
+
 export async function createJob(payload: CreateJobPayload): Promise<Job> {
   const fd = new FormData();
   fd.append('scenes', JSON.stringify(payload.scenes));
@@ -142,12 +146,6 @@ export async function createJob(payload: CreateJobPayload): Promise<Job> {
   if (payload.bgm) fd.append('bgm', payload.bgm, payload.bgm.name);
   return handle<Job>(
     await fetch(workerUrl('/jobs'), { method: 'POST', body: fd })
-  );
-}
-
-export async function cancelJob(id: string) {
-  return handle<{ ok: true }>(
-    await fetch(workerUrl(`/jobs/${id}/cancel`), { method: 'POST' })
   );
 }
 

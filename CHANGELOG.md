@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2
+
+- Architecture: job poll coordinator (single owner), Image Library split (Drive/Folder/Grid panels), pipeline transition SSOT in `pipeline-constants.ts`.
+- Studio: lazy-load Sequence Preview, Image Library, Voice Selector; cancel export button; blob URL cleanup on unmount; fix scene index effect deps.
+- Voice: Edge TTS only in UI until other providers are implemented; worker default aspect 16:9 aligned with UI.
+- Dev: `pnpm test:worker` script and GitHub Actions worker smoke workflow.
+
 ## 1.1.1
 
 - Official desktop release: timeline scene table V1, compact Duration/Transition/Effect columns, Random/None for transitions and effects.

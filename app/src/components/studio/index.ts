@@ -3,7 +3,7 @@ export { ProjectTabs } from './ProjectTabs';
 export { ImageLibrary } from './ImageLibrary';
 export type { LibraryImage, LibraryImageInput } from './ImageLibrary';
 export { ScriptPanel } from './ScriptPanel';
-export type { ScriptLine } from './ScriptPanel';
+export type { ScriptLine } from '@/types/studio';
 export { KeyframeTimeline } from './KeyframeTimeline';
 export { EFFECT_OPTIONS, TRANSITION_OPTIONS, type Effect, type Transition } from './ScriptPanel';
 export { BGMPanel } from './BGMPanel';
@@ -23,4 +23,4 @@ export {
   TOOLBAR_SEARCH,
   type StudioToolbarTone,
 } from './StudioToolbar';
-export type { SequenceTiming } from './SequencePreview';
+export type { SequenceTiming } from '@/types/studio';

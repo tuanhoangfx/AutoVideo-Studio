@@ -64,11 +64,15 @@ export function PreviewExportStatus({
   message,
   detail,
   progress,
+  onCancel,
+  cancelDisabled,
 }: {
   state: StudioDownloadState;
   message: string;
   detail?: string;
   progress: number;
+  onCancel?: () => void;
+  cancelDisabled?: boolean;
 }) {
   const isBusy = state === 'exporting' || state === 'downloading';
   const label =
@@ -96,6 +100,16 @@ export function PreviewExportStatus({
         <span className="font-semibold">{label}</span>
         <span className="min-w-0 flex-1 truncate text-white/55">{displayMessage}</span>
         <span className="font-mono text-[10px] text-white/70">{Math.round(pct)}%</span>
+        {onCancel && isBusy ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelDisabled}
+            className="shrink-0 rounded-md border border-rose-400/40 bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-100 hover:bg-rose-500/30 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        ) : null}
       </div>
       {displayDetail ? (
         <div className="mb-1 truncate font-mono text-[10px] tabular-nums text-white/50">{displayDetail}</div>

@@ -1,6 +1,6 @@
 {
   "name": "autovideo-studio",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "AutoVideo Studio desktop app with local render worker.",
   "author": "TuanHoangFX",
@@ -24,15 +24,15 @@
     "desktop:release:major": "pnpm desktop:release -- -Bump major -Publish",
     "start": "next start --port 3021",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:worker": "powershell -ExecutionPolicy Bypass -File ../scripts/test-worker-smoke.ps1"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
     "lucide-react": "^0.451.0",
     "next": "14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zod": "^3.23.8"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",

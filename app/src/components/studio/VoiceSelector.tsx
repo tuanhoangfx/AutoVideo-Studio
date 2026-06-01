@@ -79,11 +79,12 @@ const GENDER_OPTIONS = [
   { value: 'male', label: 'Male', icon: 'male' },
 ] as const;
 
-const PROVIDER_OPTIONS = [
-  { value: 'edge', label: 'Edge', icon: 'edge' },
-  { value: 'elevenlabs', label: 'ElevenLabs', icon: 'elevenlabs' },
-  { value: 'omnivoice-local', label: 'OmniVoice Local', icon: 'omnivoice-local' },
-] as const satisfies readonly { value: TTSProvider; label: string; icon: string }[];
+/** Only Edge TTS is implemented in the render worker today. */
+const PROVIDER_OPTIONS = [{ value: 'edge', label: 'Edge', icon: 'edge' }] as const satisfies readonly {
+  value: TTSProvider;
+  label: string;
+  icon: string;
+}[];
 
 const FALLBACK_PREVIEW_TEXT = 'Hello, this is a voice preview.';
 const FAVORITE_VOICES_KEY = 'p0021:studio:favorite-voices:v1';
@@ -136,6 +137,10 @@ export function VoiceSelector({
       localStorage.setItem(FAVORITE_VOICES_KEY, JSON.stringify(favoriteVoiceIds));
     } catch {}
   }, [favoriteVoiceIds]);
+
+  useEffect(() => {
+    if (provider !== 'edge') onProvider('edge');
+  }, [provider, onProvider]);
 
   useEffect(() => {
     setProviderFilters((current) => (current.includes(provider) ? current : [provider, ...current]));
