@@ -1,118 +1,469 @@
-# Changelog
+# Changelog â€” P0021-AutoVideo-Studio
 
+> **Ship keywords:** `Git P0021` Â· `Push P0021` Â· `Release P0021`  
+> **Template:** `E:\Dev\Rules\templates\tool-docs\CHANGELOG_ENTRY_TEMPLATE.md`  
+> **Script:** `powershell -File E:\Dev\Tool\scripts\ship-product.ps1 -Code P0021 -Keyword Push`
 ## 1.1.2
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Architecture: job poll coordinator (single owner), Image Library split (Drive/Folder/Grid panels), pipeline transition SSOT in `pipeline-constants.ts`.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Studio: lazy-load Sequence Preview, Image Library, Voice Selector; cancel export button; blob URL cleanup on unmount; fix scene index effect deps.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Voice: Edge TTS only in UI until other providers are implemented; worker default aspect 16:9 aligned with UI.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Dev: `pnpm test:worker` script and GitHub Actions worker smoke workflow.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 1.1.1
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Official desktop release: timeline scene table V1, compact Duration/Transition/Effect columns, Random/None for transitions and effects.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Studio defaults (Jenny voice, subtitle off), open latest exported video, architecture cleanup (shared types, job events, dead code removal).
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Worker: random effect pool, cut transitions (none), lib sync with preview pipeline.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.15
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Transition/Effect: add Random + None options; worker preview resolves random effects and cut (none) transitions.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.14
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline Duration column: 2.67rem width, shared bulk/row padding with Transition/Effect; compact w-full controls.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.13
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline Transition/Effect columns reduced to one-third width (2.67rem / 2.33rem).
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.12
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline Transition column 8rem, Effect column 7rem; bulk filters in native table cells aligned with row dropdowns.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.11
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline scene table: equal Transition/Effect column width (6.5rem); bulk filters grid-aligned; row inline filters fill column.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.10
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline toolbar: remove empty grip/transcript header cells; action buttons flush left, bulk Effect aligned without 40% dead space.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.9
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Lock timeline scene table design V1 (fixed grid, flat actions, transcript 40%); remove Design Template mocks.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.8
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline scene table: flat action buttons (no frame), table-fixed columns with Transcript 40%.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - System → Design Template: 5 mockups (V1–V5) for timeline table layout review.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.7
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline table: bulk Duration / Transition / Effect filters align with column headers; Apply sits next to Delete.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.6
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Timeline storyboard: hide duration overlay on scene thumbnails.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Library: allow adding the same image to keyframes multiple times; remove duration badge on library thumbs.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.5
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Architecture cleanup: shared `types/studio`, `lib/job-events`, remove dead code and duplicate helpers.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Defaults: Jenny (en-US) voice first, subtitles Off.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Open file button reveals the latest exported video (same as job-tab download badge), not just the output folder.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.4
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Remove redundant Voice duration hint on Timeline stats row.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.3
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix duplicate Save As when auto-download runs on a background tab or second Studio tab; defer blob download until tab is visible; dedupe job downloads via localStorage.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.2
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Default voice Jenny (en-US); voice list sorts en-US first; output filename `hh:mm:ss dd/mm/yy`; export defaults 30fps + time-date template.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.2.1
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Studio refactor (hooks, JobTabTooltip, export/download), FFmpeg libx264 default on Windows, desktop worker env hardening.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Header shows release version and update date; worker smoke/repro scripts; remove design-preview routes.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.9
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Header & sidebar show real release version (`package.json`) and update date; P0004 catalog `localVersion` synced for P0021.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.8
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix export encode on Windows: default `libx264` (NVENC fallback), refresh encoder per job, clearer FFmpeg errors in Studio.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Desktop worker: `AUTOVIDEO_VIDEO_ENCODER=libx264`, single render worker; rebuild `autovideo-worker.exe`.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Refactor Studio hooks (`use-studio-jobs`, `use-studio-export`, …), remove design-preview routes, shared pipeline constants.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.7
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix Preview silent when using Paste Full Script (narration track TTS, not skipped by durationSec).
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix auto-download video missing audio: wait for stable output, correct Blob MIME, ffmpeg faststart on mux.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Voice preview API allows up to 800 chars for longer client previews.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.6
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix ProjectTabs crash when pointer leaves download badge (`relatedTarget` not a Node).
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.5
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Re-export on the same project tab (replace tab, keep slot); per-slot download count badge on tab.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Unified job tab label and download filenames: `hh:mm dd/mm/yy` (files use `hh-mm dd-mm-yy`); local time; export v2+ suffix.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.4
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix voice preview "no supported sources": fetch MP3 before play, short per-locale samples in voice list, clamp preview text, use runtime worker URL.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.3
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix broken image thumbnails after switching project tabs (revoked blob URLs in tab cache).
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 ## 0.1.2
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Fix studio tab switch losing project editor state and export progress UI while worker jobs still run.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Per-tab in-memory editor snapshots; restore local draft from localStorage + IndexedDB on load.
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
 - Export overlay only shows during active export/download (not misleading "Exporting" on completed jobs).
+- Prompt: Legacy entry
+- Product: P0021
+- Prompt: Legacy entry
