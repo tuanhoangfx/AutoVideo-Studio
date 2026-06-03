@@ -4,6 +4,30 @@
 > **Template:** `E:\Dev\Rules\templates\tool-docs\CHANGELOG_ENTRY_TEMPLATE.md`  
 > **Script:** `powershell -File E:\Dev\Tool\scripts\ship-product.ps1 -Code P0021 -Keyword Push`
 
+## 2026-06-03 - Fix Vercel deploy root + upload size
+
+- Version: `1.2.1`
+- Type: Patch
+- Product: P0021
+- Prompt: Fix 404 after root deploy — deploy from app/ with vercelignore
+- Commit: pending
+- Status: Draft
+
+### Changes
+
+- Add `app/.vercelignore` and ignore `dist-desktop/` in git.
+- Add root `vercel.json`; redeploy production from `app/` directory.
+
+### Verification
+
+- https://p0021.infi.io.vn loads AutoVideo Studio (browser).
+
+### Rollback
+
+- Revert vercel.json; promote prior Vercel deployment.
+
+---
+
 ## 2026-06-03 - Vercel deploy trim + p0021.infi.io.vn
 
 - Version: `1.2.0`

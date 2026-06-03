@@ -1,6 +1,6 @@
 {
   "name": "autovideo-studio",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "AutoVideo Studio desktop app with local render worker.",
   "author": "TuanHoangFX",
