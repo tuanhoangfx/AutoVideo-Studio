@@ -75,8 +75,8 @@
     "productionUrl": "https://p0021-autovideo-studio.vercel.app",
     "customDomain": "https://p0021.infi.io.vn",
     "customDomainStatus": "verified",
-    "dnsRequired": "A p0021.infix1.io.vn 76.76.21.21",
-    "workerUrl": "https://zaloai.infix1.io.vn/p0021-worker",
+    "dnsRequired": "A p0021.infi.io.vn 76.76.21.21",
+    "workerUrl": "https://zaloai.infi.io.vn/p0021-worker",
     "productionBranch": "main",
     "team": "tuanhoangfxs-projects"
   },
@@ -95,7 +95,7 @@
     "app": "https://p0021-autovideo-studio.vercel.app",
     "custom": "https://p0021.infi.io.vn",
     "customStatus": "verified",
-    "worker": "https://zaloai.infix1.io.vn/p0021-worker",
+    "worker": "https://zaloai.infi.io.vn/p0021-worker",
     "localSetupAt": "2026-06-03T07:29:04.118Z",
     "appSetupAt": "2026-05-26T15:12:00.000+07:00"
   },
