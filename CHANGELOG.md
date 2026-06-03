@@ -10,8 +10,8 @@
 - Type: Patch
 - Product: P0021
 - Prompt: xóa NEXT_PUBLIC_WORKER_URL trên Vercel; Working Rules
-- Commit: pending
-- Status: Draft
+- Commit: `ef54d81`
+- Status: Committed
 
 ### Changes
 
