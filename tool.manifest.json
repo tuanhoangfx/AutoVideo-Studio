@@ -73,15 +73,15 @@
     "project": "p0021-autovideo-studio",
     "projectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ",
     "productionUrl": "https://p0021-autovideo-studio.vercel.app",
-    "customDomain": "https://p0021.infix1.io.vn",
-    "customDomainStatus": "pending-dns",
+    "customDomain": "https://p0021.infi.io.vn",
+    "customDomainStatus": "verified",
     "dnsRequired": "A p0021.infix1.io.vn 76.76.21.21",
     "workerUrl": "https://zaloai.infix1.io.vn/p0021-worker",
     "productionBranch": "main",
     "team": "tuanhoangfxs-projects"
   },
   "release": {
-    "version": "1.1.1",
+    "version": "1.2.0",
     "updatedAt": "2026-05-30",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps."
@@ -93,8 +93,8 @@
   "urls": {
     "local": "http://127.0.0.1:3000",
     "app": "https://p0021-autovideo-studio.vercel.app",
-    "custom": "https://p0021.infix1.io.vn",
-    "customStatus": "pending-dns",
+    "custom": "https://p0021.infi.io.vn",
+    "customStatus": "verified",
     "worker": "https://zaloai.infix1.io.vn/p0021-worker",
     "localSetupAt": "2026-05-26T22:26:45.091Z",
     "appSetupAt": "2026-05-26T15:12:00.000+07:00"
@@ -155,5 +155,5 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-05-30T12:00:00.000Z"
+  "manifestUpdatedAt": "2026-06-03T07:26:03.790Z"
 }

@@ -3,6 +3,55 @@
 > **Ship keywords:** `Git P0021` Â· `Push P0021` Â· `Release P0021`  
 > **Template:** `E:\Dev\Rules\templates\tool-docs\CHANGELOG_ENTRY_TEMPLATE.md`  
 > **Script:** `powershell -File E:\Dev\Tool\scripts\ship-product.ps1 -Code P0021 -Keyword Push`
+
+## 2026-06-03 - Vercel deploy trim + p0021.infi.io.vn
+
+- Version: `1.2.0`
+- Type: Minor
+- Product: P0021
+- Prompt: ok 3 — .vercelignore to fix 100MB upload limit; production redeploy
+- Commit: pending
+- Status: Draft
+
+### Changes
+
+- Add root `.vercelignore` excluding Python worker, `_reference/`, `.runtime/`, and desktop artifacts.
+- Mark `p0021.infi.io.vn` custom domain verified in manifest.
+
+### Verification
+
+- `vercel --prod` upload under 100 MB; https://p0021.infi.io.vn loads AutoVideo Studio.
+
+### Rollback
+
+- Remove `.vercelignore`; revert manifest domain status.
+
+---
+
+## 2026-06-03 - Workspace version triple sync
+
+- Version: `1.1.1`
+- Type: Patch
+- Product: P0021
+- Prompt: Workspace version triple standardization (ok 1 2 3)
+- Commit: pending
+- Status: Draft
+
+### Changes
+
+- Align package.json, tool.manifest.json release.version, and CHANGELOG top Version to `1.1.1`.
+- Use workspace `check-version-sync.mjs --code` (no per-repo script copy).
+
+### Verification
+
+- `node E:\Dev\Tool\scripts\check-version-sync.mjs --code P0021`
+
+### Rollback
+
+- Revert this CHANGELOG block and version files
+
+---
+
 ## 1.1.2
 - Prompt: Legacy entry
 - Product: P0021

@@ -1,0 +1,8 @@
+{
+  "name": "autovideo-studio-workspace",
+  "private": true,
+  "scripts": {
+    "open": "node ../scripts/open-tool.cjs --open"
+  },
+  "version": "1.2.0"
+}
