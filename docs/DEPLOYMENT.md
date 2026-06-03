@@ -20,6 +20,15 @@ GOOGLE_DRIVE_API_REFERER=https://your-vercel-domain.vercel.app/studio
 If `NEXT_PUBLIC_WORKER_URL` is missing, production will fall back to `http://127.0.0.1:8021`,
 which only works for local development.
 
+**Local/desktop render only:** remove the VPS worker URL from Vercel (if it was set):
+
+```powershell
+cd E:\Dev\Tool\P0021-AutoVideo-Studio
+.\scripts\vercel-unset-worker-url.ps1
+```
+
+Then redeploy production once so the UI stops calling `zaloai…/p0021-worker`.
+
 ## Worker Environment
 
 Local disk output is the default:

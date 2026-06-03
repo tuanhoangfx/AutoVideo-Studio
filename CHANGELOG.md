@@ -4,6 +4,37 @@
 > **Template:** `E:\Dev\Rules\templates\tool-docs\CHANGELOG_ENTRY_TEMPLATE.md`  
 > **Script:** `powershell -File E:\Dev\Tool\scripts\ship-product.ps1 -Code P0021 -Keyword Push`
 
+## 2026-06-03 - Vercel: unset NEXT_PUBLIC_WORKER_URL script
+
+- Version: `1.2.3`
+- Type: Patch
+- Product: P0021
+- Prompt: xóa NEXT_PUBLIC_WORKER_URL trên Vercel; Working Rules
+- Commit: pending
+- Status: Draft
+
+### Changes
+
+- `scripts/vercel-unset-worker-url.ps1` — remove VPS worker env from production/preview/development.
+
+Version: 1.2.2 → 1.2.3
+
+## 2026-06-03 - Local render only; drop VPS worker
+
+- Version: `1.2.2`
+- Type: Patch
+- Product: P0021
+- Prompt: chỉ render trên máy — có cần giữ worker VPS không
+- Commit: pending
+- Status: Draft
+
+### Changes
+
+- Manifest: remove VPS `workerUrl`; document `workerLocal` + desktop/local render path.
+- VPS `/opt/autovideo-studio` docker stopped (see P0006 `pnpm vps:cleanup --apply --include-autovideo`).
+
+Version: 1.2.1 → 1.2.2
+
 ## 2026-06-03 - Fix Vercel deploy root + upload size
 
 - Version: `1.2.1`
