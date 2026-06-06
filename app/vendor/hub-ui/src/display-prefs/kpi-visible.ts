@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { PrefItem } from "./types";
 
 /** Max KPI tiles per tab row (golden Hub / directory). */

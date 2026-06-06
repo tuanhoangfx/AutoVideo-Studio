@@ -10,12 +10,14 @@ export type HubToolDetailSectionProps = {
   id: string;
   /** Section title — may include emoji prefix (matches TOC labels). */
   title: string;
+  /** Optional icon — same node as TOC row for Settings / detail modals. */
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
 };
 
 /** Bordered frame for one TOC section inside tool-detail modals. */
-export function HubToolDetailSection({ id, title, children, className = "" }: HubToolDetailSectionProps) {
+export function HubToolDetailSection({ id, title, icon, children, className = "" }: HubToolDetailSectionProps) {
   const highlightCtx = useHubTocSectionHighlightOptional();
 
   return (
@@ -28,7 +30,14 @@ export function HubToolDetailSection({ id, title, children, className = "" }: Hu
       }}
     >
       <header className="hub-tool-detail-section__header">
-        <h3 className="hub-tool-detail-section__title">{title}</h3>
+        <h3 className="hub-tool-detail-section__title">
+          {icon ? (
+            <span className="hub-tool-detail-section__title-icon" aria-hidden>
+              {icon}
+            </span>
+          ) : null}
+          <span>{title}</span>
+        </h3>
       </header>
       <div className="hub-tool-detail-section__body">{children}</div>
     </section>

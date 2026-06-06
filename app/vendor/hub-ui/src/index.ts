@@ -14,6 +14,7 @@ export {
   defaultKpiKeysFromDefs,
   enforceKpiMaxOnAdd,
   resolveVisibleKpiKeys,
+  useResolvedVisibleKpiKeys,
 } from "./display-prefs/kpi-visible";
 export type {
   DisplayPrefsPrefs,
@@ -178,5 +179,6 @@ export {
 export { scrollToHubTocSection, findHubTocScrollContainer } from "./shell/hub-toc-scroll";
 export { resolveActiveTocSection, useHubTocSectionSpy } from "./shell/hub-toc-section-spy";
 export { HubTocSectionNav, type HubTocNavItem } from "./shell/HubTocSectionNav";
+export { HubHintTooltip } from "./shell/HubHintTooltip";
 export { HubHeaderPanelButton, type HubHeaderPanelButtonProps } from "./shell/HubHeaderPanelButton";
 export { HubUsageLogPanel, type HubLogEntry, type HubUsageLogPanelProps } from "./shell/HubUsageLogPanel";
