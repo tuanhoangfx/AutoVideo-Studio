@@ -21,9 +21,7 @@ table.hub-users-table {
   padding: 8px 10px;
   color: var(--text);
   font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
   vertical-align: middle;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
@@ -59,9 +57,8 @@ table.hub-users-table {
 }
 
 .hub-users-th-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.05em;
   color: var(--text);
 }
 
@@ -129,6 +126,220 @@ table.hub-users-table {
 .hub-users-col--created { width: 11%; text-align: center; }
 .hub-users-col--activity { width: 14%; text-align: center; }
 .hub-users-col--actions { width: 7%; text-align: center; }
+
+/* Hub tools table (same skin as Users) */
+.hub-users-col--hub-code {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  text-align: left;
+}
+.hub-users-col--hub-project {
+  width: 26%;
+  min-width: 11rem;
+  text-align: left;
+}
+
+.hub-users-col--agent-layer {
+  width: 8%;
+  min-width: 5rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.hub-users-col--agent-golden {
+  width: 11%;
+  min-width: 6.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.hub-users-col--agent-clone {
+  width: 14%;
+  min-width: 7.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.hub-users-col--agent-lines {
+  width: 5%;
+  min-width: 3.25rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.hub-users-col--agent-path {
+  width: 22%;
+  min-width: 11rem;
+  text-align: left;
+  vertical-align: top;
+}
+.hub-users-col--hub-version {
+  width: 5.5rem;
+  min-width: 5.5rem;
+  text-align: center;
+}
+.hub-users-col--hub-status {
+  width: 6.5rem;
+  min-width: 6.5rem;
+  text-align: center;
+}
+.hub-users-col--hub-drift {
+  width: 3.75rem;
+  min-width: 3.75rem;
+  text-align: center;
+}
+.hub-users-col--hub-updated {
+  width: 6.25rem;
+  min-width: 6.25rem;
+  text-align: center;
+}
+.hub-users-col--hub-manifest {
+  width: auto;
+  min-width: 9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.hub-users-col--hub-links {
+  width: auto;
+  min-width: 6.5rem;
+  text-align: center;
+}
+
+.hub-users-table .hub-users-col--hub-links .link-row {
+  justify-content: center;
+}
+
+/* Hub tools directory — colgroup + % widths (Agent tab spacing model) */
+table.hub-users-table.hub-users-table--hub-tools {
+  min-width: 80rem;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--select {
+  width: 2.25rem;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-code {
+  width: 8%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-project {
+  width: 22%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-version {
+  width: 9%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-status {
+  width: 10%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-drift {
+  width: 6%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-updated {
+  width: 10%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-manifest {
+  width: 18%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-links {
+  width: 12%;
+}
+
+table.hub-users-table.hub-users-table--hub-tools th.hub-users-col--select,
+table.hub-users-table.hub-users-table--hub-tools td.hub-users-col--select {
+  width: 2.25rem;
+  max-width: 2.25rem;
+  min-width: 2.25rem;
+  padding-left: 4px;
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-code,
+table.hub-users-table--hub-tools td.hub-users-col--hub-code {
+  width: 8%;
+  min-width: 5.5rem;
+  overflow: hidden;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-project,
+table.hub-users-table--hub-tools td.hub-users-col--hub-project {
+  width: 22%;
+  min-width: 11rem;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-version,
+table.hub-users-table--hub-tools td.hub-users-col--hub-version {
+  width: 9%;
+  min-width: 5.5rem;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-status,
+table.hub-users-table--hub-tools td.hub-users-col--hub-status {
+  width: 10%;
+  min-width: 6.5rem;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-drift,
+table.hub-users-table--hub-tools td.hub-users-col--hub-drift {
+  width: 6%;
+  min-width: 3.75rem;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-updated,
+table.hub-users-table--hub-tools td.hub-users-col--hub-updated {
+  width: 10%;
+  min-width: 6.25rem;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-manifest,
+table.hub-users-table--hub-tools td.hub-users-col--hub-manifest {
+  width: 18%;
+  min-width: 9.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.hub-users-table--hub-tools th.hub-users-col--hub-links,
+table.hub-users-table--hub-tools td.hub-users-col--hub-links {
+  width: 12%;
+  min-width: 6.5rem;
+}
+
+table.hub-users-table--hub-tools th,
+table.hub-users-table--hub-tools td {
+  padding-left: 10px;
+  padding-right: 10px;
+  overflow: hidden;
+}
+
+table.hub-users-table--hub-tools .hub-users-col--hub-project .hub-users-cell-name {
+  overflow: hidden;
+}
+
+table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-users-th-btn--static {
+  cursor: default;
+}
+
+.hub-users-th-btn--align-start {
+  justify-content: flex-start;
+}
+
+.hub-users-th-label--start {
+  justify-content: flex-start;
+}
 
 .hub-users-select-all,
 .hub-users-select-row {
@@ -365,4 +576,15 @@ table.hub-users-table {
   text-align: center;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* Wide metrics tables (e.g. Supabase quota) — same skin, auto layout + scroll */
+table.hub-users-table.hub-users-table--wide {
+  table-layout: auto;
+}
+
+table.hub-users-table.hub-users-table--wide th,
+table.hub-users-table.hub-users-table--wide td {
+  text-align: left;
+  white-space: nowrap;
 }
