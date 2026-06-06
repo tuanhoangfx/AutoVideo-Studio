@@ -25,7 +25,7 @@ export function TabButton({
       } ${
         active
           ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/30"
-          : "text-[var(--muted)] hover:bg-white/[.04] hover:text-[var(--text)]"
+          : "text-[var(--muted)]"
       }`}
     >
       {icon}
@@ -61,7 +61,7 @@ export function ToggleRow({ label, on, onChange }: { label: string; on: boolean;
     <button
       type="button"
       onClick={onChange}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-0.5 text-left text-[11px] transition-colors hover:bg-white/[.04]"
+      className="hub-settings-toggle flex w-full items-center gap-2 rounded-md px-2 py-0.5 text-left text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/45 focus-visible:outline-offset-1"
     >
       <span className={`hub-check-indicator${on ? " is-on" : ""}`} aria-hidden>
         {on ? <Check size={compactIconSize(9)} strokeWidth={2.75} /> : null}

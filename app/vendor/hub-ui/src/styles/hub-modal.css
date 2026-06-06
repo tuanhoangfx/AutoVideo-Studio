@@ -223,7 +223,17 @@ body.hub-modal-open {
   padding: 0 0.25rem 0.25rem 0;
 }
 
-/* Content pane — no hover highlight on toggles/chips/table rows; tooltips (.hub-hint-tooltip) unchanged. */
+/* Content pane — no row/chip hover in settings body; tooltips (.hub-hint-tooltip) unchanged. */
+.hub-tool-detail-modal__content .hub-tool-detail-section__body button:hover {
+  background-color: transparent;
+  color: inherit;
+}
+
+.hub-tool-detail-modal__content .hub-tool-detail-section__body button.hub-settings-toggle:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 1px;
+}
+
 .hub-tool-detail-modal__content .hub-users-row:hover {
   background: transparent;
 }
@@ -254,6 +264,14 @@ body.hub-modal-open {
   margin: 0 0 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.hub-tool-detail-section__header-actions {
+  flex-shrink: 0;
 }
 
 .hub-tool-detail-section__title {
