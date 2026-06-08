@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { HubModalFrame } from "./HubModalFrame";
 
+/** @deprecated Outer shell is unified via `--hub-modal-*` CSS; `compact` only keeps the legacy class name. */
 export type HubDetailModalSize = "detail" | "compact";
 
 export type HubDetailModalProps = {

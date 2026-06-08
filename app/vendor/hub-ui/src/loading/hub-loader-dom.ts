@@ -13,6 +13,17 @@ export function ensureHubTabLoaderRoot(): HTMLElement {
   return el;
 }
 
+declare global {
+  interface Window {
+    __hubBootReady?: boolean;
+  }
+}
+
+/** Signal index.html boot fallback + remove overlay once React shell is ready. */
 export function hideBootLoader() {
+  if (typeof window !== "undefined") {
+    window.__hubBootReady = true;
+    window.dispatchEvent(new Event("hub-boot-ready"));
+  }
   document.getElementById(HUB_BOOT_LOADER_ID)?.remove();
 }

@@ -4,6 +4,7 @@
 @import "../../vendor/hub-ui/src/styles/hub-fields.css";
 @import "../../vendor/hub-ui/src/styles/hub-users-table.css";
 @import "../../vendor/hub-ui/src/styles/hub-modal.css";
+@import "../../vendor/hub-ui/src/styles/hub-auth-gate.css";
 
 @tailwind base;
 @tailwind components;

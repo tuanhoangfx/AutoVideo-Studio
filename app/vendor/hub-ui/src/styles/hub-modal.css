@@ -51,6 +51,11 @@
 
 .modal-backdrop--tool-detail {
   --app-sidebar-width: 15rem;
+  /* Golden — one shell size for Settings · Log · User · tool forms across P00xx. */
+  --hub-modal-max-w: 72rem;
+  --hub-modal-max-h: 860px;
+  --hub-modal-max-vh: 88vh;
+  --hub-modal-h-margin: 2rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -60,16 +65,17 @@
   -webkit-backdrop-filter: blur(6px);
 }
 
-.modal-shell.modal-shell--tool-detail {
+.modal-shell.modal-shell--tool-detail,
+.modal-shell.modal-shell--compact {
   display: flex;
   flex-direction: column;
   position: relative;
-  width: min(72rem, calc(100vw - var(--app-sidebar-width) - 2rem));
-  max-width: calc(100vw - var(--app-sidebar-width) - 2rem);
+  width: min(var(--hub-modal-max-w), calc(100vw - var(--app-sidebar-width) - var(--hub-modal-h-margin)));
+  max-width: calc(100vw - var(--app-sidebar-width) - var(--hub-modal-h-margin));
   height: auto;
   flex: 0 1 auto;
   min-height: 0;
-  max-height: min(86vh, 840px);
+  max-height: min(var(--hub-modal-max-vh), var(--hub-modal-max-h));
   margin: 0 auto;
   padding: 0;
   overflow: hidden;
@@ -83,11 +89,18 @@
   transform: none;
 }
 
-.modal-shell.modal-shell--compact {
-  width: min(32rem, calc(100vw - var(--app-sidebar-width) - 2rem));
-  max-width: calc(100vw - var(--app-sidebar-width) - 2rem);
-  max-height: min(85vh, 720px);
+/* TOC / directory modals — consistent fill height. Opt out with .hub-tool-detail-modal--fit (confirm, small forms). */
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) {
+  min-height: min(var(--hub-modal-fill-min-h, 640px), var(--hub-modal-max-vh));
 }
+
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) .hub-tool-detail-modal__body,
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) .hub-tool-detail-modal__layout {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Legacy `size="compact"` — same outer shell; inner layout may stay minimal. */
 
 @keyframes hubModalDetailIn {
   from {
@@ -114,13 +127,9 @@
     padding: 0.75rem;
   }
 
-  .modal-shell.modal-shell--tool-detail {
-    width: min(96vw, 72rem);
-    max-width: 96vw;
-  }
-
+  .modal-shell.modal-shell--tool-detail,
   .modal-shell.modal-shell--compact {
-    width: min(96vw, 32rem);
+    width: min(96vw, var(--hub-modal-max-w));
     max-width: 96vw;
   }
 }
@@ -357,6 +366,26 @@ body.hub-modal-open {
   font-size: 12px;
 }
 
+/* Nested rows inside Settings Display group (Header, KPI, App mode, …). */
+.hub-settings-subsection__header {
+  min-width: 0;
+}
+
+.hub-settings-subsection__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.hub-settings-option-section--compact .hub-settings-subsection__header {
+  margin-bottom: 0;
+}
+
+.hub-settings-option-section--compact .hub-settings-subsection__body:empty {
+  display: none;
+}
+
 .hub-tool-detail-form-grid {
   display: grid;
   gap: 0.75rem;
@@ -499,14 +528,13 @@ body.hub-modal-open {
   outline-offset: 1px;
 }
 
-/* Header panel modals — Settings · Log (same shell size as User access; TOC tokens only). */
+/* Header panel modals — Settings · Log · User (TOC tokens; shell size via --hub-modal-*). */
 
 .modal-shell.hub-tool-detail-modal.hub-header-panel-modal,
 .modal-shell.hub-tool-detail-modal.hub-settings-modal {
   --overview-toc-w: 14rem;
   --overview-toc-row-h: 2.125rem;
   --hub-settings-toc-icon: 11px;
-  max-height: min(88vh, 860px);
 }
 
 .hub-header-panel-modal .user-access-modal__header,

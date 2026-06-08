@@ -12,7 +12,9 @@ export type HubDirectoryScreenProps = {
   centerStats?: TabHeaderStatItem[];
   kpis?: KpiTileData[];
   charts?: ReactNode;
+  chartCount?: number;
   sectionRuleLabel?: string;
+  reserveAnalyticsBand?: boolean;
   filters?: FilterDef[];
   query?: string;
   onQueryChange?: (q: string) => void;
@@ -22,6 +24,8 @@ export type HubDirectoryScreenProps = {
   /** FilterBar keyboard focus scope (e.g. `library`, `bots`). */
   filterShortcutScope?: string;
   filterToolbar?: ReactNode;
+  /** Row 2 leading — before filter dropdowns (e.g. active bot selector). */
+  filterRowLeading?: ReactNode;
   filterRowActions?: ReactNode;
   settingsExtraTabs?: SettingsExtraTab[];
   /** ViewToggle + HubResultCount — rendered in FilterBar toolbar when filters/search enabled */
@@ -38,7 +42,9 @@ export function HubDirectoryScreen({
   header,
   kpis,
   charts,
+  chartCount,
   sectionRuleLabel,
+  reserveAnalyticsBand = false,
   filters = [],
   query = "",
   onQueryChange,
@@ -47,6 +53,7 @@ export function HubDirectoryScreen({
   filterPlaceholder = "Search…",
   filterShortcutScope = "default",
   filterToolbar,
+  filterRowLeading,
   filterRowActions,
   directoryToolbar,
   bodyFlex = false,
@@ -77,6 +84,7 @@ export function HubDirectoryScreen({
           </>
         ) : undefined
       }
+      row2Leading={filterRowLeading}
       row2Actions={filterRowActions}
     />
   ) : undefined;
@@ -86,7 +94,9 @@ export function HubDirectoryScreen({
       <HubTabScreenBody
         kpis={kpis}
         charts={charts}
+        chartCount={chartCount}
         sectionRuleLabel={sectionRuleLabel}
+        reserveAnalyticsBand={reserveAnalyticsBand}
         bodyFlex={bodyFlex}
       >
         {children}

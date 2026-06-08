@@ -90,3 +90,7 @@ export function CopyMetaChip({
     </button>
   );
 }
+
+/** 2FA Account column + User modal email badge (P0020 / P0004). */
+export const HUB_EMAIL_COPY_CHIP_CLASS =
+  "inline-flex !max-w-none w-auto max-w-full gap-1 rounded-full border-sky-300/45 bg-sky-400/18 px-2 py-0.5 font-mono text-[10px] font-medium leading-[1.3] text-sky-50 shadow-[0_0_8px_rgba(56,189,248,0.12)]";

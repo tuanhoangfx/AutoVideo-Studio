@@ -50,6 +50,69 @@
 
 ---
 
+## URL prefs + toolbar (golden — hub-ui)
+
+**Canonical source:** `packages/hub-ui/src/lib/hub-url-prefs.ts`, `HubTimeRangeSelect.tsx`, `HubRowLimitSelect.tsx`.
+
+| API | When to use |
+|-----|-------------|
+| `configureHubUrlPrefs({ defaultRange, defaultLimit, patchImpl, usePrefsChangeEvent })` | Once in app bootstrap / `url-prefs.ts` module load |
+| `readHubListPrefsCore()` + app extras | Per-tool `readHubListPrefs()` wrapper |
+| `patchHubListPrefs` / `parseHubPrefSet` | Shared URL read/write |
+| `HubTimeRangeSelect` / `HubRowLimitSelect` | FilterBar toolbar — import from `@tool-workspace/hub-ui` |
+
+**Rules**
+
+- Do **not** fork toolbar selects per tool — configure defaults via `configureHubUrlPrefs`.
+- P0004: custom `patchImpl` (`buildAppUrl` + screen sanitize). P0020: `usePrefsChangeEvent: true`.
+- Per-tool `url-prefs.ts` stays Tier 2 (extra fields only).
+
+**Verify:** `node Tool/scripts/hub-ui-duplication-check.mjs`
+
+---
+
+## KPI + Charts analytics band (golden — hub-ui)
+
+**Canonical source:** `packages/hub-ui/src/display-prefs/kpi-visible.ts`, `chart-visible.ts`, `HubDisplayPrefs.tsx`, `KpiStrip.tsx`, `hub-shell-layout.css` → fan-out via `node Tool/scripts/sync-hub-ui-vendor.cjs`.
+
+| API / component | When to use |
+|-----------------|-------------|
+| `MAX_VISIBLE_KPI` (8) | Hard cap — max tiles rendered per tab row |
+| `DEFAULT_KPI_ON_COUNT` (4) | Default on-count via `defaultKpiKeysFromDefs(defs)` — do not pass `MAX_VISIBLE_KPI` as default |
+| `resolveVisibleKpiKeys` / `useResolvedVisibleKpiKeys` | Filter KPI tile data before `KpiStrip` |
+| `enforceKpiMaxOnAdd` | Settings toggle only — drops earliest visible key when user exceeds cap |
+| `KpiStrip` | Render filtered tiles; sets `data-kpi-count` for CSS slot grid |
+| `HubDisplayPrefs` + `SubTabDisplayConfig` | Settings panel; URL prefs (Hub/Dashboard/Users) or `sessionStorage` (System/Fanpages) |
+
+**Layout rules (KPI strip + Charts band)**
+
+- **Fixed slot grid (1–3 visible)** — `md+` (768px): **4-column** grid; each slot = **1/4 row**. Example: 3 visible → **3/4** width (KPI + Charts).
+- **Full row (4–8 KPI / 4 Charts)** — `md+` grid columns = visible count (`repeat(n, 1fr)`); tiles **fill the full line**.
+- **Charts band** — `hub-charts-band` + `data-chart-count` (auto via `countAnalyticsBandSlots` in `HubTabScreenBody`; override with `chartCount` prop).
+- CSS canonical: `hub-shell-layout.css` only — `node Tool/scripts/hub-ui-duplication-check.mjs` fails on per-tool grid overrides.
+- **P0016 dashboard** exception: `p0016-hub-charts.css` mirrors golden rules on `.p0016-charts-row[data-chart-count]` inside full-width layout wrapper.
+
+**Settings / multi-select rules**
+
+- KPI toggles are **multi-select** `Set`, not radio. Label: `KPI (n/8)`.
+- Sub-tab screens (System, Fanpages): `HubDisplayPrefs` must bump `displayTick` after `adapter.patch()` so the open Settings modal re-reads `sessionStorage` (avoid overwrite on 2nd toggle).
+- Toggle `on` uses `isVisible(stored, defaults, key)` — not `resolveVisibleKpiKeys().has(key)`.
+- When `n >= MAX_VISIBLE_KPI`, **disable** unselected toggles (`ToggleRow disabled`) — user must turn one off before adding another.
+
+**Per-tool wiring**
+
+- Define `*_KPI_DEFS: PrefItem[]` + `DEFAULT_*_KPI_KEYS = defaultKpiKeysFromDefs(defs)` (4 on by default).
+- URL tabs: `readHubListPrefs().kpi` + `patchHubListPrefs({ kpi: "a,b,c" })`.
+- Sub-tab tabs: `SubTabDisplayConfig` with `changeEvent` (e.g. `system-display-change`); analytics hook listens + `displayTick`.
+
+**Golden refs**
+
+- P0004 — `HubListPage.tsx`, `system-display-prefs.ts`, `DisplayPrefs.tsx` (`SYSTEM_SUBTAB_CFG`)
+- P0016 — `fanpage-display-prefs.ts`, `use-screen-display-prefs.ts`
+- P0020 — `cookie-display-prefs.ts`, `twofa-display-prefs.ts`
+
+---
+
 ## Copy affordance (golden — hub-ui)
 
 **Canonical source:** `packages/hub-ui/src/shell/HubCopyBadge.tsx`, `CopyMetaChip.tsx` → fan-out via `node Tool/scripts/sync-hub-ui-vendor.cjs`.
@@ -72,6 +135,79 @@
 - `HubCopyBadge` — `P0004/UserDirectoryTable.tsx` ID column
 - `CopyMetaChip` — `P0020/NoteEditorMetaStrip.tsx` note ID
 - `TwofaCopyControl` — `P0020/twofa-copy-cells.tsx` (Design V1 Platform Mirror)
+
+---
+
+## Table pager (golden — hub-ui)
+
+**Canonical source:** `packages/hub-ui/src/content/HubTablePager.tsx`, `HubPaginatedTableShell.tsx`, `HubPaginatedDataTable.tsx` → fan-out via `node Tool/scripts/sync-hub-ui-vendor.cjs`.
+
+| Component | When to use |
+|-----------|-------------|
+| `HubPaginatedDataTable` | Standard `HubDataTable` + columns + `renderRow` (Logs, User access modal, golden directory example) |
+| `HubPaginatedTableShell` | Custom `hub-users-table` markup (directory clones, Overview panel tables, Cookie routes) |
+| `HubPaginatedCardGrid` | Directory card/grid views (Users, Tools, Groups, …) — bottom pager |
+| `useHubTablePagination` + `HubTablePager` | Manual composition when shell layout must split pager/table |
+
+**Rules**
+
+- **25 rows/page** default (`HUB_TABLE_PAGE_SIZE` / `readHubTablePageSize`) — E0001 `route-table-pager` visual parity (prev/next + `Page X of Y · Showing A–B of N`).
+- **Page size** 25/50/100 via Settings → Display → Page size (`tpage` URL param, `useHubTablePageSize()` in shells).
+- Pass `resetKey` when filter/search changes (e.g. `` `${query}|${JSON.stringify(filterValues)}` ``); omit for auto signature from list head/tail.
+- Pager sits **below** the table (or card grid); hidden when `totalCount ≤ pageSize`.
+- Card directory views use `HubPaginatedCardGrid` (or `HubPaginatedTableShell` when the child supplies its own grid).
+- **Select all** in directory tables applies to **current page only** (`hubTogglePageSelectAll` / `hubPageAllSelected`); label `"Select all on this page"`.
+- Import CSS via `@import "@tool-workspace/hub-ui/styles/hub-users-table.css"` (`.hub-table-pager` tokens).
+
+**Golden refs**
+
+- Overview panel tables — `P0004/ToolLinksTable.tsx`, `ToolVersionsPanel.tsx`
+- Directory — `P0004/HubToolsDirectoryTable.tsx`, `UserDirectoryTable.tsx`
+- Clone — P0016 bots/groups/channels/logs/fanpages; P0020 cookie/twofa/notes folders
+
+---
+
+## Modal directory section (golden — hub-ui)
+
+**Canonical source:** `packages/hub-ui/src/shell/HubModalDirectorySection.tsx`, `route-detail/HubRouteAboutSummary.tsx`, `table/hub-route-access-table-meta.tsx`.
+
+| Component | When to use |
+|-----------|-------------|
+| `HubModalDirectorySection` | **Any** `HubToolDetailSection` that has FilterBar + table (User Access tools, Cookie Route access, future P0016) |
+| `HubToolDetailIdentityHeader` | Modal header row — avatar/icon · title · trailing badges (User Access, Cookie Route, **Hub Tool detail**) |
+| `HubModalDirectoryEmptyFiltered` | Zero rows after search/filters — same empty box as P0004 User Access |
+| `HubPaginatedDataTable` | Modal table **≤6 columns**, simple rows, optional checkbox in `renderRow` (P0004 User Access tools) |
+| `HubRouteAccessDirectoryTable` | Route People & access — `HubPaginatedDataTable` + `--route-access-modal` (same wrap as User Tools) |
+| `HubRouteAccessDirectoryTableSkeleton` | Loading placeholder for route access table (7 columns incl. Activity) |
+| `HubUserToolsDirectoryTable` | User Access tools table — wraps `HubPaginatedDataTable` + `HUB_USER_TOOLS_*` meta; inject category/access cells only |
+| `HubUserToolsDirectoryTableSkeleton` | Loading placeholder for User Access tools table |
+| `HubDirectoryTableShell` | Lower-level directory table with sort, select-all, static columns (Hub/Users directory) |
+| `HubRouteAboutSummary` | Route detail About — stat chips row + Route TM + Note ID `CopyMetaChip` |
+| `HUB_ROUTE_ACCESS_*` meta | Column classes, colgroup, directory columns for route People & access tables |
+
+**Structure (mandatory — do not add extra panel wrappers)**
+
+```
+HubToolDetailModal
+  └─ HubToolDetailSection
+       └─ HubModalDirectorySection
+            ├─ banner? / error?
+            ├─ FilterBar layout="inline"
+            └─ HubPaginatedDataTable | HubDirectoryTableShell
+```
+
+**Rules**
+
+- Modal sections: **always** `FilterBar layout="inline"` inside `HubModalDirectorySection` — never `layout="hub"`, never local `hub-*-access-panel` wrappers.
+- Do **not** use `--flush` / negative-margin section hacks — section padding is golden default.
+- Pick table primitive by column complexity (see Table pager section above); both sit inside the same `HubModalDirectorySection`.
+- Route About: `HubRouteAboutSummary` — chips + TM sync id + Note ID; publish/share live in About (not access table Route column).
+- Import route-access column meta from hub-ui — no copy `hub-route-access-col--*` in tools.
+
+**Golden refs**
+
+- P0004 — `UserAccessModal.tsx` → Tools: `HubUserToolsDirectoryTable`; `ToolDetailModal.tsx` → identity header
+- P0020 — `CookieRouteMembers.tsx` → Access section; `CookieRouteAccessTable` → `HubRouteAccessDirectoryTable`
 
 ---
 

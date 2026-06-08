@@ -1,5 +1,5 @@
 ---
-description: P0021 AutoVideo Studio — bắt buộc bump version khi sửa code (patch/minor/major theo workspace-version-bump)
+description: P0021 AutoVideo Studio — bắt buộc bump version khi sửa code (patch/minor/major theo dev-workspace)
 globs:
   - "**/P0021-AutoVideo-Studio/**"
 alwaysApply: false
@@ -7,7 +7,7 @@ alwaysApply: false
 
 # P0021 — version bump (agent checklist)
 
-Đọc thêm: `e:\Dev\.cursor\rules\workspace-version-bump.mdc` (3 tầng patch / minor / major).
+Đọc thêm: `e:\Dev\.cursor\rules\dev-workspace-compact.mdc` §2 (3 tầng patch / minor / major).
 
 ## File phải cùng một số release
 

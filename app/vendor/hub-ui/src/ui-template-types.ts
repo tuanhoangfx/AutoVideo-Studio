@@ -51,9 +51,23 @@ export const GOLDEN_SOURCES: Record<
     ],
   },
   dashboard: {
-    primary: "Tool/P0008-Sales-Console/app/src/app/dashboard/page.tsx",
-    css: ["hub-app-tab-header.css", "hub-fields.css"],
-    packageExports: ["HubDirectoryScreen", "HubTabScreenBody", "KpiStrip", "MiniBarChart", "MiniDonut"],
+    primary: "Tool/P0004-Tool-Hub/src/features/dashboard/DashboardListPage.tsx",
+    css: [
+      "hub-shell-layout.css",
+      "hub-app-tab-header.css",
+      "hub-fields.css",
+      "hub-users-table.css",
+    ],
+    packageExports: [
+      "HubDashboardScreen",
+      "HubDirectoryCard",
+      "HubPaginatedTableShell",
+      "HubTabScreenBody",
+      "KpiStrip",
+      "MiniBarChart",
+      "MiniDonut",
+      "ViewToggle",
+    ],
   },
   "document-toc": {
     primary: "Tool/P0004-Tool-Hub/src/features/overview/ToolOverviewContent.tsx",
@@ -63,7 +77,7 @@ export const GOLDEN_SOURCES: Record<
   "workspace-composer": {
     primary: "Tool/P0020-Data-Box/src/features/notes/NotesWorkspaceScreen.tsx",
     css: ["hub-fields.css", "hub-shell-layout.css"],
-    packageExports: ["FilterBar", "WorkspaceTabHeader (P0020 vendor)"],
+    packageExports: ["HubSplitWorkspaceScreen", "FilterBar", "WorkspaceTabHeader"],
   },
   "system-panels": {
     primary: "Tool/P0004-Tool-Hub/src/features/system-hub/SystemHubScreen.tsx",
@@ -71,9 +85,21 @@ export const GOLDEN_SOURCES: Record<
     packageExports: ["HubTabChrome", "HubPanel"],
   },
   "inbox-split": {
-    primary: "Tool/P0006-AIChatHub/apps/console/src/features/inbox/InboxScreen.tsx",
-    css: ["hub-shell-layout.css"],
-    packageExports: ["HubTabChrome", "HubTabBody"],
+    primary: "Tool/P0016-ChatCenter/src/features/inbox/InboxHubChrome.tsx",
+    css: [
+      "hub-shell-layout.css",
+      "hub-app-tab-header.css",
+      "hub-fields.css",
+      "hub-thread-preview.css",
+    ],
+    packageExports: [
+      "HubSplitWorkspaceScreen",
+      "DirectorySearchToolbar",
+      "FilterBar",
+      "HubThreadPreviewThumb",
+      "resolveHubThreadPreview",
+      "CacheHitBadge",
+    ],
   },
   "auth-gate": {
     primary: "Tool/P0004-Tool-Hub/src/features/identity/HubAuthGate.tsx",

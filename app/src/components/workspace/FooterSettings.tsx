@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Settings } from 'lucide-react';
+import { HUB_SIDEBAR_FOOTER_BTN_CLASS } from '@/lib/hub-ui';
 import {
   DEFAULT_SYSTEM_STATS_INTERVAL_MS,
   readSystemStatsIntervalMs,
@@ -10,9 +11,6 @@ import {
   SYSTEM_STATS_INTERVAL_OPTIONS,
   writeSystemStatsIntervalMs,
 } from '@/lib/workspace-prefs';
-
-const footerBtn =
-  'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]';
 
 export function FooterSettings() {
   const [open, setOpen] = useState(false);
@@ -110,7 +108,7 @@ export function FooterSettings() {
 
   return (
     <div ref={ref} className="relative w-full">
-      <button type="button" onClick={() => setOpen((o) => !o)} className={footerBtn} title="Workspace settings">
+      <button type="button" onClick={() => setOpen((o) => !o)} className={HUB_SIDEBAR_FOOTER_BTN_CLASS} title="Workspace settings">
         <Settings size={15} className="shrink-0 text-amber-300" />
         <span className="flex-1 text-left">Setting</span>
       </button>

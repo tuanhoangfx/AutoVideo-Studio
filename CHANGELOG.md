@@ -11,7 +11,7 @@
 - Product: P0021
 - Prompt: xóa NEXT_PUBLIC_WORKER_URL trên Vercel; Working Rules
 - Commit: `ef54d81`
-- Status: Verified
+- Status: Committed
 - Release: https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v1.2.3
 
 ### Changes

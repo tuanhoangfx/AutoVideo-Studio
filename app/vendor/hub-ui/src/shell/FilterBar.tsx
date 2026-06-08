@@ -448,6 +448,8 @@ export type HubSingleFilterDropdownProps = {
   disabled?: boolean;
   className?: string;
   usePortal?: boolean;
+  /** `label-value` (default): `Label: value`. `value`: selected option label only — pair with external `HubFormFieldLabel`. */
+  triggerFormat?: "label-value" | "value";
 };
 
 /** Single-select — identical trigger/panel chrome as `MultiFilterDropdown`. */
@@ -460,6 +462,7 @@ export function HubSingleFilterDropdown({
   disabled = false,
   className = "",
   usePortal = true,
+  triggerFormat = "label-value",
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -497,7 +500,6 @@ export function HubSingleFilterDropdown({
   );
 
   const opt = options.find((o) => o.value === value);
-  const buttonLabel = opt ? `${label}: ${opt.label}` : label;
   const triggerIcon = resolveFilterTriggerIcon(filter, selected);
 
   const panelInner = (
@@ -581,8 +583,17 @@ export function HubSingleFilterDropdown({
         }`}
       >
         {triggerIcon ? <FilterIconGlyph meta={triggerIcon} size={compactIconSize(12)} /> : null}
-        <span>{buttonLabel}</span>
-        <ChevronDown size={compactIconSize(12)} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="min-w-0 truncate">
+          {triggerFormat === "value" ? (
+            opt?.label ?? label
+          ) : (
+            <>
+              <span className="hub-filter-trigger-text__prefix">{label}:</span>{" "}
+              <span className="hub-filter-trigger-text__value">{opt?.label ?? label}</span>
+            </>
+          )}
+        </span>
+        <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {panelEl &&
         (usePortal ? createPortal(panelEl, document.body) : (

@@ -16,7 +16,7 @@
   --hub-chrome-sticky-est-h: calc(
     var(--app-tab-header-min-h) + var(--hub-filter-pin-est-h) + var(--hub-chrome-content-gap)
   );
-  /* Fixed analytics band heights — max 4 KPI tiles per row */
+  /* Fixed analytics band heights — up to 8 KPI tiles per row */
   --hub-kpi-strip-min-h: 4.75rem;
   --hub-kpi-gap: 0.625rem;
   --hub-kpi-pad-y: 0.75rem;
@@ -119,6 +119,27 @@
   gap: var(--hub-chrome-content-gap);
 }
 
+/* Reserve analytics band height before KPI/charts hydrate (directory tabs — F5 parity). */
+.hub-tab-kpi-zone--reserved {
+  min-height: calc(
+    var(--hub-kpi-strip-min-h) + var(--hub-chrome-content-gap) + var(--hub-charts-band-min-h)
+  );
+}
+
+.hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve,
+.hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve {
+  min-height: var(--hub-kpi-strip-min-h);
+}
+
+.hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
+  min-height: var(--hub-charts-band-min-h);
+}
+
 /* Stacked chrome: flex gap on .hub-tab-chrome-stack handles spacing (incl. System tab panels) */
 .hub-tab-chrome-stack .hub-tab-content-zone .hub-tab-kpi-zone {
   margin-top: 0;
@@ -144,7 +165,9 @@
 }
 
 /*
- * KPI strip — max 4 tiles (data-kpi-count 1–4). Fewer than 4 still use 4-slot width at lg+.
+ * Analytics band slot grid (KPI + Charts) — golden Hub.
+ * 1–3 visible: fixed 4-column grid → ¼ slot each (3 → 3/4 row, no stretch).
+ * 4–8 visible (KPI) / 4 visible (Charts): columns = visible count → full row.
  */
 .hub-kpi-strip {
   display: grid;
@@ -156,15 +179,42 @@
 }
 
 @media (min-width: 768px) {
-  .hub-kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .hub-kpi-strip[data-kpi-count="1"],
+  .hub-kpi-strip[data-kpi-count="2"],
+  .hub-kpi-strip[data-kpi-count="3"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hub-kpi-strip[data-kpi-count="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hub-kpi-strip[data-kpi-count="5"] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .hub-kpi-strip[data-kpi-count="6"] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .hub-kpi-strip[data-kpi-count="7"] {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .hub-kpi-strip[data-kpi-count="8"] {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 1024px) {
-  .hub-kpi-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+.hub-kpi-strip[data-kpi-count="5"],
+.hub-kpi-strip[data-kpi-count="6"],
+.hub-kpi-strip[data-kpi-count="7"],
+.hub-kpi-strip[data-kpi-count="8"] {
+  --hub-kpi-icon: 1.875rem;
+  --hub-kpi-value-size: 1.0625rem;
+  --hub-kpi-pad-x: 0.5rem;
+  --hub-kpi-gap: 0.5rem;
+  --hub-kpi-inner-gap: 0.5rem;
 }
 
 .hub-kpi-strip .hub-kpi-tile {
@@ -214,7 +264,7 @@
   margin-top: 0.0625rem;
 }
 
-/* Charts band — one row at xl; fixed card height whether 1–4 charts shown */
+/* Charts band — same slot rules as KPI (max 4); uses data-chart-count on hub-charts-band */
 .hub-charts-band {
   display: grid;
   width: 100%;
@@ -225,14 +275,13 @@
 }
 
 @media (min-width: 768px) {
-  .hub-charts-band {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .hub-charts-band[data-chart-count="1"],
+  .hub-charts-band[data-chart-count="2"],
+  .hub-charts-band[data-chart-count="3"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-}
 
-@media (min-width: 1280px) {
-  /* Hub golden: up to 4 equal columns per row — card size fixed via --hub-chart-card-min-h */
-  .hub-charts-band {
+  .hub-charts-band[data-chart-count="4"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

@@ -11,6 +11,8 @@ export type HubLogEntry = {
   at: number;
   scope: string;
   message: string;
+  /** Resolved tab/screen id — used by HubAppLogProvider for per-tab filtering. */
+  screen?: string;
 };
 
 export type HubUsageLogPanelProps = {
@@ -48,7 +50,7 @@ function LogRows({ logs, formatter }: { logs: HubLogEntry[]; formatter: Intl.Dat
 /** Usage log — same HubToolDetailModal shell as Settings (TOC · sections · fixed size). */
 export function HubUsageLogPanel({
   logs,
-  title = "Usage log",
+  title = "Log",
   subtitle = "Runtime actions in this session",
   emptyMessage = "No actions logged in this session yet.",
   compact = false,
@@ -114,7 +116,8 @@ export function HubUsageLogPanel({
     return { tocItems: toc, sectionIds: ids, body: sections };
   }, [emptyMessage, formatter, grouped]);
 
-  const showToc = tocItems.length > 1;
+  /** Always show TOC rail — same contract as Settings / User access modals. */
+  const showToc = tocItems.length > 0;
   const badgeCount = badge ?? logs.length;
 
   return (

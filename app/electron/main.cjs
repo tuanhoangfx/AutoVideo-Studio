@@ -296,6 +296,26 @@ function installDesktopUpdate() {
   return updateStatus;
 }
 
+function showStartupError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const lines = [
+    message,
+    '',
+    'Do not run autovideo-worker.exe directly. Start AutoVideo Studio from the Start menu.',
+    '',
+    'Log files:',
+    workerLog,
+    workerErrorLog,
+    nextLog,
+    nextErrorLog,
+  ];
+  if (packaged) {
+    const bundledWorker = path.join(process.resourcesPath, 'worker-dist', 'autovideo-worker.exe');
+    lines.push('', 'Expected worker:', bundledWorker, fs.existsSync(bundledWorker) ? '(found)' : '(MISSING — reinstall the app)');
+  }
+  dialog.showErrorBox('AutoVideo Studio could not start', lines.join('\n'));
+}
+
 async function startWorker() {
   if (workerProcess && workerUrl) return workerUrl;
   workerPort = await findFreePort(Number(process.env.AUTOVIDEO_WORKER_PORT || 8021));
@@ -307,6 +327,10 @@ async function startWorker() {
   const stdout = fs.openSync(workerLog, 'a');
   const stderr = fs.openSync(workerErrorLog, 'a');
   const exe = workerExecutable();
+  if (packaged && !exe) {
+    const bundledWorker = path.join(process.resourcesPath, 'worker-dist', 'autovideo-worker.exe');
+    throw new Error(`Desktop worker is missing at ${bundledWorker}. Please reinstall AutoVideo Studio.`);
+  }
   const command = exe || pythonExe();
   const args = exe
     ? ['--host', '127.0.0.1', '--port', String(workerPort)]
@@ -328,10 +352,24 @@ async function startWorker() {
     stdio: ['ignore', stdout, stderr],
     windowsHide: true,
   });
+  const earlyExit = new Promise((_, reject) => {
+    workerProcess.once('exit', (code, signal) => {
+      workerProcess = null;
+      reject(
+        new Error(
+          `Worker stopped before it was ready (code=${code ?? 'null'}, signal=${signal ?? 'null'}). Check ${workerErrorLog}`
+        )
+      );
+    });
+  });
+  workerProcess.on('exit', () => {
+    workerProcess = null;
+  });
+  await Promise.race([waitForWorker(workerUrl), earlyExit]);
+  workerProcess.removeAllListeners('exit');
   workerProcess.once('exit', () => {
     workerProcess = null;
   });
-  await waitForWorker(workerUrl);
   return workerUrl;
 }
 
@@ -580,7 +618,13 @@ ipcMain.handle('autovideo:check-for-updates', checkForDesktopUpdates);
 ipcMain.handle('autovideo:download-update', downloadDesktopUpdate);
 ipcMain.handle('autovideo:install-update', installDesktopUpdate);
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow().catch((error) => {
+    console.error(error);
+    showStartupError(error);
+    app.quit();
+  });
+});
 
 app.on('before-quit', () => {
   stopWorker();
@@ -593,6 +637,10 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow().catch((error) => console.error(error));
+    createWindow().catch((error) => {
+      console.error(error);
+      showStartupError(error);
+      app.quit();
+    });
   }
 });

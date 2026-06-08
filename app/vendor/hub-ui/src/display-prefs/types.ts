@@ -14,6 +14,8 @@ export type SettingsExtraTab = {
 export type DisplayPrefsPrefs = {
   range: TimeRange;
   limit: number;
+  /** Rows per table/card page (`tpage` URL param). */
+  tablePageSize: number;
   kpi: Set<string> | null;
   charts: Set<string> | null;
   headerStats: Set<string> | null;
@@ -34,6 +36,19 @@ export type SystemDisplayAdapter = {
   patch: (tab: string, patch: Partial<{ kpi: string[] | null; charts: string[] | null }>) => void;
   reset: (tab: string) => void;
 };
+
+/** Per-sub-tab KPI/chart storage for screens with nested navigation (System, Fanpages, …). */
+export type SubTabDisplayConfig = {
+  /** Top-level screen ids that use `adapter` instead of URL prefs for KPI/charts. */
+  screens: string[];
+  adapter: SystemDisplayAdapter;
+  /** Dispatched after patch/reset so settings panel + analytics hooks resync. */
+  changeEvent?: string;
+  /** Settings log scope, e.g. `Fanpages / overview`. */
+  logScope?: (subTab: string) => string;
+};
+
+export const SUBTAB_DISPLAY_CHANGE = "subtab-display-change";
 
 export type HubDisplayPrefsProps = {
   kpis?: PrefItem[];
@@ -64,10 +79,21 @@ export type HubDisplayPrefsProps = {
   getScreen: () => string;
   getSystemTab?: () => string;
   systemDisplay?: SystemDisplayAdapter;
+  /** Active sub-tab id for screens in `subTabDisplay.screens` (e.g. fanpages overview). */
+  getSubTab?: () => string;
+  subTabDisplay?: SubTabDisplayConfig;
+  /** @deprecated Prefer `displayExtras`. */
   generalExtras?: ReactNode;
-  /** TOC rows for sections inside `generalExtras` (DOM ids must match). */
+  /** Tool-specific Display subsections (App mode, List sort, Folders, …). */
+  displayExtras?: ReactNode;
+  /**
+   * @deprecated Subsections inside `displayExtras` are nested under the Display TOC group.
+   * Use `SettingsSubsection` / `Section` — no separate TOC rows.
+   */
   generalSectionToc?: { id: string; label: string; icon?: ReactNode; emoji?: string }[];
   tablePanel?: ReactNode;
+  /** Actions in the Table columns section header (e.g. Reset columns). */
+  tableSectionActions?: ReactNode;
   tableActiveCount?: number;
   headerStatLabel?: (isSystem: boolean) => string;
   onLog?: (scope: string, message: string) => void;
@@ -77,5 +103,6 @@ export type HubDisplayPrefsProps = {
   panelWidth?: number;
   /** CSS max-height for scrollable panel (default min(80vh, 42rem)). */
   maxPanelHeight?: string;
+  /** @deprecated Pass content via `displayExtras` + `SettingsSubsection` instead. */
   extraTabs?: SettingsExtraTab[];
 };

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, type ElementType, type ReactNode } from '
 import { Activity, Boxes, Code2, Cpu, GitBranch, HardDrive, RefreshCcw, Settings2, User } from 'lucide-react';
 import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
 import { readSystemStatsIntervalMs } from '@/lib/workspace-prefs';
+import { HubSidebarFooterButton } from '@/lib/hub-ui';
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from './AppTabHeader';
 import { FooterSettings } from './FooterSettings';
 import { GlobalJobPoller } from './GlobalJobPoller';
@@ -27,9 +28,6 @@ const navItems: WorkspaceNavItem[] = [
   { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: AutoVideoBrandIcon },
   { href: '/system', match: '/system', label: 'System', icon: Settings2 },
 ];
-
-const footerBtn =
-  'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60';
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -173,7 +171,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         </nav>
 
         <footer className="mt-2 shrink-0 space-y-0.5 overflow-visible border-t border-white/5 pt-2.5">
-          <SidebarFooterButton
+          <HubSidebarFooterButton
             icon={User}
             iconClass="text-violet-400"
             label="User"
@@ -181,7 +179,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             disabled
             trailing={<span className="text-xs font-medium text-[var(--text)]/80">{APP_USER_LABEL}</span>}
           />
-          <SidebarFooterButton
+          <HubSidebarFooterButton
             icon={RefreshCcw}
             iconClass="text-indigo-300"
             label="Refresh"
@@ -265,31 +263,5 @@ function AutoVideoBrandIcon({
       className={`shrink-0 ${className}`}
       aria-hidden={ariaHidden}
     />
-  );
-}
-
-function SidebarFooterButton({
-  icon: Icon,
-  label,
-  iconClass,
-  onClick,
-  disabled,
-  title,
-  trailing,
-}: {
-  icon: typeof RefreshCcw;
-  label: string;
-  iconClass: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  title?: string;
-  trailing?: ReactNode;
-}) {
-  return (
-    <button type="button" className={footerBtn} onClick={onClick} disabled={disabled} title={title}>
-      <Icon size={15} className={`shrink-0 ${iconClass}`} />
-      <span className="flex-1 text-left">{label}</span>
-      {trailing}
-    </button>
   );
 }

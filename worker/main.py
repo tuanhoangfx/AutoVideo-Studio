@@ -44,7 +44,7 @@ app.add_middleware(
         "http://localhost:3021",
         "http://127.0.0.1:3021",
         "https://p0021-autovideo-studio.vercel.app",
-        "https://p0021.infix1.io.vn",
+        "https://p0021.infi.io.vn",
     ],
     allow_origin_regex=r"https://p0021-autovideo-studio(?:-[a-z0-9]+)*-[a-z0-9-]+\.vercel\.app",
     allow_methods=["*"],

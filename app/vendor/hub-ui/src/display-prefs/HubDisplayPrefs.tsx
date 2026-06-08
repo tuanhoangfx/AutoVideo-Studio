@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   BarChart3,
   Clock,
@@ -7,17 +7,24 @@ import {
   Gauge,
   Keyboard,
   LayoutDashboard,
+  Layers,
+  ListOrdered,
   PanelTop,
   Rows3,
   Settings,
 } from "lucide-react";
-import { LIMIT_OPTIONS, TIME_RANGES } from "./constants";
+import { LIMIT_OPTIONS, TABLE_PAGE_SIZE_OPTIONS, TIME_RANGES } from "./constants";
+import { HUB_TABLE_PAGE_SIZE_DEFAULT, patchHubTablePageSizeValue } from "../table/hub-table-page-size";
+import {
+  MAX_VISIBLE_CHART,
+  enforceChartMaxOnAdd,
+  resolveVisibleChartKeys,
+} from "./chart-visible";
 import {
   MAX_VISIBLE_KPI,
   enforceKpiMaxOnAdd,
-  resolveVisibleKpiKeys,
 } from "./kpi-visible";
-import { ToggleRow } from "./primitives";
+import { Section, ToggleRow } from "./primitives";
 import type { HubDisplayPrefsProps, PrefItem } from "./types";
 import { compactIconSize } from "../ui-scale";
 import { HubHeaderPanelButton } from "../shell/HubHeaderPanelButton";
@@ -66,9 +73,12 @@ export function HubDisplayPrefs({
   getScreen,
   getSystemTab,
   systemDisplay,
+  getSubTab,
+  subTabDisplay,
   generalExtras,
-  generalSectionToc = [],
+  displayExtras,
   tablePanel,
+  tableSectionActions,
   tableActiveCount = 0,
   headerStatLabel = (isSystem) => (isSystem ? "System header" : "Hub header"),
   onLog,
@@ -79,20 +89,27 @@ export function HubDisplayPrefs({
   const [prefs, setPrefs] = useState(readPrefs);
   const [screen, setScreen] = useState(getScreen);
   const [systemTab, setSystemTab] = useState(() => getSystemTab?.() ?? "");
+  const [subTab, setSubTab] = useState(() => getSubTab?.() ?? "");
+  const [displayTick, setDisplayTick] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const subTabChangeEvent = subTabDisplay?.changeEvent ?? "subtab-display-change";
     const sync = () => {
       setScreen(getScreen());
       if (getSystemTab) setSystemTab(getSystemTab());
+      if (getSubTab) setSubTab(getSubTab());
+      setDisplayTick((n) => n + 1);
     };
     window.addEventListener("popstate", sync);
     window.addEventListener("system-display-change", sync);
+    window.addEventListener(subTabChangeEvent, sync);
     return () => {
       window.removeEventListener("popstate", sync);
       window.removeEventListener("system-display-change", sync);
+      window.removeEventListener(subTabChangeEvent, sync);
     };
-  }, [getScreen, getSystemTab]);
+  }, [getScreen, getSystemTab, getSubTab, subTabDisplay?.changeEvent]);
 
   useEffect(() => {
     if (scope === "global") return;
@@ -114,9 +131,29 @@ export function HubDisplayPrefs({
   const rawSpin = searchParam("spin");
   const rawNavicon = searchParam("navicon");
 
-  const systemSlice = isSystem && systemDisplay && systemTab ? systemDisplay.read(systemTab) : null;
-  const visKpiEffective = isSystem && systemDisplay ? systemSlice?.kpi ?? null : prefs.kpi;
-  const visChartsEffective = isSystem && systemDisplay ? systemSlice?.charts ?? null : prefs.charts;
+  const effectiveSubTab = isSystem && subTabDisplay?.screens.includes("system") ? systemTab : subTab;
+  const usesSubTabDisplay = Boolean(
+    subTabDisplay?.screens.includes(screen) && effectiveSubTab && subTabDisplay?.adapter,
+  );
+  const usesLegacySystemDisplay = Boolean(isSystem && systemDisplay && systemTab && !usesSubTabDisplay);
+  const systemSlice = useMemo(() => {
+    void displayTick;
+    return usesLegacySystemDisplay ? systemDisplay!.read(systemTab) : null;
+  }, [usesLegacySystemDisplay, systemDisplay, systemTab, displayTick]);
+  const subTabSlice = useMemo(() => {
+    void displayTick;
+    return usesSubTabDisplay ? subTabDisplay!.adapter.read(effectiveSubTab) : null;
+  }, [usesSubTabDisplay, subTabDisplay, effectiveSubTab, displayTick]);
+  const visKpiEffective = usesSubTabDisplay
+    ? (subTabSlice?.kpi ?? null)
+    : usesLegacySystemDisplay
+      ? (systemSlice?.kpi ?? null)
+      : prefs.kpi;
+  const visChartsEffective = usesSubTabDisplay
+    ? (subTabSlice?.charts ?? null)
+    : usesLegacySystemDisplay
+      ? (systemSlice?.charts ?? null)
+      : prefs.charts;
   const visHubFilters = filtersFromUrl ? parseSet(rawFilters) : (prefs.hubFilters ?? null);
 
   const isGlobalScope = scope === "global";
@@ -128,7 +165,13 @@ export function HubDisplayPrefs({
   const visHeaderStats = isSystem ? prefs.systemHeaderStats : prefs.headerStats;
   const headerStatParam = isSystem ? "sstat" : "hstat";
 
-  const logScope = isGlobalScope ? "Tool" : isSystem ? `System / ${systemTab}` : "Hub";
+  const logScope = isGlobalScope
+    ? "Tool"
+    : usesSubTabDisplay
+      ? (subTabDisplay?.logScope?.(effectiveSubTab) ?? `${screen} / ${effectiveSubTab}`)
+      : isSystem
+        ? `System / ${systemTab}`
+        : "Hub";
 
   function emitLog(message: string) {
     onLog?.(logScope, message);
@@ -188,11 +231,29 @@ export function HubDisplayPrefs({
         next.size === defaults.size && [...next].every((k) => defaults.has(k));
     }
 
-    if (isSystem && systemDisplay && systemTab && (param === "kpi" || param === "charts")) {
+    if (param === "charts" && next.has(key)) {
+      next = enforceChartMaxOnAdd(next, allItems, key);
+      allDefault =
+        next.size === defaults.size && [...next].every((k) => defaults.has(k));
+    }
+
+    if (usesLegacySystemDisplay && systemDisplay && systemTab && (param === "kpi" || param === "charts")) {
       systemDisplay.patch(systemTab, {
         [param]: allDefault ? null : [...next],
       });
+      setDisplayTick((n) => n + 1);
       emitLog(`Updated ${systemTab} display`);
+      return;
+    }
+
+    if (usesSubTabDisplay && subTabDisplay && (param === "kpi" || param === "charts")) {
+      subTabDisplay.adapter.patch(effectiveSubTab, {
+        [param]: allDefault ? null : [...next],
+      });
+      setDisplayTick((n) => n + 1);
+      const evt = subTabDisplay.changeEvent ?? "subtab-display-change";
+      window.dispatchEvent(new CustomEvent(evt));
+      emitLog(`Updated ${effectiveSubTab} display`);
       return;
     }
 
@@ -210,9 +271,10 @@ export function HubDisplayPrefs({
   const kpiDefaults = defaultsFor(tabKpis, defaultKpiKeys);
   const chartsDefaults = defaultsFor(tabCharts, defaultChartKeys);
   const filterDefaults = defaultsFor(tabFilters, defaultFilterKeys);
-  const visKpiResolved = resolveVisibleKpiKeys(visKpiEffective, kpiDefaults, tabKpis);
-  const visKpiCount = visKpiResolved.size;
-  const visChartsCount = visChartsEffective === null ? chartsDefaults.size : visChartsEffective.size;
+  const visKpiCount = tabKpis.filter((k) => isVisible(visKpiEffective, kpiDefaults, k.key)).length;
+  const kpiAtMax = visKpiCount >= MAX_VISIBLE_KPI;
+  const visChartsResolved = resolveVisibleChartKeys(visChartsEffective, chartsDefaults, tabCharts);
+  const visChartsCount = visChartsResolved.size;
   const visFilterCount = visHubFilters === null ? filterDefaults.size : visHubFilters.size;
   const visHeaderStatCount = visHeaderStats === null ? headerStatDefaults.size : visHeaderStats.size;
 
@@ -225,6 +287,7 @@ export function HubDisplayPrefs({
         (showNavToggle && rawNavicon === "0" ? 1 : 0)
       : (showRange && prefs.range !== "30d" ? 1 : 0) +
         (showLimit && prefs.limit !== 100 ? 1 : 0) +
+        (prefs.tablePageSize !== HUB_TABLE_PAGE_SIZE_DEFAULT ? 1 : 0) +
         (rawKpi !== null ? 1 : 0) +
         (rawCharts !== null ? 1 : 0) +
         (rawFilters !== null ? 1 : 0) +
@@ -238,9 +301,17 @@ export function HubDisplayPrefs({
       return;
     }
 
-    if (isSystem && systemDisplay && systemTab) {
+    if (usesLegacySystemDisplay && systemDisplay && systemTab) {
       systemDisplay.reset(systemTab);
       update({ sstat: null }, `Reset ${systemTab} display settings`);
+      return;
+    }
+
+    if (usesSubTabDisplay && subTabDisplay) {
+      subTabDisplay.adapter.reset(effectiveSubTab);
+      const evt = subTabDisplay.changeEvent ?? "subtab-display-change";
+      window.dispatchEvent(new CustomEvent(evt));
+      update({}, `Reset ${effectiveSubTab} display settings`);
       return;
     }
 
@@ -252,6 +323,7 @@ export function HubDisplayPrefs({
     };
     if (showRange) patch.range = null;
     if (showLimit) patch.limit = null;
+    patch.tpage = null;
     update(patch, "Reset display settings");
   }
 
@@ -259,79 +331,105 @@ export function HubDisplayPrefs({
   const sectionIds: string[] = [];
   const sectionNodes: ReactNode[] = [];
 
-  const pushSection = (id: string, label: string, icon: ReactNode | undefined, body: ReactNode) => {
+  const pushSection = (
+    id: string,
+    label: string,
+    icon: ReactNode | undefined,
+    body: ReactNode,
+    headerActions?: ReactNode,
+  ) => {
     const sectionId = settingsSectionId(id);
     tocItems.push({ id: sectionId, label, icon });
     sectionIds.push(sectionId);
     sectionNodes.push(
-      <HubToolDetailSection key={sectionId} id={sectionId} title={label} icon={icon}>
+      <HubToolDetailSection key={sectionId} id={sectionId} title={label} icon={icon} headerActions={headerActions}>
         {body}
       </HubToolDetailSection>,
     );
   };
 
-  const pushTocOnly = (items: HubTocNavItem[]) => {
-    for (const item of items) {
-      const sectionId = settingsSectionId(item.id);
-      tocItems.push({ ...item, id: sectionId });
-      sectionIds.push(sectionId);
-    }
-  };
+  const displayParts: ReactNode[] = [];
 
   if (!isGlobalScope && showRange) {
-    pushSection(
-      "range",
-      "Time range",
-      <Clock size={compactIconSize(11)} className="text-sky-300" />,
-      <div className="grid grid-cols-3 gap-1">
-        {TIME_RANGES.map((r) => (
-          <button
-            key={r.value}
-            type="button"
-            onClick={() => update({ range: r.value === "30d" ? null : r.value })}
-            className={`rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors ${
-              prefs.range === r.value
-                ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
-                : "bg-white/[.03] text-[var(--muted)]"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>,
+    displayParts.push(
+      <Section
+        key="range"
+        label="Time range"
+        icon={<Clock size={compactIconSize(11)} className="text-sky-300" />}
+      >
+        <div className="grid grid-cols-3 gap-1">
+          {TIME_RANGES.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => update({ range: r.value === "30d" ? null : r.value })}
+              className={`rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                prefs.range === r.value
+                  ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
+                  : "bg-white/[.03] text-[var(--muted)]"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </Section>,
+    );
+  }
+
+  if (!isGlobalScope) {
+    displayParts.push(
+      <Section
+        key="page-size"
+        label="Page size"
+        icon={<ListOrdered size={compactIconSize(11)} className="text-cyan-300" />}
+      >
+        <div className="grid grid-cols-3 gap-1">
+          {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => update({ tpage: patchHubTablePageSizeValue(n) })}
+              className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                prefs.tablePageSize === n
+                  ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
+                  : "bg-white/[.03] text-[var(--muted)]"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </Section>,
     );
   }
 
   if (!isGlobalScope && showLimit) {
-    pushSection(
-      "rows",
-      "Rows",
-      <Rows3 size={compactIconSize(11)} className="text-violet-300" />,
-      <div className="grid grid-cols-5 gap-1">
-        {LIMIT_OPTIONS.map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => update({ limit: n === 100 ? null : String(n) })}
-            className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
-              prefs.limit === n
-                ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
-                : "bg-white/[.03] text-[var(--muted)]"
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>,
+    displayParts.push(
+      <Section key="rows" label="Rows" icon={<Rows3 size={compactIconSize(11)} className="text-violet-300" />}>
+        <div className="grid grid-cols-5 gap-1">
+          {LIMIT_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => update({ limit: n === 100 ? null : String(n) })}
+              className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                prefs.limit === n
+                  ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
+                  : "bg-white/[.03] text-[var(--muted)]"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </Section>,
     );
   }
 
   if (showHeaderPin) {
-    pushSection(
-      "header",
-      "Header",
-      <PanelTop size={compactIconSize(11)} className="text-amber-300" />,
-      <>
+    displayParts.push(
+      <Section key="header" label="Header" icon={<PanelTop size={compactIconSize(11)} className="text-amber-300" />}>
         <ToggleRow
           label="Pin header (sticky)"
           on={prefs.headerPin}
@@ -351,92 +449,117 @@ export function HubDisplayPrefs({
             onChange={() => update({ navicon: prefs.navToggleIcon ? "0" : null })}
           />
         ) : null}
-      </>,
+      </Section>,
     );
   }
 
-  if (generalExtras) {
-    pushTocOnly(generalSectionToc);
-    sectionNodes.push(
-      <div key="settings-general-extras" className="contents">
-        {generalExtras}
-      </div>,
-    );
+  const toolDisplayExtras = displayExtras ?? generalExtras;
+  if (toolDisplayExtras) {
+    displayParts.push(<Fragment key="display-extras">{toolDisplayExtras}</Fragment>);
   }
 
   for (const tab of extraTabs) {
-    pushSection(tab.id, tab.label, tab.icon, tab.content);
+    displayParts.push(
+      <Section key={`extra-${tab.id}`} label={tab.label} icon={tab.icon}>
+        {tab.content}
+      </Section>,
+    );
   }
 
   if (!isGlobalScope && tabKpis.length > 0) {
-    pushSection(
-      "kpi",
-      `KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`,
-      <Gauge size={compactIconSize(11)} className="text-emerald-300" />,
-      <div className="space-y-0.5">
-        {tabKpis.map((k) => (
-          <ToggleRow
-            key={k.key}
-            label={k.label}
-            on={visKpiResolved.has(k.key)}
-            onChange={() => toggle("kpi", tabKpis, kpiDefaults, k.key)}
-          />
-        ))}
-      </div>,
+    displayParts.push(
+      <Section
+        key="kpi"
+        label={`KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`}
+        icon={<Gauge size={compactIconSize(11)} className="text-emerald-300" />}
+      >
+        <div className="space-y-0.5">
+          {tabKpis.map((k) => {
+            const selected = isVisible(visKpiEffective, kpiDefaults, k.key);
+            return (
+              <ToggleRow
+                key={k.key}
+                label={k.label}
+                on={selected}
+                disabled={kpiAtMax && !selected}
+                onChange={() => toggle("kpi", tabKpis, kpiDefaults, k.key)}
+              />
+            );
+          })}
+        </div>
+      </Section>,
     );
   }
 
   if (!isGlobalScope && tabCharts.length > 0) {
-    pushSection(
-      "charts",
-      `Charts (${visChartsCount}/${tabCharts.length})`,
-      <BarChart3 size={compactIconSize(11)} className="text-indigo-300" />,
-      <div className="space-y-0.5">
-        {tabCharts.map((c) => (
-          <ToggleRow
-            key={c.key}
-            label={c.label}
-            on={isVisible(visChartsEffective, chartsDefaults, c.key)}
-            onChange={() => toggle("charts", tabCharts, chartsDefaults, c.key)}
-          />
-        ))}
-      </div>,
+    displayParts.push(
+      <Section
+        key="charts"
+        label={`Charts (${visChartsCount}/${MAX_VISIBLE_CHART})`}
+        icon={<BarChart3 size={compactIconSize(11)} className="text-indigo-300" />}
+      >
+        <div className="space-y-0.5">
+          {tabCharts.map((c) => (
+            <ToggleRow
+              key={c.key}
+              label={c.label}
+              on={isVisible(visChartsEffective, chartsDefaults, c.key)}
+              onChange={() => toggle("charts", tabCharts, chartsDefaults, c.key)}
+            />
+          ))}
+        </div>
+      </Section>,
     );
   }
 
   if (!isGlobalScope && tabFilters.length > 0) {
-    pushSection(
-      "filters",
-      `Filters (${visFilterCount}/${tabFilters.length})`,
-      <Filter size={compactIconSize(11)} className="text-cyan-300" />,
-      <div className="space-y-0.5">
-        {tabFilters.map((f) => (
-          <ToggleRow
-            key={f.key}
-            label={f.label}
-            on={isVisible(visHubFilters, filterDefaults, f.key)}
-            onChange={() => toggle(filterParam, tabFilters, filterDefaults, f.key)}
-          />
-        ))}
-      </div>,
+    displayParts.push(
+      <Section
+        key="filters"
+        label={`Filters (${visFilterCount}/${tabFilters.length})`}
+        icon={<Filter size={compactIconSize(11)} className="text-cyan-300" />}
+      >
+        <div className="space-y-0.5">
+          {tabFilters.map((f) => (
+            <ToggleRow
+              key={f.key}
+              label={f.label}
+              on={isVisible(visHubFilters, filterDefaults, f.key)}
+              onChange={() => toggle(filterParam, tabFilters, filterDefaults, f.key)}
+            />
+          ))}
+        </div>
+      </Section>,
     );
   }
 
   if (!isGlobalScope && headerStats.length > 0) {
+    displayParts.push(
+      <Section
+        key="header-stats"
+        label={`${headerStatLabel(isSystem)} (${visHeaderStatCount}/${headerStats.length})`}
+        icon={<LayoutDashboard size={compactIconSize(11)} className="text-orange-300" />}
+      >
+        <div className="space-y-0.5">
+          {headerStats.map((h) => (
+            <ToggleRow
+              key={h.key}
+              label={h.label}
+              on={isVisible(visHeaderStats, headerStatDefaults, h.key)}
+              onChange={() => toggle(headerStatParam, headerStats, headerStatDefaults, h.key)}
+            />
+          ))}
+        </div>
+      </Section>,
+    );
+  }
+
+  if (displayParts.length > 0) {
     pushSection(
-      "header-stats",
-      `${headerStatLabel(isSystem)} (${visHeaderStatCount}/${headerStats.length})`,
-      <LayoutDashboard size={compactIconSize(11)} className="text-orange-300" />,
-      <div className="space-y-0.5">
-        {headerStats.map((h) => (
-          <ToggleRow
-            key={h.key}
-            label={h.label}
-            on={isVisible(visHeaderStats, headerStatDefaults, h.key)}
-            onChange={() => toggle(headerStatParam, headerStats, headerStatDefaults, h.key)}
-          />
-        ))}
-      </div>,
+      "display",
+      "Display",
+      <Layers size={compactIconSize(11)} className="text-indigo-300" />,
+      <div className="space-y-0">{displayParts}</div>,
     );
   }
 
@@ -446,6 +569,7 @@ export function HubDisplayPrefs({
       "Table columns",
       <Columns3 size={compactIconSize(11)} className="text-violet-300" />,
       tablePanel,
+      tableSectionActions,
     );
   }
 
@@ -456,7 +580,8 @@ export function HubDisplayPrefs({
     <HubKeyboardShortcutsPanel className="-mx-1" />,
   );
 
-  const showSettingsToc = tocItems.length > 1;
+  /** Always show TOC when any section exists — matches Log / User access modals. */
+  const showSettingsToc = tocItems.length > 0;
 
   return (
     <div ref={ref} className={sidebarRow ? "relative w-full" : "relative"}>

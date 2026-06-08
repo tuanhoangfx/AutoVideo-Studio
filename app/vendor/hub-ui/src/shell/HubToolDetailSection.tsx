@@ -12,12 +12,21 @@ export type HubToolDetailSectionProps = {
   title: string;
   /** Optional icon — same node as TOC row for Settings / detail modals. */
   icon?: ReactNode;
+  /** Optional actions aligned to the section header (e.g. Reset columns). */
+  headerActions?: ReactNode;
   children: ReactNode;
   className?: string;
 };
 
 /** Bordered frame for one TOC section inside tool-detail modals. */
-export function HubToolDetailSection({ id, title, icon, children, className = "" }: HubToolDetailSectionProps) {
+export function HubToolDetailSection({
+  id,
+  title,
+  icon,
+  headerActions,
+  children,
+  className = "",
+}: HubToolDetailSectionProps) {
   const highlightCtx = useHubTocSectionHighlightOptional();
 
   return (
@@ -38,6 +47,9 @@ export function HubToolDetailSection({ id, title, icon, children, className = ""
           ) : null}
           <span>{title}</span>
         </h3>
+        {headerActions ? (
+          <div className="hub-tool-detail-section__header-actions">{headerActions}</div>
+        ) : null}
       </header>
       <div className="hub-tool-detail-section__body">{children}</div>
     </section>

@@ -1,0 +1,318 @@
+/**
+ * Auth gate form + legacy modal shell primitives (P0004 HubAuthGate, P0020 NotesAuthGate / 2FA forms).
+ * New modals should use HubToolDetailModal; shell classes remain for P0004 confirm/user-add until migrated.
+ */
+
+.auth-gate-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.auth-gate-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 28, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.auth-gate-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.auth-gate-close:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.auth-gate-modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 1.75rem 1.5rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  background: linear-gradient(165deg, rgba(26, 33, 64, 0.98) 0%, rgba(15, 20, 42, 0.98) 100%);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.auth-gate-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.auth-gate-title {
+  margin: 0 0 0.35rem;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #93c5fd 0%, #c4b5fd 55%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.auth-gate-subtitle {
+  margin: 0 0 1.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.auth-gate-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-gate-tab {
+  padding: 0.55rem 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.auth-gate-tab:hover {
+  color: var(--text);
+}
+
+.auth-gate-tab--active {
+  color: #93c5fd;
+  border-bottom-color: #3b82f6;
+}
+
+.auth-gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.auth-gate-field {
+  font-size: 0.8125rem;
+}
+
+.auth-gate-password-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-gate-forgot {
+  align-self: flex-end;
+  padding: 0;
+  font-size: 0.6875rem;
+  color: #60a5fa;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.auth-gate-forgot:hover:not(:disabled) {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.auth-gate-forgot:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-gate-message {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #fca5a5;
+}
+
+.auth-gate-submit {
+  margin-top: 0.25rem;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(90deg, #2563eb 0%, #7c3aed 100%);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+  transition: opacity 0.15s, transform 0.08s, box-shadow 0.15s;
+}
+
+.auth-gate-submit:hover:not(:disabled) {
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.45);
+}
+
+.auth-gate-submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.auth-gate-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.auth-gate-modal--wide {
+  max-width: 440px;
+}
+
+.auth-gate-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+}
+
+.auth-gate-hint {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.auth-gate-hint .auth-gate-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #a5b4fc;
+}
+
+.auth-gate-ok {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #86efac;
+}
+
+.auth-gate-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.auth-gate-secondary {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.auth-gate-secondary:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.auth-gate-actions .auth-gate-submit {
+  flex: 1;
+  margin-top: 0;
+}
+
+.auth-inline {
+  padding: 24px;
+}
+
+.auth-inline-card {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 24, 48, 0.55);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+  padding: 18px;
+}
+
+.auth-inline-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.auth-inline-sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.auth-inline-btn {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(90deg, #2563eb 0%, #7c3aed 100%);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+}
+
+.auth-inline-btn:hover {
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.45);
+}
+
+.auth-inline-btn:active {
+  transform: translateY(1px);
+}
+
+.auth-inline-btn--ghost {
+  margin-top: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.auth-inline-btn--ghost:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.btn-danger {
+  background: var(--danger, #ef4444);
+  color: #fff;
+  border: 0;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 4px 14px rgb(239 68 68 / 0.35);
+}

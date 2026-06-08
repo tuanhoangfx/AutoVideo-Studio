@@ -18,14 +18,18 @@ export function HubDataTable({
   columns,
   children,
   empty,
+  tableClassName = "hub-users-table",
+  wrapClassName = "hub-users-table-wrap overflow-hidden rounded-xl border border-white/5",
 }: {
   columns: HubTableColumn[];
   children: ReactNode;
   empty?: ReactNode;
+  tableClassName?: string;
+  wrapClassName?: string;
 }) {
   return (
-    <div className="hub-users-table-wrap overflow-hidden rounded-xl border border-white/5">
-      <table className="hub-users-table">
+    <div className={wrapClassName}>
+      <table className={tableClassName}>
         <thead>
           <tr>
             {columns.map((col) => (

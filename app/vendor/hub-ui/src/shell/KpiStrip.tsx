@@ -1,5 +1,12 @@
 import type { ElementType } from "react";
+import { MAX_VISIBLE_KPI } from "../display-prefs/kpi-visible";
+import { clampBandSlotCount } from "../lib/analytics-band-count";
 import { compactIconSize } from "../ui-scale";
+
+/** Visible KPI tile count for `data-kpi-count` (0 or 1…MAX_VISIBLE_KPI). */
+export function resolveKpiStripCount(count: number): number {
+  return clampBandSlotCount(count, MAX_VISIBLE_KPI);
+}
 
 type Tone = "indigo" | "emerald" | "amber" | "rose" | "blue" | "purple";
 
@@ -22,13 +29,11 @@ export type KpiTileData = {
   prefKey?: string;
 };
 
-const KPI_ROW_MAX = 4;
-
 export function KpiStrip({ items, className = "" }: { items: KpiTileData[]; className?: string }) {
   if (items.length === 0) return null;
 
-  const visible = items.slice(0, KPI_ROW_MAX);
-  const count = visible.length;
+  const visible = items.slice(0, MAX_VISIBLE_KPI);
+  const count = resolveKpiStripCount(visible.length);
 
   return (
     <div

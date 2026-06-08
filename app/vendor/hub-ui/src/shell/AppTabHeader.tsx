@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
 import { ChevronDown, Clock } from "lucide-react";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
-import { compactIconSize } from "../ui-scale";
 import "./app-tab-header.css";
 
 export type TabTitleMenuItem = {
@@ -12,7 +11,6 @@ export type TabTitleMenuItem = {
 
 export type TabHeaderMetaItem = {
   icon: ElementType<{ size?: number; className?: string }>;
-  /** Omit or empty to hide label (e.g. release line: icon · version · date). */
   title?: string;
   value: string;
   live?: boolean;
@@ -20,9 +18,10 @@ export type TabHeaderMetaItem = {
 
 export type TabHeaderStatItem = {
   key: string;
-  icon: ElementType<{ size?: number; className?: string }>;
+  icon?: ElementType<{ size?: number; className?: string }>;
+  dotClass?: string;
   label: string;
-  value: number;
+  value: number | string;
   toneClass: string;
 };
 
@@ -31,16 +30,13 @@ type AppTabHeaderProps = {
   titleIcon: ElementType<{ size?: number; className?: string }>;
   titleIconClass?: string;
   title: string;
-  /** Sub-pages under the title (e.g. System → Overview / Schema). */
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
   metaItems: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
   pinSticky?: boolean;
-  /** Bottom rule; off when Hub search bar is pinned (rule moves below search). */
   dividerBelow?: boolean;
-  /** Inside shared sticky chrome (header + search); no own sticky/margins. */
   embedded?: boolean;
   actions?: ReactNode;
 };
@@ -82,7 +78,7 @@ function TitleWithMenu({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pr-1 text-left transition-colors hover:bg-white/[.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/50"
       >
-        <TitleIcon size={compactIconSize(16)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+        <TitleIcon size={16} className={`shrink-0 ${titleIconClass}`} aria-hidden />
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="text-base font-semibold tracking-tight text-[var(--text)]">{title}</span>
           {active ? (
@@ -90,7 +86,7 @@ function TitleWithMenu({
           ) : null}
         </span>
         <ChevronDown
-          size={compactIconSize(14)}
+          size={14}
           className={`shrink-0 text-[var(--muted)] transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
@@ -117,7 +113,7 @@ function TitleWithMenu({
                     : "text-[var(--muted)] hover:bg-white/[.05] hover:text-[var(--text)]"
                 }`}
               >
-                {Icon ? <Icon size={compactIconSize(14)} className={isActive ? "text-indigo-300" : ""} /> : null}
+                {Icon ? <Icon size={14} className={isActive ? "text-indigo-300" : ""} /> : null}
                 {label}
               </button>
             );
@@ -135,13 +131,9 @@ function Rule({ visibleFrom = "sm" }: { visibleFrom?: "sm" | "md" | "lg" }) {
 }
 
 function MetaLine({ icon: Icon, title, value, live }: TabHeaderMetaItem) {
-  const tip = title ? `${title}: ${value}` : value;
   return (
-    <div
-      className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[0.8125rem] leading-none text-[var(--muted)]"
-      title={tip}
-    >
-      <Icon size={compactIconSize(14)} className="shrink-0 text-indigo-400/90" />
+    <div className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]">
+      <Icon size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
       {title ? <span className="shrink-0">{title}</span> : null}
       {live !== undefined ? (
         <span
@@ -154,35 +146,16 @@ function MetaLine({ icon: Icon, title, value, live }: TabHeaderMetaItem) {
   );
 }
 
-function SessionLine({ value }: { value: string }) {
+function StatLine({ icon: Icon, dotClass, value, label, toneClass }: TabHeaderStatItem) {
   return (
-    <span className="hidden shrink-0 items-center gap-1.5 text-[0.8125rem] leading-none text-[var(--muted)] sm:flex">
-      <Clock size={compactIconSize(14)} className="shrink-0 text-indigo-400/90" />
-      <span>Session</span>
-      <span className="tabular-nums text-[var(--text)]/90">{value}</span>
-    </span>
-  );
-}
-
-function StatLine({
-  icon: Icon,
-  value,
-  label,
-  toneClass,
-}: {
-  icon: ElementType<{ size?: number; className?: string }>;
-  value: number;
-  label: string;
-  toneClass: string;
-}) {
-  return (
-    <div
-      className="inline-flex items-center gap-1.5 text-[0.8125rem] leading-none text-[var(--muted)]"
-      title={label}
-    >
-      <Icon size={compactIconSize(14)} className={`shrink-0 ${toneClass}`} />
+    <div className="inline-flex items-center gap-1 text-[12px] leading-none text-[var(--muted)]" title={label}>
+      {dotClass ? (
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
+      ) : Icon ? (
+        <Icon size={13} className={`shrink-0 ${toneClass}`} aria-hidden />
+      ) : null}
       <span className="font-semibold tabular-nums text-[var(--text)]/90">{value}</span>
-      <span>{label}</span>
+      <span className="text-[var(--muted)]/80">{label}</span>
     </div>
   );
 }
@@ -203,17 +176,15 @@ export function AppTabHeader({
   actions,
 }: AppTabHeaderProps) {
   const sessionMmSs = usePageSessionSeconds();
-  const positionClass = embedded ? "relative z-50" : pinSticky ? "sticky top-0 z-40" : "relative z-0";
-  const dividerClass = embedded || !dividerBelow ? "" : "border-b border-white/5";
-  const gapBelow = embedded || !dividerBelow ? "" : "mb-[var(--app-tab-header-gap-below)]";
-  const chromeClass = embedded ? "" : "-mx-6";
-  const metaVisibility = (index: number) => (index === 0 ? "hidden sm:inline-flex" : index === 1 ? "hidden md:inline-flex" : "hidden lg:inline-flex");
+  const positionClass = embedded ? "relative z-0" : pinSticky ? "sticky top-0 z-40" : "relative z-0";
+  const chromeClass = embedded
+    ? "app-tab-header box-border grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 bg-[var(--bg)]"
+    : `app-tab-header ${positionClass} -mx-6 mb-2 box-border grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 bg-[var(--bg)] px-6${
+        dividerBelow ? " border-b border-white/5" : ""
+      }`;
 
   return (
-    <header
-      className={`app-tab-header ${positionClass} ${chromeClass} ${gapBelow} box-border grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 bg-[var(--bg)] ${dividerClass}`}
-      aria-label={ariaLabel}
-    >
+    <header className={chromeClass} aria-label={ariaLabel}>
       <div className="flex min-w-0 flex-wrap items-center justify-self-start gap-x-2.5 gap-y-0">
         {titleMenu?.length ? (
           <TitleWithMenu
@@ -226,16 +197,12 @@ export function AppTabHeader({
           />
         ) : (
           <>
-            <TitleIcon size={compactIconSize(16)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+            <TitleIcon size={16} className={`shrink-0 ${titleIconClass}`} aria-hidden />
             <h1 className="shrink-0 text-base font-semibold leading-none tracking-tight text-[var(--text)]">{title}</h1>
           </>
         )}
-        <span className="hidden items-center gap-x-2.5 sm:inline-flex">
-          <Rule />
-          <SessionLine value={sessionMmSs} />
-        </span>
         {metaItems.map((item, index) => (
-          <span key={`${item.title}-${index}`} className={`${metaVisibility(index)} items-center gap-x-2.5`}>
+          <span key={`${item.title ?? "meta"}-${index}`} className="inline-flex items-center gap-x-2.5">
             <Rule visibleFrom={index === 0 ? "sm" : index === 1 ? "md" : "lg"} />
             <MetaLine {...item} />
           </span>
@@ -243,19 +210,24 @@ export function AppTabHeader({
       </div>
 
       <div
-        className="hidden min-w-0 items-center justify-center justify-self-center gap-x-2.5 overflow-x-auto xl:flex"
+        className="app-tab-header-center-stats hidden min-w-0 items-center justify-center justify-self-center gap-x-2.5 overflow-x-auto xl:flex"
         role="status"
         aria-label={`${title} summary`}
       >
         {centerStats.map((stat, index) => (
           <span key={stat.key} className="inline-flex items-center gap-x-2.5">
             {index > 0 ? <Rule /> : null}
-            <StatLine icon={stat.icon} value={stat.value} label={stat.label} toneClass={stat.toneClass} />
+            <StatLine {...stat} />
           </span>
         ))}
       </div>
 
-      <div className="flex min-w-0 items-center justify-self-end gap-1.5" aria-label={`${title} actions`}>
+      <div className="flex shrink-0 items-center justify-self-end gap-2 text-[13px] leading-none text-[var(--muted)]">
+        <div className="inline-flex items-center gap-1.5">
+          <Clock size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
+          <span>Session</span>
+          <span className="tabular-nums text-[var(--text)]/90">{sessionMmSs}</span>
+        </div>
         {actions}
       </div>
     </header>

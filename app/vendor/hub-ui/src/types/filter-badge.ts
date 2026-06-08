@@ -1,5 +1,6 @@
 import type { ElementType } from "react";
-import type { MetricBadgeTone } from "../shell/MetricBadge";
+
+export type MetricBadgeTone = "ok" | "bad" | "warn" | "neutral";
 
 /** Portable filter/badge icon metadata (full registry lives in each app's `lib/badge-registry`). */
 export type FilterIconMeta = {

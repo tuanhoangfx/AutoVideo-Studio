@@ -44,9 +44,9 @@ Bootstrap: `HubLoaderRoot` + `configureFilterIcons` / `configureHubChromePrefs` 
 | ID | Vietnamese | Golden source | Package entry |
 |----|------------|---------------|---------------|
 | `directory` | Directory | P0004 Users, Hub list; P0006 Bots, Groups, Channels | `HubDirectoryScreen` |
-| `dashboard` | Dashboard (KPI + charts) | **P0008** `dashboard/page.tsx`; P0006 clone | `HubDirectoryScreen` + KPI/charts |
+| `dashboard` | Dashboard (KPI + charts) | P0016 `DashboardScreen` | `HubDashboardScreen` + KPI/charts |
 | `system-panels` | System sub-tabs + panels | P0004 `SystemHubScreen` | `HubTabChrome` + `HubPanel` |
-| `inbox-split` | Inbox master-detail | P0006 `InboxScreen` | `HubTabChrome` + `bodyFlex` |
+| `inbox-split` | Inbox master-detail | P0016 `InboxHubChrome` | `HubSplitWorkspaceScreen` + `DirectorySearchToolbar` |
 | `auth-gate` | Login / gate | P0020 `NotesAuthGate` | App-only |
 
 Types: `src/ui-template-types.ts` → `HubUiTemplate`, `GOLDEN_SOURCES`.

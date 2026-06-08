@@ -25,7 +25,7 @@ Current render modes:
 - `offline`: no worker URL configured
 - `local`: `localhost` / `127.0.0.1`
 - `tunnel`: Cloudflare Quick Tunnel
-- `vps`: `zaloai.infix1.io.vn`
+- `vps`: `zaloai.infi.io.vn`
 - `public`: any other public worker URL
 
 Current shell modes:
