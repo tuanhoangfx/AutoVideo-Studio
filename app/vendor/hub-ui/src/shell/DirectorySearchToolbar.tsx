@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { RefreshCw } from "lucide-react";
 import { HubResultCount } from "./HubResultCount";
+import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
 import { ViewToggle, type HubViewMode } from "./ViewToggle";
 
 export type DirectorySearchToolbarProps = {
@@ -15,6 +16,7 @@ export type DirectorySearchToolbarProps = {
   onRefresh: () => void;
   disabled?: boolean;
   showViewToggle?: boolean;
+  showTablePageSize?: boolean;
   trailing?: ReactNode;
 };
 
@@ -30,6 +32,7 @@ export function DirectorySearchToolbar({
   onRefresh,
   disabled = false,
   showViewToggle = true,
+  showTablePageSize = false,
   trailing,
 }: DirectorySearchToolbarProps) {
   return (
@@ -37,6 +40,7 @@ export function DirectorySearchToolbar({
       {showViewToggle && viewMode != null && onViewModeChange ? (
         <ViewToggle value={viewMode} onChange={onViewModeChange} />
       ) : null}
+      {showTablePageSize ? <HubTablePageSizeSelect /> : null}
       <HubResultCount icon={countIcon} shown={shown} total={total} label={countLabel} />
       {trailing}
       <button

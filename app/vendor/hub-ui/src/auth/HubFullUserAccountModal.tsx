@@ -12,16 +12,29 @@ import {
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
 } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
-import { compactIconSize } from "../ui-scale";
 import type { HubWorkspaceUserProfileRow } from "./HubWorkspaceUserModal";
+import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
+import { HubUserChangeEmailModal } from "./HubUserChangeEmailModal";
+import { HubUserChangePasswordModal } from "./HubUserChangePasswordModal";
+import { HubUserFieldActionButton } from "./HubUserFieldActionButton";
+import {
+  HUB_FULL_USER_ACCOUNT_TOC,
+  hubUserAccountSectionIcon,
+  hubUserAccountTocItems,
+} from "./hub-user-account-toc";
 
-export const HUB_FULL_USER_ACCOUNT_TOC = [
-  { id: "hub-user-account", label: "Account", emoji: "👤" },
-  { id: "hub-user-link-email", label: "Link email", emoji: "✉️" },
-  { id: "hub-user-password", label: "Security", emoji: "🔐" },
-] as const;
+export { HUB_FULL_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
+export type HubFullUserAccountTocId = "hub-user-account";
 
-export type HubFullUserAccountTocId = (typeof HUB_FULL_USER_ACCOUNT_TOC)[number]["id"];
+const FIELD_ICON_CLASS: Record<string, string> = {
+  "User ID": "text-violet-300",
+  Email: "text-sky-300",
+  Password: "text-amber-300",
+  Role: "text-purple-300",
+  Provider: "text-amber-300",
+  Created: "text-slate-400",
+  "Last sign in": "text-emerald-300",
+};
 
 export type HubFullUserAccountResult = { ok: boolean; message: string };
 
@@ -43,23 +56,7 @@ export type HubFullUserAccountModalProps = {
   onSignOutError?: (title: string, message: string) => void;
 };
 
-function ProfileRow({ label, value, icon: Icon }: HubWorkspaceUserProfileRow) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[.025] px-3 py-2.5">
-      <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/[.04] text-indigo-200">
-        <Icon size={compactIconSize(14)} />
-      </div>
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">{label}</div>
-        <div className="mt-0.5 truncate font-medium text-[var(--text)]" title={value}>
-          {value}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Full account modal — profile, link email, OTP password (P0004 Tool Hub admin). */
+/** Full account modal — profile + inline change email/password sub-modals (P0004). */
 export function HubFullUserAccountModal({
   open,
   onClose,
@@ -79,15 +76,8 @@ export function HubFullUserAccountModal({
 }: HubFullUserAccountModalProps) {
   const [signingOut, setSigningOut] = useState(false);
   const [resolvedRole, setResolvedRole] = useState<string | null>(null);
-  const [linkEmail, setLinkEmail] = useState("");
-  const [linkBusy, setLinkBusy] = useState(false);
-  const [linkMsg, setLinkMsg] = useState<string | null>(null);
-  const [otpEmail, setOtpEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [otpStep, setOtpStep] = useState<"idle" | "sent">("idle");
-  const [otpBusy, setOtpBusy] = useState(false);
-  const [otpMsg, setOtpMsg] = useState<string | null>(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const user = session?.user ?? null;
   const labels = hubSessionLabels(session);
@@ -96,30 +86,25 @@ export function HubFullUserAccountModal({
   const lastSignIn = user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString("vi-VN") : "—";
   const displayName = title ?? labels.loginId ?? labels.email ?? user?.id?.slice(0, 8) ?? "User";
 
+  const emailDisplay =
+    labels.email || (labels.hasSyntheticAuth ? "Not linked" : labels.authEmail) || "—";
+
   const recoveryEmail = useMemo(() => {
     if (labels.email) return labels.email;
     if (canUseEmailPasswordRecovery(labels.authEmail)) return labels.authEmail;
     return "";
   }, [labels.authEmail, labels.email]);
 
-  const tocItems = useMemo(() => {
-    const items = HUB_FULL_USER_ACCOUNT_TOC.filter((item) => {
-      if (item.id === "hub-user-account") return true;
-      return Boolean(session);
-    });
-    return items.map((item) => ({ id: item.id, label: item.label, emoji: item.emoji }));
-  }, [session]);
+  const canRecover = Boolean(recoveryEmail);
 
+  const tocItems = useMemo(() => hubUserAccountTocItems(HUB_FULL_USER_ACCOUNT_TOC), []);
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
 
   const defaultRows: HubWorkspaceUserProfileRow[] = useMemo(
     () => [
       { label: "User ID", value: labels.loginId || "—", icon: User },
-      {
-        label: "Email",
-        value: labels.email || (labels.hasSyntheticAuth ? "Not linked" : labels.authEmail) || "—",
-        icon: Mail,
-      },
+      { label: "Email", value: emailDisplay, icon: Mail },
+      { label: "Password", value: session ? "••••••••" : "—", icon: KeyRound },
       { label: "Role", value: resolvedRole ?? roleLabel, icon: ShieldCheck },
       { label: "Provider", value: provider, icon: KeyRound },
       { label: "Created", value: createdAt, icon: User },
@@ -127,9 +112,8 @@ export function HubFullUserAccountModal({
     ],
     [
       labels.loginId,
-      labels.email,
-      labels.hasSyntheticAuth,
-      labels.authEmail,
+      emailDisplay,
+      session,
       resolvedRole,
       roleLabel,
       provider,
@@ -155,15 +139,11 @@ export function HubFullUserAccountModal({
   }, [open, user?.id, onResolveRole]);
 
   useEffect(() => {
-    if (!open) return;
-    setLinkEmail(labels.email);
-    setOtpEmail(recoveryEmail);
-    setLinkMsg(null);
-    setOtpMsg(null);
-    setOtpStep("idle");
-    setOtpCode("");
-    setNewPassword("");
-  }, [open, labels.email, recoveryEmail]);
+    if (!open) {
+      setEmailModalOpen(false);
+      setPasswordModalOpen(false);
+    }
+  }, [open]);
 
   const handleSignOut = () => {
     void (async () => {
@@ -178,174 +158,116 @@ export function HubFullUserAccountModal({
     })();
   };
 
-  return (
-    <HubToolDetailModal
-      open={open}
-      onClose={onClose}
-      title={displayName}
-      titleId="hub-user-modal-title"
-      headerLeading={
-        headerLeading ?? (
-          <span
-            className="user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-indigo-300/25 bg-indigo-500/20 text-xs font-bold text-indigo-100"
-            aria-hidden
-          >
-            {initials}
+  const renderFieldValue = (row: HubWorkspaceUserProfileRow) => {
+    if (row.label === "Email" && session) {
+      return (
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="truncate font-medium" title={row.value}>
+            {row.value}
           </span>
-        )
-      }
-      headerTrailing={
-        headerTrailing ?? (
-          <span className="truncate font-mono text-[10px] text-[var(--muted)]">
-            {labels.loginId ? `ID: ${labels.loginId}` : user?.id?.slice(0, 8) ?? "—"}
-          </span>
-        )
-      }
-      shellClassName="hub-header-panel-modal"
-      sectionIds={sectionIds}
-      toc={
-        <div className="hub-toc-nav">
-          <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+          <HubUserFieldActionButton label="Change email" onClick={() => setEmailModalOpen(true)} />
         </div>
-      }
-      footer={
-        <HubToolDetailModalPrimaryAction
-          label={signingOut ? "Signing out…" : "Sign Out"}
-          onClick={handleSignOut}
-          disabled={!session || signingOut}
-          busy={signingOut}
-          danger
-          icon={LogOut}
-        />
-      }
-      ariaLabelledBy="hub-user-modal-title"
-    >
-      <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>
-        <HubToolDetailSection id="hub-user-account" title="Account">
-          <div className="grid gap-2 text-sm">
-            {rows.map((row) => (
-              <ProfileRow key={row.label} {...row} />
-            ))}
-          </div>
-        </HubToolDetailSection>
+      );
+    }
+    if (row.label === "Password" && session) {
+      return (
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="font-medium tabular-nums tracking-widest text-[var(--muted)]">{row.value}</span>
+          <HubUserFieldActionButton
+            label="Change password"
+            onClick={() => setPasswordModalOpen(true)}
+            disabled={!canRecover}
+          />
+        </div>
+      );
+    }
+    return (
+      <span className="truncate font-medium" title={row.value}>
+        {row.value}
+      </span>
+    );
+  };
 
-        {session ? (
-          <HubToolDetailSection id="hub-user-link-email" title="Link email">
-            <p className="mb-2 text-[10px] text-[var(--muted)]">
-              Add or change your contact email. A confirmation link is sent before it becomes active.
-            </p>
-            <input
-              className="field mb-2 w-full text-xs"
-              type="email"
-              placeholder="you@company.com"
-              value={linkEmail}
-              onChange={(e) => setLinkEmail(e.target.value)}
-              autoComplete="email"
-            />
-            <button
-              type="button"
-              className="btn w-full text-xs"
-              disabled={linkBusy}
-              onClick={() => {
-                void (async () => {
-                  setLinkBusy(true);
-                  setLinkMsg(null);
-                  const result = await onLinkEmail(linkEmail.trim().toLowerCase());
-                  setLinkBusy(false);
-                  setLinkMsg(result.message);
-                })();
-              }}
+  return (
+    <>
+      <HubToolDetailModal
+        open={open}
+        onClose={onClose}
+        title={displayName}
+        titleId="hub-user-modal-title"
+        headerLeading={
+          headerLeading ?? (
+            <span
+              className="user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-indigo-300/25 bg-indigo-500/20 text-xs font-bold text-indigo-100"
+              aria-hidden
             >
-              {linkBusy ? "Sending…" : labels.email ? "Update linked email" : "Link email"}
-            </button>
-            {linkMsg ? <p className="mt-2 text-[10px] text-indigo-200">{linkMsg}</p> : null}
+              {initials}
+            </span>
+          )
+        }
+        headerTrailing={
+          headerTrailing ?? (
+            <span className="truncate font-mono text-[10px] text-[var(--muted)]">
+              {labels.loginId ? `ID: ${labels.loginId}` : user?.id?.slice(0, 8) ?? "—"}
+            </span>
+          )
+        }
+        shellClassName="hub-header-panel-modal"
+        sectionIds={sectionIds}
+        toc={
+          <div className="hub-toc-nav">
+            <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+          </div>
+        }
+        footer={
+          <HubToolDetailModalPrimaryAction
+            label={signingOut ? "Signing out…" : "Sign Out"}
+            onClick={handleSignOut}
+            disabled={!session || signingOut}
+            busy={signingOut}
+            danger
+            icon={LogOut}
+          />
+        }
+        ariaLabelledBy="hub-user-modal-title"
+      >
+        <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>
+          <HubToolDetailSection
+            id="hub-user-account"
+            title="Account"
+            icon={hubUserAccountSectionIcon(HUB_FULL_USER_ACCOUNT_TOC, "hub-user-account")}
+          >
+            <HubUserModalFieldTable>
+              {rows.map((row) => (
+                <HubUserModalFieldRow
+                  key={row.label}
+                  icon={row.icon}
+                  iconClassName={FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
+                  label={row.label}
+                >
+                  {renderFieldValue(row)}
+                </HubUserModalFieldRow>
+              ))}
+            </HubUserModalFieldTable>
           </HubToolDetailSection>
-        ) : null}
+        </div>
+      </HubToolDetailModal>
 
-        {session ? (
-          <HubToolDetailSection id="hub-user-password" title="Security">
-            <p className="mb-2 text-[10px] text-[var(--muted)]">
-              We send a 6-digit code to your linked email. Works after email is confirmed.
-            </p>
-            <input
-              className="field mb-2 w-full text-xs"
-              type="email"
-              placeholder="Linked email"
-              value={otpEmail}
-              onChange={(e) => setOtpEmail(e.target.value)}
-              disabled={otpStep === "sent"}
-            />
-            {otpStep === "sent" ? (
-              <>
-                <input
-                  className="field mb-2 w-full text-xs"
-                  placeholder="6-digit code"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                />
-                <input
-                  className="field mb-2 w-full text-xs"
-                  type="password"
-                  placeholder="New password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  autoComplete="new-password"
-                />
-              </>
-            ) : null}
-            <div className="flex gap-2">
-              {otpStep === "idle" ? (
-                <button
-                  type="button"
-                  className="btn flex-1 text-xs"
-                  disabled={otpBusy || !recoveryEmail}
-                  onClick={() => {
-                    void (async () => {
-                      setOtpBusy(true);
-                      setOtpMsg(null);
-                      const result = await onSendOtp(otpEmail.trim().toLowerCase());
-                      setOtpBusy(false);
-                      setOtpMsg(result.message);
-                      if (result.ok) setOtpStep("sent");
-                    })();
-                  }}
-                >
-                  {otpBusy ? "Sending…" : "Send code"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn flex-1 text-xs"
-                  disabled={otpBusy}
-                  onClick={() => {
-                    void (async () => {
-                      setOtpBusy(true);
-                      setOtpMsg(null);
-                      const result = await onConfirmPassword(
-                        otpEmail.trim().toLowerCase(),
-                        otpCode.trim(),
-                        newPassword,
-                      );
-                      setOtpBusy(false);
-                      setOtpMsg(result.message);
-                      if (result.ok) {
-                        setOtpStep("idle");
-                        setOtpCode("");
-                        setNewPassword("");
-                      }
-                    })();
-                  }}
-                >
-                  {otpBusy ? "Saving…" : "Set new password"}
-                </button>
-              )}
-            </div>
-            {otpMsg ? <p className="mt-2 text-[10px] text-amber-100">{otpMsg}</p> : null}
-          </HubToolDetailSection>
-        ) : null}
-      </div>
-    </HubToolDetailModal>
+      <HubUserChangeEmailModal
+        open={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        initialEmail={labels.email || recoveryEmail}
+        hasLinkedEmail={Boolean(labels.email)}
+        onSubmit={onLinkEmail}
+      />
+      <HubUserChangePasswordModal
+        open={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        recoveryEmail={recoveryEmail}
+        canRecover={canRecover}
+        onSendOtp={onSendOtp}
+        onConfirmPassword={onConfirmPassword}
+      />
+    </>
   );
 }

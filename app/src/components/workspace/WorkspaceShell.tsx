@@ -7,7 +7,14 @@ import { useEffect, useMemo, useState, type ElementType, type ReactNode } from '
 import { Activity, Boxes, Code2, Cpu, GitBranch, HardDrive, RefreshCcw, Settings2, User } from 'lucide-react';
 import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
 import { readSystemStatsIntervalMs } from '@/lib/workspace-prefs';
-import { HubSidebarFooterButton } from '@/lib/hub-ui';
+import {
+  HubSidebarFooterButton,
+  navActiveBarClass,
+  navActiveBgClass,
+  navActiveTextClass,
+  navIconClass,
+  type NavIconTone,
+} from '@/lib/hub-ui';
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from './AppTabHeader';
 import { FooterSettings } from './FooterSettings';
 import { GlobalJobPoller } from './GlobalJobPoller';
@@ -19,14 +26,15 @@ type WorkspaceNavItem = {
   match: string;
   label: string;
   icon: IconComponent;
+  iconTone: NavIconTone;
 };
 
 const APP_USER_LABEL = 'czpgopro';
 const APP_VERSION_LINE = formatAppVersionWithUpdateDate();
 
 const navItems: WorkspaceNavItem[] = [
-  { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: AutoVideoBrandIcon },
-  { href: '/system', match: '/system', label: 'System', icon: Settings2 },
+  { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: AutoVideoBrandIcon, iconTone: 'indigo' },
+  { href: '/system', match: '/system', label: 'System', icon: Settings2, iconTone: 'amber' },
 ];
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
@@ -148,7 +156,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ href, match, label, icon: Icon }) => {
+          {navItems.map(({ href, match, label, icon: Icon, iconTone }) => {
             const active = pathname === match || pathname.startsWith(`${match}/`);
             return (
               <Link
@@ -156,14 +164,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 href={href}
                 className={`group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all ${
                   active
-                    ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/5 text-indigo-100'
+                    ? `${navActiveBgClass(iconTone)} ${navActiveTextClass(iconTone)}`
                     : 'text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]'
                 }`}
               >
                 {active ? (
-                  <span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r bg-indigo-400" />
+                  <span className={`absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r ${navActiveBarClass(iconTone)}`} />
                 ) : null}
-                <Icon size={16} className={active ? 'text-indigo-300' : ''} />
+                <Icon size={16} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
                 <span className="flex-1 text-left">{label}</span>
               </Link>
             );
@@ -181,7 +189,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           />
           <HubSidebarFooterButton
             icon={RefreshCcw}
-            iconClass="text-indigo-300"
+            iconClass="text-emerald-300"
             label="Refresh"
             title="Refresh workspace"
             onClick={() => window.location.reload()}

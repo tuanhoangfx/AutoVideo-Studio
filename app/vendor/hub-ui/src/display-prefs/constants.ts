@@ -11,3 +11,6 @@ export const TIME_RANGES: { value: TimeRange; label: string }[] = [
 ];
 
 export const LIMIT_OPTIONS = [25, 50, 100, 200, 500] as const;
+
+/** Table/card pager row counts (URL `tpage`) — subset of LIMIT_OPTIONS. */
+export const TABLE_PAGE_SIZE_OPTIONS = [25, 50, 100] as const;

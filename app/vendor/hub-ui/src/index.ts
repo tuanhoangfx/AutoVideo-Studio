@@ -67,6 +67,10 @@ export {
 export { mountHubApp } from "./loading/mount-hub-app";
 export { HubLoaderRoot } from "./shell/HubLoaderRoot";
 export { HubLoadingView, type HubLoadingViewProps } from "./shell/HubLoadingView";
+export {
+  HubScreenChunkFallback,
+  type HubScreenChunkFallbackProps,
+} from "./shell/HubScreenChunkFallback";
 export { CacheHitBadge } from "./shell/CacheHitBadge";
 export {
   hubThreadPreviewFromContent,
@@ -83,6 +87,10 @@ export {
   type FilterValues,
   type HubSingleFilterDropdownProps,
 } from "./shell/FilterBar";
+export {
+  HubTableCellFilterDropdown,
+  type HubTableCellFilterDropdownProps,
+} from "./shell/HubTableCellFilterDropdown";
 export {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
@@ -116,6 +124,7 @@ export { ChartsBand, resolveChartsBandCount } from "./shell/ChartsBand";
 export { resolveKpiStripCount } from "./shell/KpiStrip";
 export { HubTimeRangeSelect } from "./shell/HubTimeRangeSelect";
 export { HubRowLimitSelect } from "./shell/HubRowLimitSelect";
+export { HubTablePageSizeSelect } from "./shell/HubTablePageSizeSelect";
 export { HubFilterSelect, type HubFilterSelectOption } from "./shell/HubFilterSelect";
 export {
   AppTabHeader,
@@ -124,10 +133,18 @@ export {
   type TabTitleMenuItem,
 } from "./shell/AppTabHeader";
 export { HubListChromeHeader, type HubListChromeHeaderProps } from "./shell/HubListChromeHeader";
-export { KpiStrip, type KpiTileData } from "./shell/KpiStrip";
+export { KpiStrip, type KpiStripTone, type KpiTileData } from "./shell/KpiStrip";
 export { MiniBarChart, type BarItem } from "./shell/MiniBarChart";
+export { MiniSparkline } from "./shell/MiniSparkline";
+export { EntityRankMiniChart, type EntityRankRow } from "./shell/EntityRankMiniChart";
 export { MiniDonut, type DonutItem } from "./shell/MiniDonut";
 export { MetricBadge, RegistryMetricBadge, type MetricBadgeProps, type MetricBadgeTone } from "./shell/MetricBadge";
+export {
+  HubDirectoryMetricBadge,
+  HubDirectoryMetricStrip,
+  type HubDirectoryMetricItem,
+  type HubDirectoryMetricTone,
+} from "./shell/HubDirectoryMetricStrip";
 export { HubCopyBadge, type HubCopyBadgeProps } from "./shell/HubCopyBadge";
 export { CopyMetaChip, MetaChip, HUB_EMAIL_COPY_CHIP_CLASS, type MetaTone } from "./shell/CopyMetaChip";
 export { HubResultCount } from "./shell/HubResultCount";
@@ -144,6 +161,7 @@ export { HubTabSectionRule } from "./shell/HubTabSectionRule";
 export { HubAlert } from "./content/HubAlert";
 export { HubDataTable, HubTableEmptyRow, type HubTableColumn } from "./content/HubDataTable";
 export { HubPaginatedDataTable, type HubPaginatedDataTableProps } from "./content/HubPaginatedDataTable";
+export { HubReadOnlyDataTable, type HubReadOnlyDataTableProps } from "./content/HubReadOnlyDataTable";
 export { HubPaginatedTableShell, type HubPaginatedTableShellProps } from "./content/HubPaginatedTableShell";
 export {
   HubPaginatedCardGrid,
@@ -180,6 +198,10 @@ export {
   HubRouteAccessDirectoryTable,
   type HubRouteAccessDirectoryTableProps,
 } from "./table/HubRouteAccessDirectoryTable";
+export {
+  hubRouteAccessFilterDefs,
+  type HubRouteAccessFilterScope,
+} from "./table/hub-route-access-filter-defs";
 export {
   HubUserToolsDirectoryTable,
   type HubUserToolsDirectoryTableProps,
@@ -220,6 +242,63 @@ export {
   HUB_SIDEBAR_FOOTER_BTN_CLASS,
   type HubSidebarFooterButtonProps,
 } from "./shell/HubSidebarFooterButton";
+export {
+  HubSidebarNavGroup,
+  HubSidebarNavGroupHeader,
+  NavGroupSubNav,
+} from "./shell/HubSidebarNavGroup";
+export type {
+  HubSidebarNavGroupHeaderProps,
+  HubSidebarNavGroupProps,
+  NavGroupSubNavItem,
+  NavGroupSubNavProps,
+} from "./shell/HubSidebarNavGroup";
+export {
+  HubSidebarNavList,
+} from "./shell/HubSidebarNavList";
+export type { HubSidebarNavListProps } from "./shell/HubSidebarNavList";
+export {
+  HubSidebarNavScreenButton,
+} from "./shell/HubSidebarNavScreenButton";
+export type { HubSidebarNavScreenButtonProps } from "./shell/HubSidebarNavScreenButton";
+export { useNavGroupOpenState } from "./shell/useNavGroupOpenState";
+export {
+  flatMapNavScreenItems,
+  isNavGroupActive,
+  isNavScreenGroup,
+  isNavViewGroup,
+  navGroupSubnavOpenKey,
+  navScreenGroupSubNavItems,
+  navViewGroupSubNavItems,
+} from "./shell/nav-sidebar-structure";
+export type {
+  NavGroupBase,
+  NavGroupChildBase,
+  NavGroupConfig,
+  NavScreenGroupChild,
+  NavScreenGroupConfig,
+  NavScreenNavItem,
+  NavStructureEntry,
+  NavViewGroupChild,
+  NavViewGroupConfig,
+} from "./shell/nav-sidebar-structure";
+export {
+  NAV_ICON_TONES,
+  navActiveBarClass,
+  navActiveBgClass,
+  navActiveTextClass,
+  navBadgeIconClass,
+  navBadgeVariantClass,
+  navChartColor,
+  navDotClass,
+  navIconClass,
+  navKpiTone,
+  navMetaTextClass,
+  navRailClass,
+  navToneStyle,
+  type NavIconTone,
+  type NavToneStyle,
+} from "./shell/sidebar-nav-tones";
 export { HubToolAvatar, type HubToolAvatarProps, type HubToolAvatarSize } from "./shell/HubToolAvatar";
 export { HubDesignTemplateEmpty, type HubDesignTemplateEmptyProps } from "./content/HubDesignTemplateEmpty";
 export {
@@ -249,8 +328,20 @@ export {
 } from "./table/hub-table-column-meta";
 export { HubPanel } from "./content/HubPanel";
 export { HubDirectoryCard } from "./content/HubDirectoryCard";
+export {
+  HubDirectoryCardShell,
+  HubDirectoryInteractiveCard,
+  HubDirectoryCardCheckbox,
+  type HubDirectoryCardShellProps,
+  type HubDirectoryInteractiveCardProps,
+  type HubDirectoryCardCheckboxProps,
+} from "./content/HubDirectoryCardShell";
 export { HubTabScreenBody } from "./content/HubTabScreenBody";
 export { HubDirectoryScreen, type HubDirectoryScreenProps } from "./templates/HubDirectoryScreen";
+export {
+  HubWorkspaceDirectoryScreen,
+  type HubWorkspaceDirectoryScreenProps,
+} from "./templates/HubWorkspaceDirectoryScreen";
 export {
   HubSplitWorkspaceScreen,
   type HubSplitWorkspaceScreenProps,
@@ -270,6 +361,24 @@ export {
   type FilterIconMeta,
   type FilterIconResolver,
 } from "./shell/filter-icons";
+export {
+  AGENT_KIND_SEMANTIC,
+  AGENT_SCOPE_SEMANTIC,
+  buildSemanticTocIcon,
+  configureSemanticIcons,
+  normalizeSemanticIconKey,
+  resolveSemanticIcon,
+  SEMANTIC_ICON_ALIASES,
+  semanticFilterMeta,
+  semanticHeaderStat,
+  semanticKpiIcon,
+} from "./lib/semantic-icon-registry";
+export type {
+  DeprecatedSemanticIconKey,
+  SemanticIconKey,
+  SemanticIconLookupKey,
+  SemanticIconMeta,
+} from "./types/semantic-icon";
 export {
   CHART_OTHERS_LABEL,
   configureChartLegend,
@@ -317,6 +426,7 @@ export {
   type HubToolDetailModalTocLayoutProps,
 } from "./shell/HubToolDetailModal";
 export { HubFormFieldLabel, type HubFormFieldLabelProps } from "./shell/HubFormFieldLabel";
+export { HubOpsFormField, type HubOpsFormFieldProps } from "./shell/HubOpsFormField";
 export { HubModalFilterField, type HubModalFilterFieldProps } from "./shell/HubModalFilterField";
 export {
   HubToolDetailSection,
@@ -361,12 +471,28 @@ export {
 } from "./shell/HubAppLogProvider";
 export { HubLogButton, type HubLogButtonProps, type HubLogButtonVariant } from "./shell/HubLogButton";
 export { HubAuthGate, type HubAuthGateProps } from "./auth/HubAuthGate";
+export { HubAuthGateOverlay, type HubAuthGateOverlayProps } from "./auth/HubAuthGateOverlay";
 export { HubAuthGateModal, type HubAuthGateModalProps } from "./auth/HubAuthGateModal";
+export { HubAuthPrompt, type HubAuthPromptProps } from "./auth/HubAuthPrompt";
+export { HubAuthLogoutChip, type HubAuthLogoutChipProps } from "./auth/HubAuthLogoutChip";
+export {
+  HubAuthSessionBadge,
+  type HubAuthSessionBadgeProps,
+  type HubAuthSessionMode,
+} from "./auth/HubAuthSessionBadge";
+export { HubAuthGateGoldenPreview } from "./auth/HubAuthGateGoldenPreview";
+export { formatHubAuthToolInfo, type HubAuthToolInfo } from "./auth/hub-auth-tool-info";
 export {
   HubWorkspaceUserModal,
+  HUB_WORKSPACE_USER_ACCOUNT_TOC,
   type HubWorkspaceUserModalProps,
   type HubWorkspaceUserProfileRow,
 } from "./auth/HubWorkspaceUserModal";
+export {
+  HubUserModalFieldRow,
+  HubUserModalFieldTable,
+  type HubUserModalFieldRowProps,
+} from "./auth/HubUserModalFieldTable";
 export {
   HubFullUserAccountModal,
   HUB_FULL_USER_ACCOUNT_TOC,
@@ -374,7 +500,48 @@ export {
   type HubFullUserAccountResult,
   type HubFullUserAccountTocId,
 } from "./auth/HubFullUserAccountModal";
+export { HubUserChangeEmailModal, type HubUserChangeEmailModalProps } from "./auth/HubUserChangeEmailModal";
+export {
+  HubUserChangePasswordModal,
+  type HubUserChangePasswordModalProps,
+} from "./auth/HubUserChangePasswordModal";
+export {
+  HUB_CHANGE_EMAIL_TOC,
+  HUB_CHANGE_PASSWORD_TOC,
+  hubUserChangeSectionIcon,
+  hubUserChangeTocItems,
+  type HubUserChangeTocEntry,
+} from "./auth/hub-user-change-toc";
+export { HubUserFieldActionButton, type HubUserFieldActionButtonProps } from "./auth/HubUserFieldActionButton";
+export {
+  resolveWorkspaceRoleIcon,
+  resolveWorkspaceRoleKey,
+  type HubWorkspaceRoleIconMeta,
+} from "./auth/hub-workspace-role-icon";
 export {
   normalizeHubAuthError,
   type NormalizeHubAuthErrorOptions,
 } from "./auth/normalize-hub-auth-error";
+export {
+  WorkspaceAuthGate,
+  createWorkspaceAuthGate,
+  createWorkspaceAuthGateConfig,
+  type CreateWorkspaceAuthGateOptions,
+  type WorkspaceAuthGateConfig,
+  type WorkspaceAuthGateProps,
+} from "./auth/WorkspaceAuthGate";
+export {
+  HubWorkspaceUserShell,
+  type HubWorkspaceUserModalRenderContext,
+  type HubWorkspaceUserShellProps,
+} from "./auth/HubWorkspaceUserShell";
+export { HubAccessDeniedPanel, type HubAccessDeniedPanelProps } from "./auth/HubAccessDeniedPanel";
+export { HubSidebarUserFooter, type HubSidebarUserFooterProps } from "./auth/HubSidebarUserFooter";
+export { HubWorkspaceUserAvatar, type HubWorkspaceUserAvatarProps } from "./auth/HubWorkspaceUserAvatar";
+export {
+  buildWorkspaceUserProfileRows,
+  resolveHubAuthSessionMode,
+  workspaceUserFooterLabel,
+  workspaceUserInitials,
+  type BuildWorkspaceUserProfileRowsOptions,
+} from "./auth/workspace-user-session";

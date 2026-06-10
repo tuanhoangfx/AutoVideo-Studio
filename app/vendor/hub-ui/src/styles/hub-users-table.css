@@ -549,6 +549,21 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   font-weight: 600;
 }
 
+/** FilterBar dropdown inside directory cells — same chrome as toolbar filters. */
+.hub-table-cell-filter {
+  min-width: 0;
+  max-width: 10rem;
+  width: 100%;
+}
+
+.hub-table-cell-filter > .relative > button {
+  width: 100%;
+  max-width: 100%;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .hub-users-status {
   display: inline-flex;
   align-items: center;

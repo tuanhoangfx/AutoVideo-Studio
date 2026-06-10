@@ -18,14 +18,17 @@ Only patterns **not** already bundled in a screen/table golden. Directory chrome
 | `hub-display-prefs` | P0004/hub-list | *(via directory/system screen)* |
 | `hub-tab-chrome` | P0004/system | P0020/system |
 | `hub-user-access-modal` | P0004/users | — |
-| `hub-auth-gate` | **P0004/auth** (`HubAuthGate.tsx`) | **P0020/auth** (`NotesAuthGate.tsx`) |
+| `hub-auth-gate` | **hub-ui/auth** (`HubAuthGate` + `HubAuthGateModal`) | **P0020/auth** (`NotesAuthGate.tsx`) |
 
 ---
 
-## Auth gate
+## Auth gate (Golden V2)
 
-- **Golden:** `Tool/P0004-Tool-Hub/src/features/identity/HubAuthGate.tsx` · ref `P0004/auth`
-- **Clone:** `Tool/P0020-Data-Box/src/features/notes/NotesAuthGate.tsx` (CSS `hub-auth.css` synced from P0004)
+- **Canonical:** `packages/hub-ui/src/auth/` — `HubAuthGate`, `HubAuthGateModal`, `HubAuthLogoutChip`, `HubAuthGateGoldenPreview`
+- **CSS:** `packages/hub-ui/src/styles/hub-auth-gate.css` (30rem panel · blur 8px · 3-tab grid)
+- **Golden app:** `Tool/P0004-Tool-Hub/src/features/identity/HubAuthGate.tsx` · ref `P0004/auth`
+- **Clone:** `Tool/P0020-Data-Box/src/features/notes/NotesAuthGate.tsx` (+ Anonymous tab · `onAnonymous`)
+- **Preview:** `packages/hub-ui/examples/GoldenAuthGateScreen.tsx` · P0004 Design Template
 
 ---
 

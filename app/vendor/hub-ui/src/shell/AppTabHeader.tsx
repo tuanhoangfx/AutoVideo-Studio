@@ -160,6 +160,16 @@ function StatLine({ icon: Icon, dotClass, value, label, toneClass }: TabHeaderSt
   );
 }
 
+function SessionLine({ sessionMmSs }: { sessionMmSs: string }) {
+  return (
+    <div className="inline-flex items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]">
+      <Clock size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
+      <span className="hidden xl:inline">Session</span>
+      <span className="tabular-nums text-[var(--text)]/90">{sessionMmSs}</span>
+    </div>
+  );
+}
+
 export function AppTabHeader({
   ariaLabel,
   titleIcon: TitleIcon,
@@ -178,14 +188,14 @@ export function AppTabHeader({
   const sessionMmSs = usePageSessionSeconds();
   const positionClass = embedded ? "relative z-0" : pinSticky ? "sticky top-0 z-40" : "relative z-0";
   const chromeClass = embedded
-    ? "app-tab-header box-border grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 bg-[var(--bg)]"
-    : `app-tab-header ${positionClass} -mx-6 mb-2 box-border grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 bg-[var(--bg)] px-6${
+    ? "app-tab-header box-border grid items-center gap-x-3 bg-[var(--bg)]"
+    : `app-tab-header ${positionClass} -mx-6 mb-2 box-border grid items-center gap-x-3 bg-[var(--bg)] px-6${
         dividerBelow ? " border-b border-white/5" : ""
       }`;
 
   return (
     <header className={chromeClass} aria-label={ariaLabel}>
-      <div className="flex min-w-0 flex-wrap items-center justify-self-start gap-x-2.5 gap-y-0">
+      <div className="app-tab-header__start flex min-w-0 items-center justify-self-start gap-x-2.5 overflow-hidden">
         {titleMenu?.length ? (
           <TitleWithMenu
             title={title}
@@ -198,19 +208,25 @@ export function AppTabHeader({
         ) : (
           <>
             <TitleIcon size={16} className={`shrink-0 ${titleIconClass}`} aria-hidden />
-            <h1 className="shrink-0 text-base font-semibold leading-none tracking-tight text-[var(--text)]">{title}</h1>
+            <h1 className="min-w-0 truncate text-base font-semibold leading-none tracking-tight text-[var(--text)]">
+              {title}
+            </h1>
           </>
         )}
+        <span className="inline-flex items-center gap-x-2.5">
+          <Rule visibleFrom="sm" />
+          <SessionLine sessionMmSs={sessionMmSs} />
+        </span>
         {metaItems.map((item, index) => (
           <span key={`${item.title ?? "meta"}-${index}`} className="inline-flex items-center gap-x-2.5">
-            <Rule visibleFrom={index === 0 ? "sm" : index === 1 ? "md" : "lg"} />
+            <Rule visibleFrom={index === 0 ? "md" : "lg"} />
             <MetaLine {...item} />
           </span>
         ))}
       </div>
 
       <div
-        className="app-tab-header-center-stats hidden min-w-0 items-center justify-center justify-self-center gap-x-2.5 overflow-x-auto xl:flex"
+        className="app-tab-header-center-stats flex min-w-0 items-center justify-center justify-self-center gap-x-2.5 overflow-x-auto"
         role="status"
         aria-label={`${title} summary`}
       >
@@ -222,12 +238,7 @@ export function AppTabHeader({
         ))}
       </div>
 
-      <div className="flex shrink-0 items-center justify-self-end gap-2 text-[13px] leading-none text-[var(--muted)]">
-        <div className="inline-flex items-center gap-1.5">
-          <Clock size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
-          <span>Session</span>
-          <span className="tabular-nums text-[var(--text)]/90">{sessionMmSs}</span>
-        </div>
+      <div className="app-tab-header__end flex shrink-0 items-center justify-self-end gap-2 text-[13px] leading-none text-[var(--muted)]">
         {actions}
       </div>
     </header>

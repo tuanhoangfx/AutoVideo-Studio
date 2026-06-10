@@ -4,7 +4,7 @@ import type { SubtitleStyle } from '@/lib/api';
 const OPTIONS: Array<{ id: SubtitleStyle; label: string; icon: string; hint: string }> = [
   { id: 'off', label: 'Off', icon: '∅', hint: 'Disable subtitles' },
   { id: 'line', label: 'Line', icon: '▦', hint: 'One full sentence per line' },
-  { id: 'word_capcut', label: 'CapCut', icon: '✨', hint: 'Word-by-word pop-in' },
+  { id: 'word_capcut', label: 'CapCut', icon: 'Aa', hint: 'Word-by-word pop-in' },
 ];
 
 /** Compact segmented control: 3 options in one row. */

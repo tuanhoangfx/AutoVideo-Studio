@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { FileText, ScrollText } from "lucide-react";
-import { compactIconSize } from "../ui-scale";
+import { FileText } from "lucide-react";
+import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
 import { HubHeaderPanelButton } from "./HubHeaderPanelButton";
 import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
@@ -58,6 +58,7 @@ export function HubUsageLogPanel({
   badge,
 }: HubUsageLogPanelProps) {
   const [open, setOpen] = useState(false);
+  const logPanelIcon = FileText;
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat("vi-VN", {
@@ -83,13 +84,19 @@ export function HubUsageLogPanel({
     const toc: HubTocNavItem[] = [];
     const ids: string[] = [];
     const sections: ReactNode[] = [];
+    const scopeIcon = buildSemanticTocIcon("log.scope");
 
     if (grouped.length === 0) {
       const id = "log-empty";
-      toc.push({ id, label: "Session", icon: <ScrollText size={compactIconSize(11)} className="text-cyan-300" /> });
+      toc.push({ id, label: "Session", icon: buildSemanticTocIcon("log.session") });
       ids.push(id);
       sections.push(
-        <HubToolDetailSection key={id} id={id} title="Session">
+        <HubToolDetailSection
+          key={id}
+          id={id}
+          title="Session"
+          icon={buildSemanticTocIcon("log.session")}
+        >
           <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)]">
             {emptyMessage}
           </div>
@@ -100,14 +107,10 @@ export function HubUsageLogPanel({
 
     for (const [scope, rows] of grouped) {
       const id = scopeSectionId(scope);
-      toc.push({
-        id,
-        label: scope,
-        icon: <ScrollText size={compactIconSize(11)} className="text-cyan-300" />,
-      });
+      toc.push({ id, label: scope, icon: scopeIcon });
       ids.push(id);
       sections.push(
-        <HubToolDetailSection key={id} id={id} title={`${scope} (${rows.length})`}>
+        <HubToolDetailSection key={id} id={id} title={`${scope} (${rows.length})`} icon={scopeIcon}>
           <LogRows logs={rows} formatter={formatter} />
         </HubToolDetailSection>,
       );
@@ -123,7 +126,7 @@ export function HubUsageLogPanel({
   return (
     <>
       <HubHeaderPanelButton
-        icon={FileText}
+        icon={logPanelIcon}
         iconClassName="text-cyan-300"
         label="Log"
         title={title}
@@ -138,7 +141,7 @@ export function HubUsageLogPanel({
         onClose={() => setOpen(false)}
         title={title}
         titleId="hub-usage-log-title"
-        headerIcon={FileText}
+        headerIcon={logPanelIcon}
         headerIconClassName="text-cyan-300"
         headerTrailing={
           <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-cyan-200">

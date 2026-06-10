@@ -9,49 +9,72 @@ import { HubTabSectionRule } from "../shell/HubTabSectionRule";
  */
 export function HubTabScreenBody({
   kpis,
+  kpiBand,
   charts,
-  /** Override auto-count of chart band slots (facet charts in a fragment). */
   chartCount,
   sectionRuleLabel,
   bodyFlex = false,
-  /** Keep KPI/charts slot height before band data arrives (directory tabs). */
   reserveAnalyticsBand = false,
-  /** Inside `hub-tab-content-zone` (System tabs) — skip outer zone wrapper. */
+  bandOrder = "kpis-first",
+  kpiZoneClassName,
   embedded = false,
   children,
 }: {
   kpis?: KpiTileData[];
+  /** Custom KPI row (e.g. sparkline tiles); takes precedence over `kpis`. */
+  kpiBand?: ReactNode;
   charts?: ReactNode;
   chartCount?: number;
   sectionRuleLabel?: string;
   bodyFlex?: boolean;
   reserveAnalyticsBand?: boolean;
+  bandOrder?: "kpis-first" | "charts-first";
+  kpiZoneClassName?: string;
   embedded?: boolean;
   children: ReactNode;
 }) {
-  const hasAnalytics = Boolean(kpis?.length || charts);
+  const hasAnalytics = Boolean(kpiBand || kpis?.length || charts);
   const showAnalyticsZone = hasAnalytics || reserveAnalyticsBand;
   const showSectionRule = Boolean(sectionRuleLabel && showAnalyticsZone);
   const bodyClass = bodyFlex
     ? "hub-tab-body-zone hub-tab-body-zone--split space-y-3"
     : "hub-tab-body-zone space-y-3";
 
+  const kpiRow = kpiBand ?? (kpis?.length ? (
+    <KpiStrip items={kpis} />
+  ) : reserveAnalyticsBand ? (
+    <div className="hub-kpi-strip hub-kpi-strip--reserve" aria-hidden />
+  ) : null);
+
+  const chartsBand = charts ? (
+    <ChartsBand count={chartCount}>{charts}</ChartsBand>
+  ) : reserveAnalyticsBand ? (
+    <ChartsBand reserve />
+  ) : null;
+
   const inner = (
     <>
       {showAnalyticsZone ? (
         <div
-          className={`hub-tab-kpi-zone flex flex-col${!hasAnalytics && reserveAnalyticsBand ? " hub-tab-kpi-zone--reserved" : ""}`}
+          className={[
+            "hub-tab-kpi-zone flex flex-col",
+            !hasAnalytics && reserveAnalyticsBand ? "hub-tab-kpi-zone--reserved" : "",
+            kpiZoneClassName ?? "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
-          {kpis?.length ? (
-            <KpiStrip items={kpis} />
-          ) : reserveAnalyticsBand ? (
-            <div className="hub-kpi-strip hub-kpi-strip--reserve" aria-hidden />
-          ) : null}
-          {charts ? (
-            <ChartsBand count={chartCount}>{charts}</ChartsBand>
-          ) : reserveAnalyticsBand ? (
-            <ChartsBand reserve />
-          ) : null}
+          {bandOrder === "charts-first" ? (
+            <>
+              {chartsBand}
+              {kpiRow}
+            </>
+          ) : (
+            <>
+              {kpiRow}
+              {chartsBand}
+            </>
+          )}
         </div>
       ) : null}
       {showSectionRule ? <HubTabSectionRule label={sectionRuleLabel!} /> : null}

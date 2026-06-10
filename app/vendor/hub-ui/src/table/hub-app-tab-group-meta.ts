@@ -1,4 +1,5 @@
 import { LayoutGrid, Settings2, Users, type LucideIcon } from "lucide-react";
+import { navBadgeIconClass, navBadgeVariantClass, type NavIconTone } from "../shell/sidebar-nav-tones";
 import type { BadgeSpec } from "../types/filter-badge";
 
 export type HubAppTabGroup = "hub" | "users" | "system";
@@ -7,8 +8,8 @@ export type HubAppTabGroupMeta = {
   id: HubAppTabGroup;
   label: string;
   icon: LucideIcon;
-  iconClassName: string;
-  variantClass: string;
+  /** Sidebar-aligned tone — badge colors derive from NAV_ICON_TONES.badge */
+  iconTone: NavIconTone;
 };
 
 export const HUB_APP_TAB_GROUP_META: Record<HubAppTabGroup, HubAppTabGroupMeta> = {
@@ -16,22 +17,19 @@ export const HUB_APP_TAB_GROUP_META: Record<HubAppTabGroup, HubAppTabGroupMeta> 
     id: "hub",
     label: "Hub",
     icon: LayoutGrid,
-    iconClassName: "text-indigo-300",
-    variantClass: "border-indigo-500/35 bg-indigo-500/[.06] text-indigo-200",
+    iconTone: "indigo",
   },
   users: {
     id: "users",
     label: "Users",
     icon: Users,
-    iconClassName: "text-sky-300",
-    variantClass: "border-sky-500/35 bg-sky-500/[.06] text-sky-200",
+    iconTone: "emerald",
   },
   system: {
     id: "system",
     label: "System",
     icon: Settings2,
-    iconClassName: "text-violet-300",
-    variantClass: "border-violet-500/35 bg-violet-500/[.06] text-violet-200",
+    iconTone: "amber",
   },
 };
 
@@ -46,7 +44,7 @@ export function resolveHubAppTabGroupBadge(group: string): BadgeSpec {
   }
   return {
     label: meta.label,
-    iconMeta: { icon: meta.icon, className: meta.iconClassName },
-    variantClass: meta.variantClass,
+    iconMeta: { icon: meta.icon, className: navBadgeIconClass(meta.iconTone) },
+    variantClass: navBadgeVariantClass(meta.iconTone),
   };
 }

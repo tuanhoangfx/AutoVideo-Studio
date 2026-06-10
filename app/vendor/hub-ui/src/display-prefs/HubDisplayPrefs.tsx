@@ -1,18 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  BarChart3,
-  Clock,
-  Columns3,
-  Filter,
-  Gauge,
-  Keyboard,
-  LayoutDashboard,
-  Layers,
-  ListOrdered,
-  PanelTop,
-  Rows3,
-  Settings,
-} from "lucide-react";
+import { Settings } from "lucide-react";
+import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
 import { LIMIT_OPTIONS, TABLE_PAGE_SIZE_OPTIONS, TIME_RANGES } from "./constants";
 import { HUB_TABLE_PAGE_SIZE_DEFAULT, patchHubTablePageSizeValue } from "../table/hub-table-page-size";
 import {
@@ -26,7 +14,6 @@ import {
 } from "./kpi-visible";
 import { Section, ToggleRow } from "./primitives";
 import type { HubDisplayPrefsProps, PrefItem } from "./types";
-import { compactIconSize } from "../ui-scale";
 import { HubHeaderPanelButton } from "../shell/HubHeaderPanelButton";
 import { HubKeyboardShortcutsPanel } from "../keyboard/HubKeyboardShortcutsPanel";
 import { HubToolDetailModal, HubToolDetailModalSecondaryAction, HUB_TOOL_DETAIL_SCROLL_ROOT } from "../shell/HubToolDetailModal";
@@ -355,7 +342,7 @@ export function HubDisplayPrefs({
       <Section
         key="range"
         label="Time range"
-        icon={<Clock size={compactIconSize(11)} className="text-sky-300" />}
+        icon={buildSemanticTocIcon("settings.range")}
       >
         <div className="grid grid-cols-3 gap-1">
           {TIME_RANGES.map((r) => (
@@ -382,7 +369,7 @@ export function HubDisplayPrefs({
       <Section
         key="page-size"
         label="Page size"
-        icon={<ListOrdered size={compactIconSize(11)} className="text-cyan-300" />}
+        icon={buildSemanticTocIcon("settings.pageSize")}
       >
         <div className="grid grid-cols-3 gap-1">
           {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
@@ -406,7 +393,7 @@ export function HubDisplayPrefs({
 
   if (!isGlobalScope && showLimit) {
     displayParts.push(
-      <Section key="rows" label="Rows" icon={<Rows3 size={compactIconSize(11)} className="text-violet-300" />}>
+      <Section key="rows" label="Rows" icon={buildSemanticTocIcon("settings.rows")}>
         <div className="grid grid-cols-5 gap-1">
           {LIMIT_OPTIONS.map((n) => (
             <button
@@ -429,7 +416,7 @@ export function HubDisplayPrefs({
 
   if (showHeaderPin) {
     displayParts.push(
-      <Section key="header" label="Header" icon={<PanelTop size={compactIconSize(11)} className="text-amber-300" />}>
+      <Section key="header" label="Header" icon={buildSemanticTocIcon("settings.header")}>
         <ToggleRow
           label="Pin header (sticky)"
           on={prefs.headerPin}
@@ -471,7 +458,7 @@ export function HubDisplayPrefs({
       <Section
         key="kpi"
         label={`KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`}
-        icon={<Gauge size={compactIconSize(11)} className="text-emerald-300" />}
+        icon={buildSemanticTocIcon("settings.kpi")}
       >
         <div className="space-y-0.5">
           {tabKpis.map((k) => {
@@ -496,7 +483,7 @@ export function HubDisplayPrefs({
       <Section
         key="charts"
         label={`Charts (${visChartsCount}/${MAX_VISIBLE_CHART})`}
-        icon={<BarChart3 size={compactIconSize(11)} className="text-indigo-300" />}
+        icon={buildSemanticTocIcon("settings.charts")}
       >
         <div className="space-y-0.5">
           {tabCharts.map((c) => (
@@ -517,7 +504,7 @@ export function HubDisplayPrefs({
       <Section
         key="filters"
         label={`Filters (${visFilterCount}/${tabFilters.length})`}
-        icon={<Filter size={compactIconSize(11)} className="text-cyan-300" />}
+        icon={buildSemanticTocIcon("settings.filters")}
       >
         <div className="space-y-0.5">
           {tabFilters.map((f) => (
@@ -538,7 +525,7 @@ export function HubDisplayPrefs({
       <Section
         key="header-stats"
         label={`${headerStatLabel(isSystem)} (${visHeaderStatCount}/${headerStats.length})`}
-        icon={<LayoutDashboard size={compactIconSize(11)} className="text-orange-300" />}
+        icon={buildSemanticTocIcon("settings.headerStats")}
       >
         <div className="space-y-0.5">
           {headerStats.map((h) => (
@@ -558,7 +545,7 @@ export function HubDisplayPrefs({
     pushSection(
       "display",
       "Display",
-      <Layers size={compactIconSize(11)} className="text-indigo-300" />,
+      buildSemanticTocIcon("settings.display"),
       <div className="space-y-0">{displayParts}</div>,
     );
   }
@@ -567,7 +554,7 @@ export function HubDisplayPrefs({
     pushSection(
       "table",
       "Table columns",
-      <Columns3 size={compactIconSize(11)} className="text-violet-300" />,
+      buildSemanticTocIcon("settings.table"),
       tablePanel,
       tableSectionActions,
     );
@@ -576,7 +563,7 @@ export function HubDisplayPrefs({
   pushSection(
     "shortcuts",
     "Keyboard shortcuts",
-    <Keyboard size={compactIconSize(11)} className="text-indigo-300" />,
+    buildSemanticTocIcon("settings.shortcuts"),
     <HubKeyboardShortcutsPanel className="-mx-1" />,
   );
 

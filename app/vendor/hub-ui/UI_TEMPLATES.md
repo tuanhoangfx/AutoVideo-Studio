@@ -47,7 +47,7 @@ Bootstrap: `HubLoaderRoot` + `configureFilterIcons` / `configureHubChromePrefs` 
 | `dashboard` | Dashboard (KPI + charts) | P0016 `DashboardScreen` | `HubDashboardScreen` + KPI/charts |
 | `system-panels` | System sub-tabs + panels | P0004 `SystemHubScreen` | `HubTabChrome` + `HubPanel` |
 | `inbox-split` | Inbox master-detail | P0016 `InboxHubChrome` | `HubSplitWorkspaceScreen` + `DirectorySearchToolbar` |
-| `auth-gate` | Login / gate | P0020 `NotesAuthGate` | App-only |
+| `auth-gate` | Login / gate | hub-ui `HubAuthGate` + `HubAuthGateGoldenPreview` | `HubAuthGate`, `HubAuthGateModal`, `HubAuthLogoutChip` |
 
 Types: `src/ui-template-types.ts` → `HubUiTemplate`, `GOLDEN_SOURCES`.
 

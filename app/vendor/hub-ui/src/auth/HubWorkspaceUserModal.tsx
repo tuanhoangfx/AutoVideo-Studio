@@ -1,11 +1,32 @@
 import type { LucideIcon } from "lucide-react";
-import { ExternalLink, LogOut } from "lucide-react";
+import { KeyRound, LogOut, StickyNote } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
+  HUB_TOOL_DETAIL_SCROLL_ROOT,
 } from "../shell/HubToolDetailModal";
-import { compactIconSize } from "../ui-scale";
+import {
+  HubToolDetailSection,
+  HUB_TOOL_DETAIL_SECTIONS_CLASS,
+} from "../shell/HubToolDetailSection";
+import { HubTocSectionNav } from "../shell/HubTocSectionNav";
+import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
+import {
+  HUB_WORKSPACE_USER_ACCOUNT_TOC,
+  hubUserAccountSectionIcon,
+  hubUserAccountTocItems,
+} from "./hub-user-account-toc";
+
+export { HUB_WORKSPACE_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
+
+const FIELD_ICON_CLASS: Record<string, string> = {
+  Email: "text-sky-300",
+  Role: "text-purple-300",
+  Provider: "text-amber-300",
+  Created: "text-slate-400",
+  "Last sign in": "text-emerald-300",
+};
 
 export type HubWorkspaceUserProfileRow = {
   label: string;
@@ -20,8 +41,6 @@ export type HubWorkspaceUserModalProps = {
   headerLeading?: ReactNode;
   userId?: string | null;
   rows: HubWorkspaceUserProfileRow[];
-  toolHubUsersHref?: string;
-  toolHubUsersLabel?: string;
   workspaceNote?: string;
   signingOut?: boolean;
   sessionActive?: boolean;
@@ -29,23 +48,7 @@ export type HubWorkspaceUserModalProps = {
   children?: ReactNode;
 };
 
-function ProfileRow({ label, value, icon: Icon }: HubWorkspaceUserProfileRow) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[.025] px-3 py-2.5">
-      <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/[.04] text-indigo-200">
-        <Icon size={compactIconSize(14)} />
-      </div>
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">{label}</div>
-        <div className="mt-0.5 truncate font-medium text-[var(--text)]" title={value}>
-          {value}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Workspace user account modal — profile rows, Tool Hub Users link, sign out (P0020 / P0016). */
+/** Workspace user account modal — Header · TOC · Main · Footer (P0020 / P0016). */
 export function HubWorkspaceUserModal({
   open,
   onClose,
@@ -53,14 +56,15 @@ export function HubWorkspaceUserModal({
   headerLeading,
   userId,
   rows,
-  toolHubUsersHref,
-  toolHubUsersLabel = "Tool Hub — Users",
   workspaceNote,
   signingOut = false,
   sessionActive = true,
   onSignOut,
   children,
 }: HubWorkspaceUserModalProps) {
+  const tocItems = hubUserAccountTocItems(HUB_WORKSPACE_USER_ACCOUNT_TOC);
+  const sectionIds = tocItems.map((item) => item.id);
+
   return (
     <HubToolDetailModal
       open={open}
@@ -70,6 +74,12 @@ export function HubWorkspaceUserModal({
       headerLeading={headerLeading}
       shellClassName="hub-header-panel-modal"
       ariaLabelledBy="hub-workspace-user-modal-title"
+      sectionIds={sectionIds}
+      toc={
+        <div className="hub-toc-nav">
+          <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+        </div>
+      }
       footer={
         <HubToolDetailModalPrimaryAction
           label={signingOut ? "Signing out…" : "Sign Out"}
@@ -81,30 +91,48 @@ export function HubWorkspaceUserModal({
         />
       }
     >
-      <div className="space-y-3 px-1">
-        {userId ? (
-          <p className="font-mono text-[10px] text-[var(--muted)]">{userId}</p>
-        ) : (
-          <p className="text-xs text-[var(--muted)]">No active session</p>
-        )}
-        {workspaceNote ? <p className="text-xs text-[var(--muted)]">{workspaceNote}</p> : null}
-        <div className="grid gap-2 text-sm">
-          {rows.map((row) => (
-            <ProfileRow key={row.label} {...row} />
-          ))}
-        </div>
-        {toolHubUsersHref ? (
-          <a
-            href={toolHubUsersHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-indigo-300 hover:text-indigo-200"
-          >
-            <ExternalLink size={14} />
-            {toolHubUsersLabel}
-          </a>
-        ) : null}
-        {children}
+      <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>
+        <HubToolDetailSection
+          id="hub-user-account"
+          title="Account"
+          icon={hubUserAccountSectionIcon(HUB_WORKSPACE_USER_ACCOUNT_TOC, "hub-user-account")}
+        >
+          <HubUserModalFieldTable>
+            {rows.map((row) => (
+              <HubUserModalFieldRow
+                key={row.label}
+                icon={row.icon}
+                iconClassName={FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
+                label={row.label}
+              >
+                <span className="truncate font-medium" title={row.value}>
+                  {row.value}
+                </span>
+              </HubUserModalFieldRow>
+            ))}
+          </HubUserModalFieldTable>
+          {children}
+        </HubToolDetailSection>
+        <HubToolDetailSection
+          id="hub-user-session"
+          title="Session"
+          icon={hubUserAccountSectionIcon(HUB_WORKSPACE_USER_ACCOUNT_TOC, "hub-user-session")}
+        >
+          <HubUserModalFieldTable>
+            <HubUserModalFieldRow icon={KeyRound} iconClassName="text-violet-300" label="User ID">
+              {userId ? (
+                <span className="font-mono text-[11px] break-all">{userId}</span>
+              ) : (
+                <span className="text-[var(--muted)]">No active session</span>
+              )}
+            </HubUserModalFieldRow>
+            {workspaceNote ? (
+              <HubUserModalFieldRow icon={StickyNote} iconClassName="text-slate-400" label="Note">
+                <span className="text-[var(--muted)]">{workspaceNote}</span>
+              </HubUserModalFieldRow>
+            ) : null}
+          </HubUserModalFieldTable>
+        </HubToolDetailSection>
       </div>
     </HubToolDetailModal>
   );

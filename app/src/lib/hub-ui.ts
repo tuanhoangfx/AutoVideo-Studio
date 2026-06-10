@@ -5,3 +5,10 @@ export {
   HubSidebarFooterButton,
   HUB_SIDEBAR_FOOTER_BTN_CLASS,
 } from '../../vendor/hub-ui/src/shell/HubSidebarFooterButton';
+export {
+  navActiveBarClass,
+  navActiveBgClass,
+  navActiveTextClass,
+  navIconClass,
+  type NavIconTone,
+} from '../../vendor/hub-ui/src/shell/sidebar-nav-tones';

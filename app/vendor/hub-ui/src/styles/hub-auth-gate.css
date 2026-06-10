@@ -3,7 +3,8 @@
  * New modals should use HubToolDetailModal; shell classes remain for P0004 confirm/user-add until migrated.
  */
 
-.auth-gate-root {
+.auth-gate-root,
+.auth-gate-overlay {
   position: fixed;
   inset: 0;
   z-index: 2000;
@@ -13,12 +14,28 @@
   padding: 1.25rem;
 }
 
-.auth-gate-backdrop {
+.auth-gate-overlay {
+  z-index: 1990;
+}
+
+.auth-gate-backdrop,
+.auth-gate-overlay__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(8, 12, 28, 0.78);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: default;
+  background: rgba(8, 12, 28, 0.52);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.auth-gate-overlay__stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 30rem;
 }
 
 .auth-gate-close {
@@ -43,17 +60,40 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
-.auth-gate-modal {
+.auth-gate-modal,
+.auth-gate-panel {
   position: relative;
   width: 100%;
-  max-width: 400px;
-  padding: 1.75rem 1.5rem 1.5rem;
+  max-width: 30rem;
+  padding: 1.65rem 1.5rem 1.35rem;
   border-radius: 16px;
   border: 1px solid rgba(99, 102, 241, 0.22);
   background: linear-gradient(165deg, rgba(26, 33, 64, 0.98) 0%, rgba(15, 20, 42, 0.98) 100%);
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.auth-gate-panel--prompt {
+  padding: 1.35rem 1.25rem 1.15rem;
+}
+
+.auth-gate-panel--modal {
+  z-index: 1;
+}
+
+/** Legacy alias */
+.auth-gate-modal--golden {
+  max-width: 30rem;
+  padding: 1.65rem 1.5rem 1.35rem;
+}
+
+.auth-gate-tool-info {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .auth-gate-brand {
@@ -89,7 +129,20 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.auth-gate-tabs--triple {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.auth-gate-tab--anonymous.auth-gate-tab--active {
+  color: #a5b4fc;
+  border-bottom-color: #6366f1;
+}
+
 .auth-gate-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   padding: 0.55rem 0.5rem 0.65rem;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -99,6 +152,15 @@
   border-bottom: 2px solid transparent;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
+}
+
+.auth-gate-tab__icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.auth-gate-tab--active .auth-gate-tab__icon {
+  color: #93c5fd;
 }
 
 .auth-gate-tab:hover {
@@ -154,6 +216,10 @@
 }
 
 .auth-gate-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   margin-top: 0.25rem;
   width: 100%;
   padding: 0.7rem 1rem;
@@ -178,6 +244,111 @@
 
 .auth-gate-submit:disabled {
   opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.auth-gate-submit--anonymous {
+  background: linear-gradient(90deg, #475569 0%, #4c1d95 100%);
+  box-shadow: 0 8px 24px rgba(71, 85, 105, 0.35);
+}
+
+.auth-gate-submit--anonymous:hover:not(:disabled) {
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.35);
+}
+
+.auth-gate-anonymous {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.auth-gate-anonymous__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.hub-auth-logout-chip {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 220px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hub-auth-logout-chip--linked {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.hub-auth-logout-chip__identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.3rem 0.45rem 0.3rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: #c7d2fe;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.hub-auth-logout-chip--linked .hub-auth-logout-chip__identity {
+  color: #a7f3d0;
+}
+
+.hub-auth-logout-chip__identity:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.14);
+  color: #e0e7ff;
+}
+
+.hub-auth-logout-chip__identity:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.hub-auth-logout-chip__user-icon {
+  flex-shrink: 0;
+  color: #60a5fa;
+}
+
+.hub-auth-logout-chip--linked .hub-auth-logout-chip__user-icon {
+  color: #34d399;
+}
+
+.hub-auth-logout-chip__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-auth-logout-chip__logout {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  flex-shrink: 0;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: #fca5a5;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.hub-auth-logout-chip__logout:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fecaca;
+}
+
+.hub-auth-logout-chip__logout:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -243,8 +414,13 @@
   margin-top: 0;
 }
 
+.auth-gate-panel.hub-modal-frame,
+.auth-gate-modal--golden.hub-modal-frame {
+  overflow: visible;
+}
+
 .auth-inline {
-  padding: 24px;
+  padding: 1.5rem;
 }
 
 .auth-inline-card {
@@ -253,7 +429,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(18, 24, 48, 0.55);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
-  padding: 18px;
+  padding: 1.125rem;
 }
 
 .auth-inline-title {
@@ -268,11 +444,20 @@
   color: var(--muted);
 }
 
+.auth-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
 .auth-inline-btn {
-  margin-top: 14px;
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   border: 0;
   border-radius: 10px;
   padding: 8px 14px;

@@ -4,6 +4,18 @@
   isolation: isolate;
   padding: var(--app-tab-header-py) var(--app-tab-header-px);
   min-height: var(--app-tab-header-min-h);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.app-tab-header__start {
+  min-width: 0;
+}
+
+.app-tab-header__end {
+  position: relative;
+  z-index: 1;
+  max-width: min(100%, 22rem);
+  background: var(--bg);
 }
 
 .app-tab-header h1 {

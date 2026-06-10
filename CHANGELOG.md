@@ -9,6 +9,7 @@
 - Version: `1.2.3`
 - Type: Patch
 - Product: P0021
+- Timestamp: 2026-06-08 15:40 (UTC+7)
 - Prompt: xóa NEXT_PUBLIC_WORKER_URL trên Vercel; Working Rules
 - Commit: `ef54d81`
 - Status: Committed

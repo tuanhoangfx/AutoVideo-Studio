@@ -14,7 +14,7 @@ import {
   Layers3,
   ListChecks,
   Timer,
-  Sparkles,
+  Blend,
   Trash2,
   Wand2,
   X,
@@ -498,7 +498,7 @@ export function KeyframeTimeline({
                       </th>
                       <th className={SCENE_BULK_CONTROL_CELL}>
                         <HubFilterDropdown
-                          icon={<Sparkles size={11} />}
+                          icon={<Blend size={11} />}
                           label="Effect"
                           selected={[bulkEffect]}
                           options={EFFECT_FILTER_OPTIONS}

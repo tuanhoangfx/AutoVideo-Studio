@@ -295,6 +295,27 @@
   overflow: hidden;
 }
 
+/** Hero time-series — full band row + auto height (inbox over time, analytics primary). */
+.hub-chart-card--hero {
+  height: auto;
+  min-height: 10.5rem;
+  overflow: visible;
+}
+
+@media (min-width: 768px) {
+  .hub-charts-band[data-chart-count="1"] > .hub-chart-card--hero,
+  .hub-charts-band[data-chart-count="2"] > .hub-chart-card--hero,
+  .hub-charts-band[data-chart-count="3"] > .hub-chart-card--hero,
+  .hub-charts-band[data-chart-count="4"] > .hub-chart-card--hero {
+    grid-column: 1 / -1;
+  }
+}
+
+.hub-chart-card--hero .hub-chart-card__body {
+  min-height: 6.5rem;
+  overflow: visible;
+}
+
 .hub-chart-card__body {
   min-height: 0;
   flex: 1;

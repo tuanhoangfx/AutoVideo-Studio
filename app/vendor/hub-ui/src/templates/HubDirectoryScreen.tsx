@@ -11,10 +11,13 @@ export type HubDirectoryScreenProps = {
   header: ReactNode;
   centerStats?: TabHeaderStatItem[];
   kpis?: KpiTileData[];
+  kpiBand?: ReactNode;
   charts?: ReactNode;
   chartCount?: number;
   sectionRuleLabel?: string;
   reserveAnalyticsBand?: boolean;
+  bandOrder?: "kpis-first" | "charts-first";
+  kpiZoneClassName?: string;
   filters?: FilterDef[];
   query?: string;
   onQueryChange?: (q: string) => void;
@@ -41,10 +44,13 @@ export type HubDirectoryScreenProps = {
 export function HubDirectoryScreen({
   header,
   kpis,
+  kpiBand,
   charts,
   chartCount,
   sectionRuleLabel,
   reserveAnalyticsBand = false,
+  bandOrder,
+  kpiZoneClassName,
   filters = [],
   query = "",
   onQueryChange,
@@ -93,10 +99,13 @@ export function HubDirectoryScreen({
     <HubTabChrome header={header} filterBar={filterBar}>
       <HubTabScreenBody
         kpis={kpis}
+        kpiBand={kpiBand}
         charts={charts}
         chartCount={chartCount}
         sectionRuleLabel={sectionRuleLabel}
         reserveAnalyticsBand={reserveAnalyticsBand}
+        bandOrder={bandOrder}
+        kpiZoneClassName={kpiZoneClassName}
         bodyFlex={bodyFlex}
       >
         {children}
