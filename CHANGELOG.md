@@ -12,8 +12,8 @@
 - Timestamp: 2026-06-08 15:40 (UTC+7)
 - Prompt: xóa NEXT_PUBLIC_WORKER_URL trên Vercel; Working Rules
 - Commit: `ef54d81`
-- Status: Committed
-- Release: https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v1.2.3
+- Status: Verified
+- Release: https://p0021-autovideo-studio.vercel.app
 
 ### Changes
 
