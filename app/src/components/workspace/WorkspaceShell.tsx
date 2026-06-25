@@ -111,11 +111,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
       return resolveHeader(pathname);
     }
 
-    const metaItems: TabHeaderMetaItem[] = [
+    const metaItems = [
       { icon: Cpu, title: 'System', value: cpuLabel, live: true },
       { icon: HardDrive, value: ramLabel },
       { icon: GitBranch, value: APP_VERSION_LINE },
-    ];
+    ] as TabHeaderMetaItem[];
 
     const centerStats: TabHeaderStatItem[] = isStudio
       ? [
