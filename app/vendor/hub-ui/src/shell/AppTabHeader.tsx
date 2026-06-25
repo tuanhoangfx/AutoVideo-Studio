@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
 import { ChevronDown, Clock } from "lucide-react";
+import {
+  formatHubActivityRelativeAge,
+  formatHubActivityStaleLabel,
+  hubActivityAgeHubTone,
+  hubActivityAgeTone,
+  parseHubActivityMs,
+} from "../lib/format-hub-activity-time";
+import { formatHubTimestampFull } from "../lib/format-hub-timestamp-compact";
+import { useRelativeNow } from "../lib/use-relative-now";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
+import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import "./app-tab-header.css";
 
 export type TabTitleMenuItem = {
@@ -14,6 +24,8 @@ export type TabHeaderMetaItem = {
   title?: string;
   value: string;
   live?: boolean;
+  /** ISO or epoch — activity dot + relative/stale label after version. */
+  activityAt?: string | number | null;
 };
 
 export type TabHeaderStatItem = {
@@ -23,6 +35,9 @@ export type TabHeaderStatItem = {
   label: string;
   value: number | string;
   toneClass: string;
+  /** Optional — interactive header stat (P0020 Todo preview popover). */
+  onClick?: () => void;
+  active?: boolean;
 };
 
 type AppTabHeaderProps = {
@@ -78,7 +93,7 @@ function TitleWithMenu({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pr-1 text-left transition-colors hover:bg-white/[.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/50"
       >
-        <TitleIcon size={16} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+        <TitleIcon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="text-base font-semibold tracking-tight text-[var(--text)]">{title}</span>
           {active ? (
@@ -130,25 +145,62 @@ function Rule({ visibleFrom = "sm" }: { visibleFrom?: "sm" | "md" | "lg" }) {
   return <span className={`h-3.5 w-px shrink-0 self-center bg-white/10 ${vis}`} aria-hidden />;
 }
 
-function MetaLine({ icon: Icon, title, value, live }: TabHeaderMetaItem) {
+function metaActivityDotClass(hubTone: ReturnType<typeof hubActivityAgeHubTone>): string {
+  if (hubTone === "active") return "bg-cyan-400";
+  if (hubTone === "idle") return "bg-amber-400";
+  return "bg-slate-500";
+}
+
+/** Release activity — dot + label uses the same value span as SessionLine. */
+function MetaActivityAt({ at }: { at: string | number }) {
+  const now = useRelativeNow();
+  const ms = parseHubActivityMs(at);
+  if (ms == null) return null;
+
+  const ageTone = hubActivityAgeTone(ms, now);
+  const hubTone = hubActivityAgeHubTone(ageTone);
+  const label =
+    ageTone === "stale" ? formatHubActivityStaleLabel(ms) : formatHubActivityRelativeAge(ms, now);
+  const resolvedTitle =
+    formatHubTimestampFull(typeof at === "string" ? at : new Date(ms).toISOString()) ||
+    new Date(ms).toLocaleString();
+
+  return (
+    <>
+      <span
+        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${metaActivityDotClass(hubTone)}`}
+        aria-hidden
+      />
+      <span className="tabular-nums text-[var(--text)]/90" title={resolvedTitle}>
+        {label}
+      </span>
+    </>
+  );
+}
+
+function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaItem) {
+  const showActivity = activityAt != null && activityAt !== "";
+  const showLiveDot = live !== undefined && !showActivity;
+
   return (
     <div className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]">
       <Icon size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
       {title ? <span className="shrink-0">{title}</span> : null}
-      {live !== undefined ? (
+      {showLiveDot ? (
         <span
           className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-emerald-400" : "bg-amber-400"}`}
           aria-hidden
         />
       ) : null}
       <span className="truncate tabular-nums text-[var(--text)]/90">{value}</span>
+      {showActivity ? <MetaActivityAt at={activityAt} /> : null}
     </div>
   );
 }
 
-function StatLine({ icon: Icon, dotClass, value, label, toneClass }: TabHeaderStatItem) {
-  return (
-    <div className="inline-flex items-center gap-1 text-[12px] leading-none text-[var(--muted)]" title={label}>
+function StatLine({ icon: Icon, dotClass, value, label, toneClass, onClick, active }: TabHeaderStatItem) {
+  const content = (
+    <>
       {dotClass ? (
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
       ) : Icon ? (
@@ -156,6 +208,27 @@ function StatLine({ icon: Icon, dotClass, value, label, toneClass }: TabHeaderSt
       ) : null}
       <span className="font-semibold tabular-nums text-[var(--text)]/90">{value}</span>
       <span className="text-[var(--muted)]/80">{label}</span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={label}
+        className={`inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] leading-none transition-colors ${
+          active ? "bg-white/10 text-[var(--text)]" : "text-[var(--muted)] hover:bg-white/5"
+        }`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1 text-[13px] leading-none text-[var(--muted)]" title={label}>
+      {content}
     </div>
   );
 }
@@ -207,7 +280,7 @@ export function AppTabHeader({
           />
         ) : (
           <>
-            <TitleIcon size={16} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+            <TitleIcon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
             <h1 className="min-w-0 truncate text-base font-semibold leading-none tracking-tight text-[var(--text)]">
               {title}
             </h1>
@@ -218,7 +291,10 @@ export function AppTabHeader({
           <SessionLine sessionMmSs={sessionMmSs} />
         </span>
         {metaItems.map((item, index) => (
-          <span key={`${item.title ?? "meta"}-${index}`} className="inline-flex items-center gap-x-2.5">
+          <span
+            key={`${item.title ?? "meta"}-${index}`}
+            className="app-tab-header-meta inline-flex items-center gap-x-2.5"
+          >
             <Rule visibleFrom={index === 0 ? "md" : "lg"} />
             <MetaLine {...item} />
           </span>

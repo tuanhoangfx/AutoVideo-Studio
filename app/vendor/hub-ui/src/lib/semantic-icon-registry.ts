@@ -2,12 +2,14 @@ import { createElement, type ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
+  AlertCircle,
   Archive,
   BarChart3,
   BookOpen,
   Bot,
   Brain,
   Building2,
+  CalendarClock,
   Check,
   CheckCircle2,
   Clock,
@@ -18,6 +20,7 @@ import {
   FileStack,
   FileText,
   Filter,
+  Flag,
   Fingerprint,
   FolderOpen,
   Gauge,
@@ -35,21 +38,27 @@ import {
   Link2,
   List,
   ListOrdered,
+  Loader2,
   Lock,
   Mail,
   MessageSquare,
+  Network,
   Package,
   PanelTop,
   Pencil,
+  Pin,
   Play,
   Puzzle,
   Radio,
   RefreshCw,
+  Rocket,
   Rows3,
   ScrollText,
   Server,
+  Share2,
   Shield,
   ShieldCheck,
+  Star,
   Terminal,
   Timer,
   UserMinus,
@@ -59,6 +68,7 @@ import {
   Webhook,
   Wifi,
   WifiOff,
+  Zap,
 } from "lucide-react";
 import type { FilterIconMeta } from "../types/filter-badge";
 import type { KpiStripTone } from "../shell/KpiStrip";
@@ -127,6 +137,8 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "settings.headerStats": { icon: LayoutDashboard, className: "text-orange-300" },
   "settings.table": { icon: LayoutList, className: "text-violet-300", tone: "violet" },
   "settings.shortcuts": { icon: Keyboard, className: "text-indigo-300", tone: "indigo" },
+  "notify.alerts": { icon: AlertTriangle, className: "text-amber-300", tone: "amber" },
+  "notify.shortcuts": { icon: Keyboard, className: "text-indigo-300", tone: "indigo" },
   "kpi.schema.fields": { icon: Database, className: "text-indigo-300", tone: "indigo" },
   "kpi.schema.groups": { icon: Layers, className: "text-emerald-300", tone: "emerald" },
   "kpi.schema.input": { icon: Pencil, className: "text-amber-300", tone: "amber" },
@@ -173,6 +185,89 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "kpi.fanpages.tokenHealth": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
   "kpi.fanpages.lastReply": { icon: Clock, className: "text-emerald-300", tone: "emerald" },
   "kpi.fanpages.rag": { icon: Brain, className: "text-purple-300", tone: "purple" },
+  "filter.folder": { icon: FolderOpen, className: "text-indigo-300", tone: "indigo" },
+  "filter.pinned": { icon: Pin, className: "text-indigo-300", tone: "indigo" },
+  "filter.sync": { icon: RefreshCw, className: "text-cyan-300", tone: "cyan" },
+  "filter.share": { icon: Share2, className: "text-violet-300", tone: "violet" },
+  "filter.service": { icon: KeyRound, className: "text-amber-300", tone: "amber" },
+  "filter.usage": { icon: Clock, className: "text-cyan-300", tone: "cyan" },
+  "filter.platform": { icon: Globe2, className: "text-cyan-300", tone: "cyan" },
+  "filter.health": { icon: Activity, className: "text-emerald-400", tone: "emerald" },
+  "filter.status": { icon: Flag, className: "text-violet-400", tone: "violet" },
+  "filter.role": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
+  "filter.permission": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
+  "filter.access": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
+  "filter.note": { icon: FileText, className: "text-indigo-300", tone: "indigo" },
+  "filter.type": { icon: Layers, className: "text-indigo-300", tone: "indigo" },
+  "filter.source": { icon: Link2, className: "text-emerald-300", tone: "emerald" },
+  "filter.project": { icon: FolderOpen, className: "text-indigo-300", tone: "indigo" },
+  "filter.priority": { icon: Star, className: "text-amber-400/90", tone: "amber" },
+  "filter.creator": { icon: Users, className: "text-sky-300", tone: "sky" },
+  "filter.category": { icon: Layers, className: "text-indigo-400", tone: "indigo" },
+  "filter.deploy": { icon: Rocket, className: "text-sky-400", tone: "sky" },
+  "filter.drift": { icon: AlertTriangle, className: "text-rose-400", tone: "rose" },
+  "filter.links": { icon: Link2, className: "text-amber-400", tone: "amber" },
+  "filter.dueDate": { icon: CalendarClock, className: "opacity-75", tone: "indigo" },
+  "col.directory.page": { icon: LayoutGrid, className: "text-indigo-300", tone: "indigo" },
+  "col.directory.pageId": { icon: Fingerprint, className: "text-blue-300", tone: "blue" },
+  "col.directory.chatbot": { icon: Bot, className: "text-emerald-300", tone: "emerald" },
+  "col.directory.status": { icon: Activity, className: "text-emerald-400", tone: "emerald" },
+  "col.directory.replies": { icon: MessageSquare, className: "text-cyan-300", tone: "cyan" },
+  "col.directory.followers": { icon: Users, className: "text-indigo-300", tone: "indigo" },
+  "col.directory.posts": { icon: FileText, className: "text-purple-300", tone: "purple" },
+  "col.directory.reactions": { icon: Star, className: "text-amber-300", tone: "amber" },
+  "col.directory.impressions": { icon: Eye, className: "text-sky-300", tone: "sky" },
+  "col.directory.clicks": { icon: Zap, className: "text-violet-300", tone: "violet" },
+  "col.directory.engagement": { icon: Gauge, className: "text-emerald-300", tone: "emerald" },
+  "col.directory.category": { icon: Layers, className: "text-indigo-400", tone: "indigo" },
+  "col.directory.username": { icon: Globe2, className: "text-cyan-300", tone: "cyan" },
+  "col.directory.account": { icon: UserRound, className: "text-sky-300", tone: "sky" },
+  "col.directory.fbAccount": { icon: Facebook, className: "text-blue-300", tone: "blue" },
+  "col.directory.pages": { icon: LayoutGrid, className: "text-indigo-300", tone: "indigo" },
+  "col.directory.added": { icon: CalendarClock, className: "text-violet-300", tone: "violet" },
+  "col.directory.expires": { icon: CalendarClock, className: "text-amber-300", tone: "amber" },
+  "col.directory.uid": { icon: Fingerprint, className: "text-blue-300", tone: "blue" },
+  "col.directory.lastActive": { icon: Clock, className: "text-cyan-300", tone: "cyan" },
+  "col.directory.threads": { icon: MessageSquare, className: "text-purple-300", tone: "purple" },
+  "col.directory.groups": { icon: Users, className: "text-indigo-300", tone: "indigo" },
+  "col.directory.friends": { icon: UserRound, className: "text-sky-300", tone: "sky" },
+  "col.directory.gender": { icon: ScrollText, className: "text-violet-300", tone: "violet" },
+  "col.directory.created": { icon: CalendarClock, className: "text-violet-300", tone: "violet" },
+  "profile.status.ready": { icon: CheckCircle2, className: "text-emerald-400", tone: "emerald" },
+  "profile.status.opening": { icon: Loader2, className: "text-cyan-400", tone: "cyan" },
+  "profile.status.running": { icon: Play, className: "text-emerald-400", tone: "emerald" },
+  "profile.status.failed": { icon: AlertCircle, className: "text-rose-400", tone: "rose" },
+  "profile.proxy.local": { icon: Globe2, className: "text-sky-400", tone: "sky" },
+  "profile.proxy.remote": { icon: Network, className: "text-cyan-400", tone: "cyan" },
+};
+
+/** Directory table header tone classes — paired with `col.directory.*` semantic keys. */
+const DIRECTORY_COLUMN_TH_ICON: Partial<Record<SemanticIconKey, string>> = {
+  "col.directory.page": "hub-users-th-icon--name",
+  "col.directory.pageId": "hub-users-th-icon--id",
+  "col.directory.chatbot": "hub-users-th-icon--role",
+  "col.directory.status": "hub-users-th-icon--activity",
+  "col.directory.replies": "hub-users-th-icon--activity",
+  "col.directory.followers": "hub-users-th-icon--tools",
+  "col.directory.posts": "hub-users-th-icon--tools",
+  "col.directory.reactions": "hub-users-th-icon--actions",
+  "col.directory.impressions": "hub-users-th-icon--tools",
+  "col.directory.clicks": "hub-users-th-icon--activity",
+  "col.directory.engagement": "hub-users-th-icon--activity",
+  "col.directory.category": "hub-users-th-icon--tools",
+  "col.directory.username": "hub-users-th-icon--id",
+  "col.directory.account": "hub-users-th-icon--name",
+  "col.directory.fbAccount": "hub-users-th-icon--name",
+  "col.directory.pages": "hub-users-th-icon--name",
+  "col.directory.added": "hub-users-th-icon--created",
+  "col.directory.expires": "hub-users-th-icon--created",
+  "col.directory.uid": "hub-users-th-icon--id",
+  "col.directory.lastActive": "hub-users-th-icon--activity",
+  "col.directory.threads": "hub-users-th-icon--role",
+  "col.directory.groups": "hub-users-th-icon--tools",
+  "col.directory.friends": "hub-users-th-icon--name",
+  "col.directory.gender": "hub-users-th-icon--role",
+  "col.directory.created": "hub-users-th-icon--created",
 };
 
 /** Legacy `kpi.analytics.*` → domain keys (P0016 Analytics tab removed). */
@@ -245,6 +340,19 @@ export function semanticHeaderStat(key: SemanticIconLookupKey): {
 } {
   const { icon, className } = resolveSemanticIcon(key);
   return { icon, toneClass: className };
+}
+
+/** Directory table column header — Lucide icon + golden `hub-users-th-icon--*` class. */
+export function semanticDirectoryColumnIcon(key: SemanticIconLookupKey): {
+  headerIcon: SemanticIconMeta["icon"];
+  headerIconClassName: string;
+} {
+  const resolved = normalizeSemanticIconKey(key);
+  const spec = resolveSemanticIcon(key);
+  return {
+    headerIcon: spec.icon,
+    headerIconClassName: DIRECTORY_COLUMN_TH_ICON[resolved] ?? "hub-users-th-icon--tools",
+  };
 }
 
 /** TOC rail + HubToolDetailSection header — golden Settings pattern. */

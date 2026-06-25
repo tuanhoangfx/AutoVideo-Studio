@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { compactIconSize } from "../ui-scale";
+import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import {
   navActiveBarClass,
   navActiveBgClass,
@@ -47,7 +47,7 @@ export function HubSidebarNavScreenButton({
           className={`absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r ${navActiveBarClass(iconTone)}`}
         />
       ) : null}
-      <Icon size={compactIconSize(16)} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
+      <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
       <span className="flex-1 text-left">{label}</span>
       {badge != null && badge > 0 ? (
         <span className="min-w-[1.125rem] rounded-full bg-amber-500/25 px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums text-amber-200">

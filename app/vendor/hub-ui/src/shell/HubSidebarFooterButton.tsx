@@ -15,6 +15,8 @@ export type HubSidebarFooterButtonProps = {
   title?: string;
   trailing?: ReactNode;
   iconSize?: number;
+  /** Fade role icon in after profiles.role resolves (sidebar user row). */
+  iconFadeIn?: boolean;
 };
 
 /** Sidebar footer action row — shared across Hub workspace sidebars. */
@@ -28,8 +30,10 @@ export function HubSidebarFooterButton({
   title,
   trailing,
   iconSize = 15,
+  iconFadeIn = false,
 }: HubSidebarFooterButtonProps) {
   const px = compactIconSize(iconSize);
+  const iconMotion = iconFadeIn ? "transition-opacity duration-150" : "";
   return (
     <button
       type="button"
@@ -38,7 +42,10 @@ export function HubSidebarFooterButton({
       disabled={disabled}
       title={title}
     >
-      <Icon size={px} className={`shrink-0 ${iconClass} ${loading ? "anim-spin" : ""}`} />
+      <Icon
+        size={px}
+        className={`shrink-0 ${iconMotion} ${iconClass} ${loading ? "anim-spin" : ""}`}
+      />
       <span className="flex-1 text-left">{label}</span>
       {trailing}
     </button>

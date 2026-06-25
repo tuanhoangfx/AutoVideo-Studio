@@ -1,9 +1,11 @@
 import { useMemo, useState, type ReactNode } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { hubSessionLabels, type HubSessionLike } from "@tool-workspace/hub-identity";
 import { HubSidebarUserFooter } from "./HubSidebarUserFooter";
-import { HubWorkspaceUserAvatar } from "./HubWorkspaceUserAvatar";
 import { HubWorkspaceUserModal } from "./HubWorkspaceUserModal";
-import { resolveWorkspaceRoleKey } from "./hub-workspace-role-icon";
+import { useWorkspaceRoleKey } from "./useWorkspaceRoleKey";
+import { resolveWorkspaceRoleIcon } from "./hub-workspace-role-icon";
+import { compactIconSize } from "../ui-scale";
 import {
   buildWorkspaceUserProfileRows,
   workspaceUserFooterLabel,
@@ -38,6 +40,14 @@ export type HubWorkspaceUserShellProps = {
   emptyEmailLabel?: string;
   labels?: ReturnType<typeof hubSessionLabels>;
   roleKey?: string;
+  /** Resolve `profiles.role` when JWT metadata is stale (Hub Users SSOT). */
+  onResolveRoleKey?: (userId: string) => Promise<string | null | undefined>;
+  /** Preferred — fetch + realtime `profiles.role` via Supabase client. */
+  profileRoleClient?: SupabaseClient | null;
+  /** Hub identity user id when `session` is a tool-local auth user (P0020). */
+  profileRoleUserId?: string | null;
+  profileRoleEmail?: string | null;
+  onPrepareProfileRoleClient?: (client: SupabaseClient) => Promise<void>;
 };
 
 /** Sidebar User footer + workspace account modal — single config (P0020 / P0016). */
@@ -54,13 +64,26 @@ export function HubWorkspaceUserShell({
   emptyEmailLabel,
   labels: labelsProp,
   roleKey: roleKeyProp,
+  onResolveRoleKey,
+  profileRoleClient,
+  profileRoleUserId,
+  profileRoleEmail,
+  onPrepareProfileRoleClient,
   renderModal,
 }: HubWorkspaceUserShellProps) {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const labels = labelsProp ?? hubSessionLabels(session);
-  const roleKey = roleKeyProp ?? (anonymous ? "anonymous" : resolveWorkspaceRoleKey(session));
+  const { roleKey, roleIconPending } = useWorkspaceRoleKey(session, {
+    anonymous,
+    roleKey: roleKeyProp,
+    onResolveRoleKey,
+    profileRoleClient,
+    profileRoleUserId,
+    profileRoleEmail,
+    onPrepareProfileRoleClient,
+  });
   const footerUserLabel = workspaceUserFooterLabel({
     labels,
     session,
@@ -85,9 +108,12 @@ export function HubWorkspaceUserShell({
         labels,
         includeLoginId,
         emptyEmailLabel,
+        roleKey,
       }),
-    [session, labels, includeLoginId, emptyEmailLabel],
+    [session, labels, includeLoginId, emptyEmailLabel, roleKey],
   );
+  const roleMeta = useMemo(() => resolveWorkspaceRoleIcon(roleKey), [roleKey]);
+  const RoleIcon = roleMeta.icon;
 
   const modalCtx: HubWorkspaceUserModalRenderContext = {
     open,
@@ -120,6 +146,7 @@ export function HubWorkspaceUserShell({
         footerUserLabel={footerUserLabel}
         title={footerTitle}
         roleKey={roleKey}
+        roleIconPending={roleIconPending}
         onOpenUser={() => setOpen(true)}
       />
       {renderModal ? (
@@ -134,7 +161,14 @@ export function HubWorkspaceUserShell({
           signingOut={signingOut}
           onSignOut={handleSignOut}
           workspaceNote={workspaceNote}
-          headerLeading={<HubWorkspaceUserAvatar initials={initials} />}
+          headerLeading={
+            <span
+              className={`user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-indigo-300/25 bg-indigo-500/20 transition-opacity ${roleIconPending ? "opacity-0" : ""}`}
+              aria-hidden
+            >
+              <RoleIcon size={compactIconSize(16)} className={roleMeta.className} />
+            </span>
+          }
           rows={profileRows}
         />
       )}

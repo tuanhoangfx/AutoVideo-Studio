@@ -32,6 +32,7 @@ export type HubWorkspaceUserProfileRow = {
   label: string;
   value: string;
   icon: LucideIcon;
+  iconClassName?: string;
 };
 
 export type HubWorkspaceUserModalProps = {
@@ -102,7 +103,7 @@ export function HubWorkspaceUserModal({
               <HubUserModalFieldRow
                 key={row.label}
                 icon={row.icon}
-                iconClassName={FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
+                iconClassName={row.iconClassName ?? FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
                 label={row.label}
               >
                 <span className="truncate font-medium" title={row.value}>

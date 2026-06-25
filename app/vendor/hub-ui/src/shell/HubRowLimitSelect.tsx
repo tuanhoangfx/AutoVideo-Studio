@@ -4,6 +4,9 @@ import { LIMIT_OPTIONS } from "../display-prefs/constants";
 import { compactIconSize } from "../ui-scale";
 import { getHubUrlPrefsDefaults, patchHubListPrefs } from "../lib/hub-url-prefs";
 
+/**
+ * @deprecated Directory tables use `HubTablePageSizeSelect` (`tpage`). Keep for P0020 vault row cap only.
+ */
 export function HubRowLimitSelect({ value }: { value: number }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

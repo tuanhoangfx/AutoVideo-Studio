@@ -1,7 +1,8 @@
-import { KeyRound, Mail, RefreshCcw, ShieldCheck, User } from "lucide-react";
+import { KeyRound, Mail, RefreshCcw, User } from "lucide-react";
 import { hubSessionLabels, type HubSessionLike } from "@tool-workspace/hub-identity";
 import type { HubAuthSessionMode } from "./HubAuthSessionBadge";
 import type { HubWorkspaceUserProfileRow } from "./HubWorkspaceUserModal";
+import { resolveWorkspaceRoleIcon, workspaceRoleLabel } from "./hub-workspace-role-icon";
 
 export function resolveHubAuthSessionMode(opts: {
   anonymous?: boolean;
@@ -46,6 +47,8 @@ export type BuildWorkspaceUserProfileRowsOptions = {
   includeLoginId?: boolean;
   /** P0020: "Not signed in" when email missing */
   emptyEmailLabel?: string;
+  /** Resolved workspace role — sidebar / profiles SSOT. */
+  roleKey?: string;
 };
 
 export function buildWorkspaceUserProfileRows(
@@ -58,7 +61,8 @@ export function buildWorkspaceUserProfileRows(
   const lastSignIn = user?.last_sign_in_at
     ? new Date(user.last_sign_in_at).toLocaleString(locale)
     : "—";
-  const role = String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "authenticated");
+  const roleKey = opts.roleKey ?? String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "user");
+  const roleMeta = resolveWorkspaceRoleIcon(roleKey);
   const provider = String(user?.app_metadata?.provider ?? "email");
 
   const rows: HubWorkspaceUserProfileRow[] = [];
@@ -74,7 +78,12 @@ export function buildWorkspaceUserProfileRows(
     icon: Mail,
   });
   rows.push(
-    { label: "Role", value: role, icon: ShieldCheck },
+    {
+      label: "Role",
+      value: workspaceRoleLabel(roleKey),
+      icon: roleMeta.icon,
+      iconClassName: roleMeta.className,
+    },
     { label: "Provider", value: provider, icon: KeyRound },
     { label: "Created", value: createdAt, icon: User },
     { label: "Last sign in", value: lastSignIn, icon: RefreshCcw },

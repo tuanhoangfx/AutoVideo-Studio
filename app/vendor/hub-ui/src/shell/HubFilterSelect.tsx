@@ -4,6 +4,7 @@ import { HubSingleFilterDropdown } from "./FilterBar";
 export type HubFilterSelectOption<T extends string = string> = {
   value: T;
   label: string;
+  title?: string;
   count?: number;
 };
 
@@ -32,6 +33,7 @@ export function HubFilterSelect<T extends string>({
   const filterOptions: FilterOption[] = options.map((o) => ({
     value: o.value,
     label: o.label,
+    title: o.title,
     count: o.count,
   }));
 

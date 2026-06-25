@@ -5,8 +5,19 @@ export type NormalizeHubAuthErrorOptions = {
   dualWorkspace?: boolean;
 };
 
-export function normalizeHubAuthError(raw: string, opts: NormalizeHubAuthErrorOptions = {}) {
-  const msg = String(raw || "").trim();
+export function formatHubAuthErrorMessage(raw: unknown): string {
+  if (raw instanceof Error) return raw.message.trim();
+  if (typeof raw === "string") return raw.trim();
+  if (raw && typeof raw === "object" && "message" in raw) {
+    const msg = (raw as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.trim()) return msg.trim();
+  }
+  const text = String(raw ?? "").trim();
+  return text === "[object Object]" ? "" : text;
+}
+
+export function normalizeHubAuthError(raw: unknown, opts: NormalizeHubAuthErrorOptions = {}) {
+  const msg = formatHubAuthErrorMessage(raw);
   const lower = msg.toLowerCase();
   if (lower.includes("rate limit")) return "Temporary sign-in issue. Please try again in a moment.";
   if (lower.includes("invalid login credentials")) {

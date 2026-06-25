@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { FileText } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
 import { HubHeaderPanelButton } from "./HubHeaderPanelButton";
@@ -15,6 +16,21 @@ export type HubLogEntry = {
   screen?: string;
 };
 
+export type HubLogQuickAction = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  description?: string;
+  onClick: () => void;
+};
+
+export type HubLogExtraSection = {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  content: ReactNode;
+};
+
 export type HubUsageLogPanelProps = {
   logs: HubLogEntry[];
   title?: string;
@@ -24,6 +40,10 @@ export type HubUsageLogPanelProps = {
   sidebarRow?: boolean;
   /** Optional count badge on trigger (defaults to logs.length). */
   badge?: number;
+  /** Tab-specific shortcuts above session log (e.g. Todo activity log). */
+  quickActions?: HubLogQuickAction[];
+  /** Embedded sections in Log modal TOC (e.g. Todo global activity log). */
+  extraSections?: HubLogExtraSection[];
 };
 
 function scopeSectionId(scope: string) {
@@ -56,6 +76,8 @@ export function HubUsageLogPanel({
   compact = false,
   sidebarRow = false,
   badge,
+  quickActions = [],
+  extraSections = [],
 }: HubUsageLogPanelProps) {
   const [open, setOpen] = useState(false);
   const logPanelIcon = FileText;
@@ -85,6 +107,50 @@ export function HubUsageLogPanel({
     const ids: string[] = [];
     const sections: ReactNode[] = [];
     const scopeIcon = buildSemanticTocIcon("log.scope");
+
+    if (quickActions.length > 0) {
+      const id = "log-quick-actions";
+      toc.push({ id, label: "Shortcuts", icon: buildSemanticTocIcon("log.session") });
+      ids.push(id);
+      sections.push(
+        <HubToolDetailSection key={id} id={id} title="Shortcuts" icon={buildSemanticTocIcon("log.session")}>
+          <div className="flex flex-col gap-1.5">
+            {quickActions.map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    action.onClick();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[.03] px-2.5 py-2 text-left text-xs transition-colors hover:bg-white/[.06]"
+                >
+                  <ActionIcon size={14} className="shrink-0 text-indigo-300" aria-hidden />
+                  <span className="flex-1">
+                    <span className="font-semibold text-[var(--text)]">{action.label}</span>
+                    {action.description ? (
+                      <span className="mt-0.5 block text-[10px] text-[var(--muted)]">{action.description}</span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </HubToolDetailSection>,
+      );
+    }
+
+    for (const section of extraSections) {
+      toc.push({ id: section.id, label: section.label, icon: section.icon });
+      ids.push(section.id);
+      sections.push(
+        <HubToolDetailSection key={section.id} id={section.id} title={section.label} icon={section.icon}>
+          {section.content}
+        </HubToolDetailSection>,
+      );
+    }
 
     if (grouped.length === 0) {
       const id = "log-empty";
@@ -117,11 +183,10 @@ export function HubUsageLogPanel({
     }
 
     return { tocItems: toc, sectionIds: ids, body: sections };
-  }, [emptyMessage, formatter, grouped]);
+  }, [emptyMessage, extraSections, formatter, grouped, quickActions]);
 
   /** Always show TOC rail — same contract as Settings / User access modals. */
   const showToc = tocItems.length > 0;
-  const badgeCount = badge ?? logs.length;
 
   return (
     <>
@@ -130,7 +195,6 @@ export function HubUsageLogPanel({
         iconClassName="text-cyan-300"
         label="Log"
         title={title}
-        badge={badgeCount}
         compact={compact}
         sidebarRow={sidebarRow}
         onClick={() => setOpen(true)}

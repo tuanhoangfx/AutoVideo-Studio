@@ -1,8 +1,13 @@
 /* Hub app shell — P0004 p0008-globals parity */
+@import "./hub-directory-card-leading.css";
+
 :root,
 .theme-hub {
   --hub-compact-scale: 0.9;
   --hub-control-h: 31px;
+  --hub-metric-badge-h: 22px;
+  --hub-directory-card-icon-box-px: 22px;
+  --hub-directory-card-glyph-px: 14px;
   --hub-sidebar-width: 15rem;
   --app-tab-header-py: 0.75rem;
   --app-tab-header-px: 1.5rem;
@@ -17,19 +22,43 @@
     var(--app-tab-header-min-h) + var(--hub-filter-pin-est-h) + var(--hub-chrome-content-gap)
   );
   /* Fixed analytics band heights — up to 8 KPI tiles per row */
-  --hub-kpi-strip-min-h: 4.75rem;
+  --hub-kpi-strip-min-h: 4rem;
   --hub-kpi-gap: 0.625rem;
   --hub-kpi-pad-y: 0.75rem;
   --hub-kpi-pad-x: 0.625rem;
   --hub-kpi-inner-gap: 0.625rem;
   --hub-kpi-icon: 2.125rem;
   --hub-kpi-value-size: 1.1875rem;
-  --hub-kpi-label-size: 0.625rem;
-  --hub-kpi-hint-size: 0.625rem;
+  --hub-chrome-micro-size: 0.625rem;
+  --hub-kpi-label-size: var(--hub-chrome-micro-size);
+  --hub-kpi-hint-size: 0.75rem;
+  --hub-chart-caption-size: var(--hub-chrome-micro-size);
+  --hub-chart-label-size: 0.875rem;
   --hub-kpi-body-gap: 0.3125rem;
-  --hub-chart-card-min-h: 8.75rem;
+  --hub-chart-bar-rows: 4;
+  --hub-chart-row-gap: 0.375rem;
+  --hub-chart-row-est-h: 1.5rem;
+  --hub-chart-card-pad-y: 1rem;
+  --hub-chart-caption-block: 1.125rem;
+  --hub-chart-card-min-h: calc(
+    var(--hub-chart-card-pad-y) * 2 + var(--hub-chart-caption-block) +
+      var(--hub-chart-bar-rows) * var(--hub-chart-row-est-h) +
+      (var(--hub-chart-bar-rows) - 1) * var(--hub-chart-row-gap)
+  );
   --hub-charts-band-min-h: var(--hub-chart-card-min-h);
   --hub-donut-size: 4rem;
+}
+
+.hub-chrome-type--micro {
+  font-size: var(--hub-chrome-micro-size);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.hub-analytics-caption {
+  font-size: var(--hub-chart-caption-size);
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .hub-app {
@@ -250,6 +279,7 @@
 
 .hub-kpi-strip .hub-kpi-tile__label {
   font-size: var(--hub-kpi-label-size);
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -317,21 +347,27 @@
 }
 
 .hub-chart-card__body {
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
+  min-height: calc(
+    var(--hub-chart-bar-rows) * var(--hub-chart-row-est-h) +
+      (var(--hub-chart-bar-rows) - 1) * var(--hub-chart-row-gap)
+  );
+  flex: 1 1 auto;
+  overflow: visible;
 }
 
 /* Donut — same 3-col grid as hub-chart-row: label left, donut right-of-center, value at right edge */
 .hub-chart-card__body--donut {
   display: grid;
-  min-height: 0;
-  flex: 1;
+  min-height: calc(
+    var(--hub-chart-bar-rows) * var(--hub-chart-row-est-h) +
+      (var(--hub-chart-bar-rows) - 1) * var(--hub-chart-row-gap)
+  );
+  flex: 1 1 auto;
   grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr) 2.25rem;
   column-gap: 0.5rem;
   row-gap: 0.375rem;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hub-chart-card__body--donut .hub-chart-legend-label {
@@ -360,6 +396,23 @@
   row-gap: 0.125rem;
 }
 
+/* Entity rank — wider value column + badges without bar overlap */
+.hub-chart-row--rank {
+  grid-template-columns: minmax(5.5rem, 7.5rem) minmax(0, 1fr) minmax(5rem, auto);
+  align-items: start;
+  row-gap: 0.25rem;
+}
+
+.hub-chart-card__body--rank {
+  min-height: 0;
+  overflow: visible;
+}
+
+.hub-chart-row--rank .hub-chart-row__value {
+  min-width: 0;
+  grid-column: 3;
+}
+
 .hub-chart-legend-label {
   display: flex;
   min-width: 0;
@@ -367,6 +420,17 @@
   gap: 0.25rem;
   overflow: hidden;
   color: var(--muted);
+  font-size: var(--hub-chart-label-size);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.hub-chart-row__value {
+  text-align: right;
+  color: var(--text);
+  font-size: var(--hub-chart-label-size);
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 .hub-chart-legend-label__text {
@@ -382,4 +446,98 @@
   max-width: var(--hub-donut-size);
   max-height: var(--hub-donut-size);
   flex-shrink: 0;
+}
+
+/* Dashboard pinned card — amber glow when pinned */
+@keyframes hub-directory-pin-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.28),
+      0 8px 28px rgba(245, 158, 11, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.45),
+      0 10px 32px rgba(245, 158, 11, 0.22);
+  }
+}
+
+.hub-directory-card--pinned {
+  animation: hub-directory-pin-glow 2.8s ease-in-out infinite;
+}
+
+.hub-directory-pin-mark {
+  fill: currentColor;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.55));
+}
+
+/* Directory search toolbar — unified Display panel (KPI · charts · filters · columns). */
+
+.hub-directory-display-panel {
+  width: min(18rem, 92vw);
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--panel, #0f1219);
+  padding: 0.5rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  scrollbar-gutter: stable;
+}
+
+.hub-directory-display-panel__section + .hub-directory-display-panel__section {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hub-directory-display-panel__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.hub-directory-display-panel__section-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted, #94a3b8);
+}
+
+.hub-directory-display-panel__section-body {
+  min-width: 0;
+}
+
+.hub-directory-display-panel__footer {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hub-directory-display-panel__reset {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.45rem 0.65rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted, #94a3b8);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.hub-directory-display-panel__reset:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text, #e8eaef);
 }

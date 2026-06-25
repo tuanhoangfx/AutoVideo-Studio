@@ -1,19 +1,17 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Settings } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
-import { LIMIT_OPTIONS, TABLE_PAGE_SIZE_OPTIONS, TIME_RANGES } from "./constants";
-import { HUB_TABLE_PAGE_SIZE_DEFAULT, patchHubTablePageSizeValue } from "../table/hub-table-page-size";
-import {
-  MAX_VISIBLE_CHART,
-  enforceChartMaxOnAdd,
-  resolveVisibleChartKeys,
-} from "./chart-visible";
-import {
-  MAX_VISIBLE_KPI,
-  enforceKpiMaxOnAdd,
-} from "./kpi-visible";
+import { LIMIT_OPTIONS, TIME_RANGES } from "./constants";
+import { MAX_VISIBLE_CHART } from "./chart-visible";
+import { MAX_VISIBLE_KPI } from "./kpi-visible";
 import { Section, ToggleRow } from "./primitives";
 import type { HubDisplayPrefsProps, PrefItem } from "./types";
+import {
+  countVisiblePrefs,
+  defaultsForPrefItems,
+  isHubPrefVisible,
+  toggleHubPrefSet,
+} from "./hub-display-visibility";
 import { HubHeaderPanelButton } from "../shell/HubHeaderPanelButton";
 import { HubKeyboardShortcutsPanel } from "../keyboard/HubKeyboardShortcutsPanel";
 import { HubToolDetailModal, HubToolDetailModalSecondaryAction, HUB_TOOL_DETAIL_SCROLL_ROOT } from "../shell/HubToolDetailModal";
@@ -64,13 +62,16 @@ export function HubDisplayPrefs({
   subTabDisplay,
   generalExtras,
   displayExtras,
+  footerActions,
   tablePanel,
+  tableSectionLabel = "Table columns",
   tableSectionActions,
   tableActiveCount = 0,
   headerStatLabel = (isSystem) => (isSystem ? "System header" : "Hub header"),
   onLog,
   title = "Settings",
   extraTabs = [],
+  toolSections = [],
 }: HubDisplayPrefsProps) {
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState(readPrefs);
@@ -171,7 +172,7 @@ export function HubDisplayPrefs({
   }
 
   function defaultsFor(allItems: PrefItem[], defaults?: Set<string>) {
-    return defaults ?? new Set(allItems.map((i) => i.key));
+    return defaultsForPrefItems(allItems, defaults);
   }
 
   function toggleSetParam(
@@ -181,18 +182,7 @@ export function HubDisplayPrefs({
     defaults: Set<string>,
     key: string,
   ) {
-    let next: Set<string>;
-    if (cur === null) {
-      next = new Set(defaults);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-    } else {
-      next = new Set(cur);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-    }
-    const allDefault = next.size === defaults.size && [...next].every((k) => defaults.has(k));
-    return { next, allDefault };
+    return toggleHubPrefSet(cur, defaults, key);
   }
 
   function toggle(
@@ -210,19 +200,20 @@ export function HubDisplayPrefs({
             ? visHeaderStats
             : visHubFilters;
 
+    const wasSelected = isHubPrefVisible(cur, defaults, key);
+    if (!wasSelected) {
+      const selectedCount = countVisiblePrefs(allItems, cur, defaults);
+      if (param === "kpi" && selectedCount >= MAX_VISIBLE_KPI) {
+        emitLog(`KPI limit: maximum ${MAX_VISIBLE_KPI} — turn one off to add another`);
+        return;
+      }
+      if (param === "charts" && selectedCount >= MAX_VISIBLE_CHART) {
+        emitLog(`Charts limit: maximum ${MAX_VISIBLE_CHART} — turn one off to add another`);
+        return;
+      }
+    }
+
     let { next, allDefault } = toggleSetParam(param, cur, allItems, defaults, key);
-
-    if (param === "kpi" && next.has(key)) {
-      next = enforceKpiMaxOnAdd(next, allItems, key);
-      allDefault =
-        next.size === defaults.size && [...next].every((k) => defaults.has(k));
-    }
-
-    if (param === "charts" && next.has(key)) {
-      next = enforceChartMaxOnAdd(next, allItems, key);
-      allDefault =
-        next.size === defaults.size && [...next].every((k) => defaults.has(k));
-    }
 
     if (usesLegacySystemDisplay && systemDisplay && systemTab && (param === "kpi" || param === "charts")) {
       systemDisplay.patch(systemTab, {
@@ -252,33 +243,22 @@ export function HubDisplayPrefs({
   }
 
   function isVisible(set: Set<string> | null, defaults: Set<string>, key: string) {
-    return set === null ? defaults.has(key) : set.has(key);
+    return isHubPrefVisible(set, defaults, key);
   }
 
   const kpiDefaults = defaultsFor(tabKpis, defaultKpiKeys);
   const chartsDefaults = defaultsFor(tabCharts, defaultChartKeys);
   const filterDefaults = defaultsFor(tabFilters, defaultFilterKeys);
-  const visKpiCount = tabKpis.filter((k) => isVisible(visKpiEffective, kpiDefaults, k.key)).length;
-  const kpiAtMax = visKpiCount >= MAX_VISIBLE_KPI;
-  const visChartsResolved = resolveVisibleChartKeys(visChartsEffective, chartsDefaults, tabCharts);
-  const visChartsCount = visChartsResolved.size;
   const visFilterCount = visHubFilters === null ? filterDefaults.size : visHubFilters.size;
-  const visHeaderStatCount = visHeaderStats === null ? headerStatDefaults.size : visHeaderStats.size;
 
   const hasTablePanel = Boolean(tablePanel) && !isGlobalScope;
+  const displayOnToolbar = !isGlobalScope;
 
-  const activeCount =
-    (isGlobalScope
-      ? (showHeaderPin && rawHpin !== null ? 1 : 0) +
-        (rawSpin === "0" ? 1 : 0) +
-        (showNavToggle && rawNavicon === "0" ? 1 : 0)
-      : (showRange && prefs.range !== "30d" ? 1 : 0) +
-        (showLimit && prefs.limit !== 100 ? 1 : 0) +
-        (prefs.tablePageSize !== HUB_TABLE_PAGE_SIZE_DEFAULT ? 1 : 0) +
-        (rawKpi !== null ? 1 : 0) +
-        (rawCharts !== null ? 1 : 0) +
-        (rawFilters !== null ? 1 : 0) +
-        (rawHeaderStats !== null ? 1 : 0)) + (tableActiveCount > 0 ? 1 : 0);
+  const activeCount = isGlobalScope
+    ? (showHeaderPin && rawHpin !== null ? 1 : 0) +
+      (rawSpin === "0" ? 1 : 0) +
+      (showNavToggle && rawNavicon === "0" ? 1 : 0)
+    : 0;
 
   function resetDefaults() {
     if (isGlobalScope) {
@@ -364,33 +344,6 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (!isGlobalScope) {
-    displayParts.push(
-      <Section
-        key="page-size"
-        label="Page size"
-        icon={buildSemanticTocIcon("settings.pageSize")}
-      >
-        <div className="grid grid-cols-3 gap-1">
-          {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => update({ tpage: patchHubTablePageSizeValue(n) })}
-              className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                prefs.tablePageSize === n
-                  ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
-                  : "bg-white/[.03] text-[var(--muted)]"
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </Section>,
-    );
-  }
-
   if (!isGlobalScope && showLimit) {
     displayParts.push(
       <Section key="rows" label="Rows" icon={buildSemanticTocIcon("settings.rows")}>
@@ -453,52 +406,6 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (!isGlobalScope && tabKpis.length > 0) {
-    displayParts.push(
-      <Section
-        key="kpi"
-        label={`KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`}
-        icon={buildSemanticTocIcon("settings.kpi")}
-      >
-        <div className="space-y-0.5">
-          {tabKpis.map((k) => {
-            const selected = isVisible(visKpiEffective, kpiDefaults, k.key);
-            return (
-              <ToggleRow
-                key={k.key}
-                label={k.label}
-                on={selected}
-                disabled={kpiAtMax && !selected}
-                onChange={() => toggle("kpi", tabKpis, kpiDefaults, k.key)}
-              />
-            );
-          })}
-        </div>
-      </Section>,
-    );
-  }
-
-  if (!isGlobalScope && tabCharts.length > 0) {
-    displayParts.push(
-      <Section
-        key="charts"
-        label={`Charts (${visChartsCount}/${MAX_VISIBLE_CHART})`}
-        icon={buildSemanticTocIcon("settings.charts")}
-      >
-        <div className="space-y-0.5">
-          {tabCharts.map((c) => (
-            <ToggleRow
-              key={c.key}
-              label={c.label}
-              on={isVisible(visChartsEffective, chartsDefaults, c.key)}
-              onChange={() => toggle("charts", tabCharts, chartsDefaults, c.key)}
-            />
-          ))}
-        </div>
-      </Section>,
-    );
-  }
-
   if (!isGlobalScope && tabFilters.length > 0) {
     displayParts.push(
       <Section
@@ -511,6 +418,8 @@ export function HubDisplayPrefs({
             <ToggleRow
               key={f.key}
               label={f.label}
+              icon={f.icon}
+              iconClassName={f.iconClassName}
               on={isVisible(visHubFilters, filterDefaults, f.key)}
               onChange={() => toggle(filterParam, tabFilters, filterDefaults, f.key)}
             />
@@ -520,28 +429,7 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (!isGlobalScope && headerStats.length > 0) {
-    displayParts.push(
-      <Section
-        key="header-stats"
-        label={`${headerStatLabel(isSystem)} (${visHeaderStatCount}/${headerStats.length})`}
-        icon={buildSemanticTocIcon("settings.headerStats")}
-      >
-        <div className="space-y-0.5">
-          {headerStats.map((h) => (
-            <ToggleRow
-              key={h.key}
-              label={h.label}
-              on={isVisible(visHeaderStats, headerStatDefaults, h.key)}
-              onChange={() => toggle(headerStatParam, headerStats, headerStatDefaults, h.key)}
-            />
-          ))}
-        </div>
-      </Section>,
-    );
-  }
-
-  if (displayParts.length > 0) {
+  if (!displayOnToolbar && displayParts.length > 0) {
     pushSection(
       "display",
       "Display",
@@ -550,10 +438,14 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (hasTablePanel) {
+  for (const sec of toolSections) {
+    pushSection(sec.id, sec.label, sec.icon, sec.body, sec.headerActions);
+  }
+
+  if (!displayOnToolbar && hasTablePanel) {
     pushSection(
       "table",
-      "Table columns",
+      tableSectionLabel,
       buildSemanticTocIcon("settings.table"),
       tablePanel,
       tableSectionActions,
@@ -577,7 +469,6 @@ export function HubDisplayPrefs({
         iconClassName="text-amber-300"
         label={title}
         title={title}
-        badge={activeCount}
         compact={compact}
         sidebarRow={sidebarRow}
         onClick={() => setOpen(true)}
@@ -600,7 +491,10 @@ export function HubDisplayPrefs({
           ) : undefined
         }
         footer={
-          <HubToolDetailModalSecondaryAction label="Reset to defaults" onClick={resetDefaults} />
+          <>
+            {footerActions}
+            <HubToolDetailModalSecondaryAction label="Reset to defaults" onClick={resetDefaults} />
+          </>
         }
       >
         <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>{sectionNodes}</div>

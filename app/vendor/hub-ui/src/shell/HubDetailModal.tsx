@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { HubModalFrame } from "./HubModalFrame";
 
@@ -17,6 +17,7 @@ export type HubDetailModalProps = {
   footer?: ReactNode;
   closeOnBackdrop?: boolean;
   shellClassName?: string;
+  shellStyle?: CSSProperties;
 };
 
 /** Golden tool-detail modal — portal, backdrop, edge close, escape, body scroll lock. */
@@ -31,6 +32,7 @@ export function HubDetailModal({
   footer,
   closeOnBackdrop = true,
   shellClassName = "",
+  shellStyle,
 }: HubDetailModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -65,6 +67,7 @@ export function HubDetailModal({
       <HubModalFrame onClose={onClose}>
         <div
           className={shellClasses}
+          style={shellStyle}
           role="dialog"
           aria-modal="true"
           aria-label={ariaLabelledBy ? undefined : ariaLabel}

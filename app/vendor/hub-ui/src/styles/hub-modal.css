@@ -90,12 +90,12 @@
 }
 
 /* TOC / directory modals — consistent fill height. Opt out with .hub-tool-detail-modal--fit (confirm, small forms). */
-.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) {
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) {
   min-height: min(var(--hub-modal-fill-min-h, 640px), var(--hub-modal-max-vh));
 }
 
-.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) .hub-tool-detail-modal__body,
-.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) .hub-tool-detail-modal__layout {
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) .hub-tool-detail-modal__body,
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) .hub-tool-detail-modal__layout {
   flex: 1;
   min-height: 0;
 }
@@ -243,13 +243,7 @@ body.hub-modal-open {
   outline-offset: 1px;
 }
 
-.hub-tool-detail-modal__content .hub-users-row:hover {
-  background: transparent;
-}
-
-.hub-tool-detail-modal__content .hub-users-row.is-selected:hover {
-  background: rgba(99, 102, 241, 0.08);
-}
+/* Directory row hover — hub-directory-table.css (modal read-only + bulk select scopes) */
 
 /* Stacked section frames — gap between siblings (TocHighlightContent or HubToolDetailSections). */
 .hub-tool-detail-modal__sections {
@@ -535,6 +529,7 @@ body.hub-modal-open {
   --overview-toc-w: 14rem;
   --overview-toc-row-h: 2.125rem;
   --hub-settings-toc-icon: 11px;
+  height: auto;
 }
 
 .hub-header-panel-modal .user-access-modal__header,

@@ -8,6 +8,8 @@ import {
   hubTogglePageSelectAllByPredicate,
   useHubTablePagination,
 } from "./hub-table-pagination";
+import { HubSortIndicator } from "./HubSortIndicator";
+import { useDirectoryTableSort } from "./useDirectoryTableSort";
 import {
   buildHubRouteAccessModalColumns,
   HUB_ROUTE_ACCESS_COL,
@@ -15,7 +17,23 @@ import {
   hubRouteAccessModalTableClass,
   type HubRouteAccessColumnLayout,
   type HubRouteAccessModalColumnOptions,
+  type HubRouteAccessSortKey,
 } from "./hub-route-access-table-meta";
+
+function columnHeaderTitle(key: string): string | undefined {
+  switch (key) {
+    case "syncAt":
+      return "Last Sync to cloud vault";
+    case "loadAt":
+      return "Last Load on extension";
+    case "addedAt":
+      return "When access was granted";
+    case "expires":
+      return "Access expiry";
+    default:
+      return undefined;
+  }
+}
 
 export type HubRouteAccessDirectoryTableProps<TRow> = {
   items: readonly TRow[];
@@ -27,16 +45,15 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   renderSyncAtCell?: (row: TRow) => ReactNode;
   /** Expanded layout — Loaded timestamp column. */
   renderLoadAtCell?: (row: TRow) => ReactNode;
-  /** Expanded layout — Load permission column. */
-  renderLoadPermCell?: (row: TRow) => ReactNode;
-  /** Expanded layout — Sync permission column. */
-  renderSyncPermCell?: (row: TRow) => ReactNode;
   /** Compact layout — merged activity column. */
   renderActivityCell?: (row: TRow) => ReactNode;
-  /** Compact layout — merged rights column. */
-  renderRightsCell?: (row: TRow) => ReactNode;
   renderRouteCell?: (row: TRow) => ReactNode;
+  /** When access was granted — before Expires column. */
+  renderAddedAtCell: (row: TRow) => ReactNode;
   renderExpiresCell: (row: TRow) => ReactNode;
+  /** Golden directory sort — one value per column key. */
+  getSortValue: (row: TRow, key: HubRouteAccessSortKey) => string | number;
+  defaultSortKey?: HubRouteAccessSortKey;
   showSelectColumn?: boolean;
   isSelected?: (row: TRow) => boolean;
   onToggleSelect?: (row: TRow) => void;
@@ -60,12 +77,12 @@ export function HubRouteAccessDirectoryTable<TRow>({
   renderRoleCell,
   renderSyncAtCell,
   renderLoadAtCell,
-  renderLoadPermCell,
-  renderSyncPermCell,
   renderActivityCell,
-  renderRightsCell,
   renderRouteCell,
+  renderAddedAtCell,
   renderExpiresCell,
+  getSortValue,
+  defaultSortKey = "user",
   showSelectColumn = true,
   isSelected,
   onToggleSelect,
@@ -83,8 +100,13 @@ export function HubRouteAccessDirectoryTable<TRow>({
     layout: columnLayout,
     showRouteColumn,
   };
+  const { sortKey, sortDir, onSort, sorted } = useDirectoryTableSort(
+    [...items],
+    defaultSortKey,
+    getSortValue,
+  );
   const resolvedPageSize = useHubTablePageSize(pageSize);
-  const pagination = useHubTablePagination(items, { resetKey, pageSize: resolvedPageSize });
+  const pagination = useHubTablePagination(sorted, { resetKey, pageSize: resolvedPageSize });
   const pageItems = pagination.pageItems;
   const isRowSelected = (row: TRow) => isSelected?.(row) ?? false;
   const allPageSelected = hubPageAllSelectedByPredicate(pageItems, isRowSelected, canSelectRow);
@@ -113,37 +135,36 @@ export function HubRouteAccessDirectoryTable<TRow>({
       };
     }
 
-    if (columnLayout === "expanded" && col.role) {
-      const title =
-        col.key === "syncAt"
-          ? "Last Sync to cloud vault"
-          : col.key === "loadAt"
-            ? "Last Load on extension"
-            : col.key === "permLoad"
-              ? "Load cookies from vault"
-              : col.key === "permSync"
-                ? "Upload cookies to vault"
-                : undefined;
-      return {
-        ...col,
-        header: (
-          <span
-            className={`hub-users-th-btn hub-users-th-btn--static${
-              col.key === "user" ? " hub-users-th-btn--align-start" : ""
-            }`}
-            title={title}
-          >
-            <span
-              className={`hub-users-th-label${col.key === "user" ? " hub-users-th-label--start" : ""}`}
-            >
-              <HubTableColumnHeader label={col.label} role={col.role} />
-            </span>
-          </span>
-        ),
-      };
-    }
+    const title = columnHeaderTitle(col.key);
+    const labelNode = (
+      <span
+        className={`hub-users-th-label${col.key === "user" ? " hub-users-th-label--start" : ""}`}
+      >
+        {col.role ? (
+          <HubTableColumnHeader label={col.label} role={col.role} />
+        ) : (
+          <span className="hub-users-th-text">{col.label}</span>
+        )}
+        <HubSortIndicator active={sortKey === col.key} dir={sortDir} />
+      </span>
+    );
 
-    return col;
+    return {
+      ...col,
+      header: (
+        <button
+          type="button"
+          className={`hub-users-th-btn${col.key === "user" ? " hub-users-th-btn--align-start" : ""}`}
+          title={title}
+          onClick={() => onSort(col.key as HubRouteAccessSortKey)}
+          aria-sort={
+            sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+          }
+        >
+          {labelNode}
+        </button>
+      ),
+    };
   });
 
   return (
@@ -197,24 +218,18 @@ export function HubRouteAccessDirectoryTable<TRow>({
                   <td className={`${HUB_ROUTE_ACCESS_COL.loadAt} hub-users-cell-muted text-center`}>
                     {renderLoadAtCell?.(row)}
                   </td>
-                  <td className={`${HUB_ROUTE_ACCESS_COL.perm} text-center`}>
-                    {renderLoadPermCell?.(row)}
-                  </td>
-                  <td className={`${HUB_ROUTE_ACCESS_COL.perm} text-center`}>
-                    {renderSyncPermCell?.(row)}
-                  </td>
                 </>
               ) : (
-                <>
-                  <td className={`${HUB_ROUTE_ACCESS_COL.activity} hub-users-cell-muted text-center`}>
-                    {renderActivityCell?.(row)}
-                  </td>
-                  <td className={`${HUB_ROUTE_ACCESS_COL.rights} text-center`}>{renderRightsCell?.(row)}</td>
-                </>
+                <td className={`${HUB_ROUTE_ACCESS_COL.activity} hub-users-cell-muted text-center`}>
+                  {renderActivityCell?.(row)}
+                </td>
               )}
               {showRoute ? (
                 <td className={`${HUB_ROUTE_ACCESS_COL.route} text-center`}>{renderRouteCell?.(row)}</td>
               ) : null}
+              <td className={`${HUB_ROUTE_ACCESS_COL.addedAt} hub-users-cell-muted text-center`}>
+                {renderAddedAtCell(row)}
+              </td>
               <td className={`${HUB_ROUTE_ACCESS_COL.expires} hub-users-cell-muted text-center`}>
                 {renderExpiresCell(row)}
               </td>

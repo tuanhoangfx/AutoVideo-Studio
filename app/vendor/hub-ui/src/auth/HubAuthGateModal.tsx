@@ -4,7 +4,7 @@ import { LogIn, UserPlus, UserRound } from "lucide-react";
 import { HubModalCloseButton } from "../shell/HubModalCloseButton";
 import { compactIconSize } from "../ui-scale";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
-import { normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
+import { formatHubAuthErrorMessage, normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
 
 type AuthMode = "signin" | "signup" | "anonymous";
 
@@ -82,9 +82,7 @@ export function HubAuthGateModal({
       onAuthed?.();
     } catch (err) {
       setBusy(false);
-      setMessage(
-        normalizeHubAuthError(err instanceof Error ? err.message : String(err), errorOptions),
-      );
+      setMessage(normalizeHubAuthError(err, errorOptions));
     }
   };
 

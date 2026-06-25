@@ -5,6 +5,7 @@
 
 :root {
   --hub-sidebar-width: 15rem;
+  --hub-main-chrome-top: 0px;
 }
 
 /* --- index.html boot overlay (before React) --- */
@@ -20,8 +21,10 @@
 
 #hub-boot-loader.hub-boot-loader--pane {
   left: var(--hub-sidebar-width);
+  top: var(--hub-main-chrome-top, 0px);
   width: auto;
   right: 0;
+  bottom: 0;
 }
 
 .hub-boot-orb {
@@ -74,11 +77,11 @@
   }
 }
 
-/* --- React portaled loader (center of main pane = center of viewport horizontally in pane) --- */
+/* --- React portaled loader (center of main pane below chrome stack) --- */
 .hub-tab-loader-fill {
   position: fixed;
   z-index: 35;
-  top: 0;
+  top: var(--hub-main-chrome-top, 0px);
   right: 0;
   bottom: 0;
   left: var(--hub-sidebar-width, 15rem);
@@ -92,6 +95,28 @@
 .hub-tab-loader-fill--dim {
   background: color-mix(in srgb, var(--bg, #0b1020) 45%, transparent);
   backdrop-filter: blur(2px);
+}
+
+/* Inline loader — modals / nested panels (parent must be position:relative + min-height) */
+.hub-tab-loader-inline {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hub-tab-loader-inline--dim {
+  background: color-mix(in srgb, var(--bg, #0b1020) 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+/* Collapse chrome stack when all banner slots render null — no ResizeObserver flicker */
+.hub-main-chrome-stack:empty {
+  display: none;
 }
 
 .hub-loader-orb {

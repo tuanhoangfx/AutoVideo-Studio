@@ -14,6 +14,10 @@ export type HubHeaderPanelButtonProps = {
   onClick: () => void;
 };
 
+/** Golden header/sidebar trigger — borderless; matches app-tab-header.css hub-header-panel-btn. */
+export const HUB_HEADER_PANEL_BTN_CLASS =
+  "hub-header-panel-btn relative inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg px-2.5";
+
 /** Golden header/sidebar trigger — Log · Settings · same chrome as tool-detail modals. */
 export function HubHeaderPanelButton({
   icon: Icon,
@@ -27,9 +31,7 @@ export function HubHeaderPanelButton({
 }: HubHeaderPanelButtonProps) {
   const triggerClass = sidebarRow
     ? "relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-[var(--muted)] transition-colors hover:bg-white/5 hover:text-[var(--text)]"
-    : compact
-      ? "btn btn-ghost relative inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 px-2.5"
-      : "btn btn-ghost relative inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 px-2.5";
+    : HUB_HEADER_PANEL_BTN_CLASS;
 
   return (
     <button

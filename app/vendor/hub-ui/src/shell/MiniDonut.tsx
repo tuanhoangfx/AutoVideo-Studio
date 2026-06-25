@@ -1,6 +1,8 @@
 import type { FilterIconMeta } from "../types/filter-badge";
 import { prepareChartItems } from "../chart-items";
+import { chartRankBarColor } from "../lib/chart-palette";
 import { compactIconSize } from "../ui-scale";
+import { HUB_ANALYTICS_CAPTION_TYPO_CLASS, HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
 
 export type DonutItem = {
   label: string;
@@ -9,8 +11,6 @@ export type DonutItem = {
   iconMeta?: FilterIconMeta | null;
   iconSrc?: string;
 };
-
-const PALETTE = ["#818cf8", "#22c55e", "#a855f7", "#f59e0b", "#06b6d4", "#ec4899", "#f43f5e", "#facc15"];
 
 function fmtInt(n: number): string {
   return new Intl.NumberFormat("vi-VN").format(n);
@@ -42,7 +42,7 @@ export function MiniDonut({
       const dashoffset = -state.acc;
       state.out.push({
         ...it,
-        color: it.color ?? PALETTE[i % PALETTE.length],
+        color: it.color ?? chartRankBarColor(i, it.label),
         dasharray,
         dashoffset,
       });
@@ -53,9 +53,9 @@ export function MiniDonut({
 
   return (
     <div className="hub-chart-card rounded-2xl border border-white/5 bg-[var(--panel)] p-4">
-      <div className="mb-2 shrink-0 text-[10px] uppercase tracking-wider text-[var(--muted)]">{title}</div>
+      <div className={`mb-2 shrink-0 text-[var(--muted)] ${HUB_ANALYTICS_CAPTION_TYPO_CLASS}`}>{title}</div>
       <div
-        className="hub-chart-card__body hub-chart-card__body--donut text-xs"
+        className="hub-chart-card__body hub-chart-card__body--donut"
         style={{ gridTemplateRows: `repeat(${Math.max(slices.length, 1)}, auto)` }}
       >
         <div className="hub-chart-card__donut relative shrink-0" style={{ width: size, height: size }}>
@@ -106,7 +106,7 @@ export function MiniDonut({
         {slices.map((s, i) => (
           <span
             key={`${s.label}-value`}
-            className="hub-chart-donut-value font-mono text-[10px] tabular-nums"
+            className={`hub-chart-donut-value tabular-nums ${HUB_SHELL_LABEL_TYPO_CLASS}`}
             style={{ gridRow: i + 1 }}
           >
             {fmtInt(s.value)}

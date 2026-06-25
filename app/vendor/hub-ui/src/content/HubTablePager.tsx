@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HUB_TABLE_PAGE_SIZE } from "../table/hub-table-pagination";
+import { directoryPagerHideWhenSinglePage } from "../table/directory-pager-config";
 
 export type HubTablePagerProps = {
   pageIndex: number;
@@ -9,7 +10,7 @@ export type HubTablePagerProps = {
   totalCount: number;
   onPrev: () => void;
   onNext: () => void;
-  /** Hide when total rows ≤ page size (default true). */
+  /** Hide when total rows ≤ page size. Default: directoryPagerHideWhenSinglePage() → false (always show). */
   hideWhenSinglePage?: boolean;
   pageSize?: number;
   ariaLabel?: string;
@@ -24,7 +25,7 @@ export function HubTablePager({
   totalCount,
   onPrev,
   onNext,
-  hideWhenSinglePage = true,
+  hideWhenSinglePage = directoryPagerHideWhenSinglePage(),
   pageSize = HUB_TABLE_PAGE_SIZE,
   ariaLabel = "Table pages",
 }: HubTablePagerProps) {

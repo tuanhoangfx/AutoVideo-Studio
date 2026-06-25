@@ -12,7 +12,7 @@
 - Timestamp: 2026-06-08 15:40 (UTC+7)
 - Prompt: xóa NEXT_PUBLIC_WORKER_URL trên Vercel; Working Rules
 - Commit: `ef54d81`
-- Status: Verified
+- Status: Committed
 - Release: https://p0021-autovideo-studio.vercel.app
 
 ### Changes

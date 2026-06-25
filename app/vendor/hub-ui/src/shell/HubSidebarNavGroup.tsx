@@ -1,6 +1,6 @@
 import { Minus, Plus, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { compactIconSize } from "../ui-scale";
+import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import {
   navActiveBarClass,
   navActiveBgClass,
@@ -63,7 +63,7 @@ export function HubSidebarNavGroupHeader({
           className={`absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r ${navActiveBarClass(iconTone)}`}
         />
       ) : null}
-      <Icon size={compactIconSize(16)} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
+      <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
       <span className="flex-1 text-left">{label}</span>
       {showToggleIcon ? (
         <ToggleIcon
@@ -116,7 +116,7 @@ export function NavGroupSubNav<TId extends string>({
                   : "text-[var(--muted)] group-hover:bg-white/[.04] group-hover:text-[var(--text)]"
               }`}
             >
-              <Icon size={compactIconSize(14)} className={`shrink-0 ${navIconClass(iconTone, isActive)}`} aria-hidden />
+              <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, isActive)}`} aria-hidden />
               <span className="min-w-0 flex-1 truncate text-left">{label}</span>
               {badge != null && badge > 0 ? (
                 <span className="shrink-0 rounded-full bg-amber-500/25 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-amber-200">

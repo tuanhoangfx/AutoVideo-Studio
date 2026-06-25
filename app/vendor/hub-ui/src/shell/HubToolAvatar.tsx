@@ -4,9 +4,9 @@ import { compactIconSize } from "../ui-scale";
 
 export type HubToolAvatarSize = "sm" | "md" | "lg";
 
-const SIZE: Record<HubToolAvatarSize, number> = { sm: 32, md: 40, lg: 48 };
-const GLYPH: Record<HubToolAvatarSize, number> = { sm: 20, md: 26, lg: 32 };
-const ICON: Record<HubToolAvatarSize, number> = { sm: 16, md: 18, lg: 22 };
+const SIZE: Record<HubToolAvatarSize, number> = { sm: 22, md: 32, lg: 40 };
+const GLYPH: Record<HubToolAvatarSize, number> = { sm: 14, md: 20, lg: 26 };
+const ICON: Record<HubToolAvatarSize, number> = { sm: 14, md: 16, lg: 20 };
 
 export type HubToolAvatarProps = {
   code: string;
@@ -31,7 +31,11 @@ export function HubToolAvatar({
   size = "md",
   scaled = false,
 }: HubToolAvatarProps) {
-  const dim = (n: number) => (scaled ? compactIconSize(n) : n);
+  const dim = (n: number) => {
+    if (!scaled) return n;
+    if (size === "sm") return n;
+    return compactIconSize(n);
+  };
   const px = dim(SIZE[size]);
   const glyphPx = dim(GLYPH[size]);
   const iconPx = dim(ICON[size]);

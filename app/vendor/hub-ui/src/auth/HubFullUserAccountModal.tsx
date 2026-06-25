@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { KeyRound, LogOut, Mail, RefreshCcw, ShieldCheck, User } from "lucide-react";
+import { KeyRound, LogOut, Mail, RefreshCcw, User } from "lucide-react";
 import type { HubSessionLike } from "@tool-workspace/hub-identity";
 import { canUseEmailPasswordRecovery, hubSessionLabels } from "@tool-workspace/hub-identity";
 import {
@@ -22,6 +22,7 @@ import {
   hubUserAccountSectionIcon,
   hubUserAccountTocItems,
 } from "./hub-user-account-toc";
+import { resolveWorkspaceRoleIcon, workspaceRoleLabel } from "./hub-workspace-role-icon";
 
 export { HUB_FULL_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
 export type HubFullUserAccountTocId = "hub-user-account";
@@ -100,27 +101,33 @@ export function HubFullUserAccountModal({
   const tocItems = useMemo(() => hubUserAccountTocItems(HUB_FULL_USER_ACCOUNT_TOC), []);
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
 
-  const defaultRows: HubWorkspaceUserProfileRow[] = useMemo(
-    () => [
+  const defaultRows: HubWorkspaceUserProfileRow[] = useMemo(() => {
+    const roleValue = resolvedRole ?? roleLabel;
+    const roleMeta = resolveWorkspaceRoleIcon(roleValue);
+    return [
       { label: "User ID", value: labels.loginId || "—", icon: User },
       { label: "Email", value: emailDisplay, icon: Mail },
       { label: "Password", value: session ? "••••••••" : "—", icon: KeyRound },
-      { label: "Role", value: resolvedRole ?? roleLabel, icon: ShieldCheck },
+      {
+        label: "Role",
+        value: resolvedRole ? workspaceRoleLabel(resolvedRole) : roleLabel,
+        icon: roleMeta.icon,
+        iconClassName: roleMeta.className,
+      },
       { label: "Provider", value: provider, icon: KeyRound },
       { label: "Created", value: createdAt, icon: User },
       { label: "Last sign in", value: lastSignIn, icon: RefreshCcw },
-    ],
-    [
-      labels.loginId,
-      emailDisplay,
-      session,
-      resolvedRole,
-      roleLabel,
-      provider,
-      createdAt,
-      lastSignIn,
-    ],
-  );
+    ];
+  }, [
+    labels.loginId,
+    emailDisplay,
+    session,
+    resolvedRole,
+    roleLabel,
+    provider,
+    createdAt,
+    lastSignIn,
+  ]);
 
   const rows = rowsOverride ?? defaultRows;
 
@@ -242,7 +249,7 @@ export function HubFullUserAccountModal({
                 <HubUserModalFieldRow
                   key={row.label}
                   icon={row.icon}
-                  iconClassName={FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
+                  iconClassName={row.iconClassName ?? FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
                   label={row.label}
                 >
                   {renderFieldValue(row)}

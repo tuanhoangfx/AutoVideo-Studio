@@ -1,6 +1,5 @@
 import { User } from "lucide-react";
 import { HubSidebarFooterButton } from "../shell/HubSidebarFooterButton";
-import { compactIconSize } from "../ui-scale";
 import { resolveWorkspaceRoleIcon } from "./hub-workspace-role-icon";
 
 export type HubSidebarUserFooterProps = {
@@ -8,20 +7,37 @@ export type HubSidebarUserFooterProps = {
   onOpenUser: () => void;
   /** Workspace role key — icon only, shown before email (admin / manager / user). */
   roleKey?: string;
+  /** Wait for profiles.role — icon slot reserved, no JWT fallback flash. */
+  roleIconPending?: boolean;
   label?: string;
   title?: string;
 };
 
-/** Sidebar User row — role icon + email (no Signed-in pill). */
+/** Sidebar User row — signed-in: role icon + user ID/email only (no "User" label). */
 export function HubSidebarUserFooter({
   footerUserLabel,
   onOpenUser,
   roleKey = "user",
-  label = "User",
+  roleIconPending = false,
   title = "Account & sign out",
+  label = "User",
 }: HubSidebarUserFooterProps) {
   const roleMeta = resolveWorkspaceRoleIcon(roleKey);
   const RoleIcon = roleMeta.icon;
+  const signedIn = roleKey !== "anonymous";
+
+  if (signedIn) {
+    return (
+      <HubSidebarFooterButton
+        icon={RoleIcon}
+        iconClass={roleIconPending ? "opacity-0" : roleMeta.className}
+        iconFadeIn={!roleIconPending}
+        label={footerUserLabel}
+        title={title}
+        onClick={onOpenUser}
+      />
+    );
+  }
 
   return (
     <HubSidebarFooterButton
@@ -31,14 +47,9 @@ export function HubSidebarUserFooter({
       title={title}
       onClick={onOpenUser}
       trailing={
-        <span className="flex max-w-[140px] items-center gap-1.5 truncate">
-          <RoleIcon
-            size={compactIconSize(12)}
-            className={`shrink-0 ${roleMeta.className}`}
-            aria-hidden
-          />
-          <span className="truncate text-xs font-medium text-[var(--text)]/80">{footerUserLabel}</span>
-        </span>
+        footerUserLabel && footerUserLabel !== label ? (
+          <span className="max-w-[140px] truncate text-xs font-medium text-[var(--text)]/80">{footerUserLabel}</span>
+        ) : null
       }
     />
   );

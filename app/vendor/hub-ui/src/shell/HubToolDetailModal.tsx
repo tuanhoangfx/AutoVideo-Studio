@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { HubDetailModal, type HubDetailModalSize } from "./HubDetailModal";
@@ -108,6 +108,7 @@ export type HubToolDetailModalProps = {
   scrollRootSelector?: string;
   footer?: ReactNode;
   shellClassName?: string;
+  shellStyle?: CSSProperties;
   bodyClassName?: string;
   size?: HubDetailModalSize;
   ariaLabelledBy?: string;
@@ -134,6 +135,7 @@ export function HubToolDetailModal({
   scrollRootSelector = HUB_TOOL_DETAIL_SCROLL_ROOT,
   footer,
   shellClassName = "",
+  shellStyle,
   bodyClassName = "",
   size = "detail",
   ariaLabelledBy,
@@ -210,6 +212,7 @@ export function HubToolDetailModal({
       ariaLabelledBy={ariaLabelledBy ?? (title ? titleId : undefined)}
       size={size}
       shellClassName={`hub-tool-detail-modal${shellClassName ? ` ${shellClassName}` : ""}`}
+      shellStyle={shellStyle}
       header={resolvedHeader}
       footer={resolvedFooter}
     >

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 /** Default rows per Hub table page (E0001 route pager parity). */
-export const HUB_TABLE_PAGE_SIZE = 25;
+export const HUB_TABLE_PAGE_SIZE = 20;
 
 /** Reset pager when search/filter/sort/columns change — table + card grid share this contract. */
 export function hubDirectoryListResetKey(
@@ -30,6 +30,13 @@ export function hubTablePaginationResetKey(
   const lastKey = last?.id ?? String(last ?? n - 1);
   return `${n}:${firstKey}:${lastKey}`;
 }
+
+/** Server-side directory page — items are pre-sliced; host owns pageIndex. */
+export type HubServerPaginationControl = {
+  totalCount: number;
+  pageIndex: number;
+  onPageChange: (index: number) => void;
+};
 
 export type HubTablePaginationState<T> = {
   pageIndex: number;
@@ -130,9 +137,14 @@ export function hubTogglePageSelectAll<T>(
 
 export function useHubTablePagination<T>(
   items: readonly T[],
-  options?: { pageSize?: number; resetKey?: string | number | boolean | null },
+  options?: {
+    pageSize?: number;
+    resetKey?: string | number | boolean | null;
+    server?: HubServerPaginationControl;
+  },
 ): HubTablePaginationState<T> {
   const pageSize = options?.pageSize ?? HUB_TABLE_PAGE_SIZE;
+  const server = options?.server;
   const [pageIndex, setPageIndex] = useState(0);
   const resolvedResetKey = useMemo(
     () => hubTablePaginationResetKey(items, options?.resetKey),
@@ -140,17 +152,48 @@ export function useHubTablePagination<T>(
   );
 
   useEffect(() => {
+    if (server) return;
     setPageIndex(0);
-  }, [resolvedResetKey]);
+  }, [resolvedResetKey, server]);
 
-  const base = useMemo(() => paginateHubTableItems(items, pageIndex, pageSize), [items, pageIndex, pageSize]);
-  const totalPages = base.totalPages;
+  const clientBase = useMemo(
+    () => paginateHubTableItems(items, pageIndex, pageSize),
+    [items, pageIndex, pageSize],
+  );
 
-  return {
-    ...base,
-    goPrev: () => setPageIndex((p) => Math.max(0, p - 1)),
-    goNext: () => setPageIndex((p) => Math.min(totalPages - 1, p + 1)),
-    setPageIndex: (index: number) =>
-      setPageIndex(Math.min(Math.max(0, index), Math.max(0, totalPages - 1))),
-  };
+  return useMemo((): HubTablePaginationState<T> => {
+    if (server) {
+      const totalCount = server.totalCount;
+      const serverPageIndex = server.pageIndex;
+      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+      const rangeStart = totalCount > 0 ? serverPageIndex * pageSize + 1 : 0;
+      const rangeEnd = Math.min(totalCount, (serverPageIndex + 1) * pageSize);
+      const clampPage = (index: number) =>
+        Math.min(Math.max(0, index), Math.max(0, totalPages - 1));
+
+      return {
+        pageIndex: serverPageIndex,
+        pageItems: items as T[],
+        totalCount,
+        totalPages,
+        pageSize,
+        rangeStart,
+        rangeEnd,
+        showPager: totalCount > pageSize,
+        goPrev: () => server.onPageChange(clampPage(serverPageIndex - 1)),
+        goNext: () => server.onPageChange(clampPage(serverPageIndex + 1)),
+        setPageIndex: (index: number) => server.onPageChange(clampPage(index)),
+      };
+    }
+
+    const totalPages = clientBase.totalPages;
+
+    return {
+      ...clientBase,
+      goPrev: () => setPageIndex((p) => Math.max(0, p - 1)),
+      goNext: () => setPageIndex((p) => Math.min(totalPages - 1, p + 1)),
+      setPageIndex: (index: number) =>
+        setPageIndex(Math.min(Math.max(0, index), Math.max(0, totalPages - 1))),
+    };
+  }, [clientBase, items, pageSize, server]);
 }

@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Check } from "lucide-react";
+import { type ReactNode } from "react";
+import { HubCopyTickWrap } from "./HubCopyTickWrap";
+import { useHubCopyFlash } from "./HubInlineCopyControl";
 
 export type MetaTone = "amber" | "cyan" | "emerald" | "indigo" | "muted" | "rose" | "violet";
 
@@ -58,36 +59,31 @@ export function CopyMetaChip({
   labelClassName?: string;
   onCopied?: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), 1400);
-    return () => window.clearTimeout(timer);
-  }, [copied]);
+  const { copied, flash } = useHubCopyFlash();
 
   return (
-    <button
-      type="button"
-      title={title ?? "Copy"}
-      className={`group inline-flex max-w-full items-center gap-1 ${className}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        void navigator.clipboard?.writeText(value).then(() => {
-          setCopied(true);
-          onCopied?.();
-        });
-      }}
-    >
-      <MetaChip
-        icon={icon}
-        label={label}
-        tone={tone}
-        className={className}
-        labelClassName={labelClassName}
-      />
-      {copied ? <Check size={10} className="shrink-0 text-emerald-400" aria-hidden /> : null}
-    </button>
+    <HubCopyTickWrap copied={copied}>
+      <button
+        type="button"
+        title={title ?? "Copy"}
+        className="group inline-flex max-w-full"
+        onClick={(e) => {
+          e.stopPropagation();
+          void navigator.clipboard?.writeText(value).then(() => {
+            flash();
+            onCopied?.();
+          });
+        }}
+      >
+        <MetaChip
+          icon={icon}
+          label={label}
+          tone={tone}
+          className={className}
+          labelClassName={labelClassName}
+        />
+      </button>
+    </HubCopyTickWrap>
   );
 }
 

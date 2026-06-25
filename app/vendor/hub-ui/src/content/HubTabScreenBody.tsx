@@ -35,7 +35,7 @@ export function HubTabScreenBody({
 }) {
   const hasAnalytics = Boolean(kpiBand || kpis?.length || charts);
   const showAnalyticsZone = hasAnalytics || reserveAnalyticsBand;
-  const showSectionRule = Boolean(sectionRuleLabel && showAnalyticsZone);
+  const showSectionRule = Boolean(sectionRuleLabel && (hasAnalytics || reserveAnalyticsBand));
   const bodyClass = bodyFlex
     ? "hub-tab-body-zone hub-tab-body-zone--split space-y-3"
     : "hub-tab-body-zone space-y-3";

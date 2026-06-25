@@ -1,7 +1,18 @@
 import type { ReactNode } from "react";
 import type { TimeRange } from "./constants";
 
-export type PrefItem = { key: string; label: string };
+export type PrefIcon = React.ComponentType<{
+  size?: number;
+  className?: string;
+  "aria-hidden"?: boolean;
+}>;
+
+export type PrefItem = {
+  key: string;
+  label: string;
+  icon?: PrefIcon;
+  iconClassName?: string;
+};
 
 /** Extra settings tab (e.g. Cookie bridge / vault) between General and Display. */
 export type SettingsExtraTab = {
@@ -9,6 +20,15 @@ export type SettingsExtraTab = {
   label: string;
   icon: ReactNode;
   content: ReactNode;
+};
+
+/** Top-level TOC section in the Settings modal (same level as Display · Shortcuts). */
+export type HubDisplayPrefsToolSection = {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  body: ReactNode;
+  headerActions?: ReactNode;
 };
 
 export type DisplayPrefsPrefs = {
@@ -84,14 +104,13 @@ export type HubDisplayPrefsProps = {
   subTabDisplay?: SubTabDisplayConfig;
   /** @deprecated Prefer `displayExtras`. */
   generalExtras?: ReactNode;
-  /** Tool-specific Display subsections (App mode, List sort, Folders, …). */
+  /** Extra toggles rendered inside App mode (e.g. 2FA mask password). */
   displayExtras?: ReactNode;
-  /**
-   * @deprecated Subsections inside `displayExtras` are nested under the Display TOC group.
-   * Use `SettingsSubsection` / `Section` — no separate TOC rows.
-   */
-  generalSectionToc?: { id: string; label: string; icon?: ReactNode; emoji?: string }[];
+  /** Extra footer actions before “Reset to defaults” (e.g. tab-specific Save). */
+  footerActions?: ReactNode;
   tablePanel?: ReactNode;
+  /** Label for the table settings section in Display panel / Settings (default: Table columns). */
+  tableSectionLabel?: string;
   /** Actions in the Table columns section header (e.g. Reset columns). */
   tableSectionActions?: ReactNode;
   tableActiveCount?: number;
@@ -99,10 +118,8 @@ export type HubDisplayPrefsProps = {
   onLog?: (scope: string, message: string) => void;
   mainSelector?: string;
   title?: string;
-  /** Header dropdown width in px (default 420 — P0020 Cookie Auto). */
-  panelWidth?: number;
-  /** CSS max-height for scrollable panel (default min(80vh, 42rem)). */
-  maxPanelHeight?: string;
   /** @deprecated Pass content via `displayExtras` + `SettingsSubsection` instead. */
   extraTabs?: SettingsExtraTab[];
+  /** Tool-owned TOC sections (e.g. bulk Startup URL on Profiles). */
+  toolSections?: HubDisplayPrefsToolSection[];
 };

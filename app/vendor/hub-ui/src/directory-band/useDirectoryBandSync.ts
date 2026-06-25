@@ -38,15 +38,6 @@ export function useDirectoryBandSync(
       handlers.setDirectoryCharts(null);
       handlers.setSectionRuleLabel(undefined);
     };
-  }, [
-    enabled,
-    kpiKey,
-    chartsKey,
-    sectionRuleLabel,
-    kpis,
-    charts,
-    handlers.setDirectoryCharts,
-    handlers.setDirectoryKpis,
-    handlers.setSectionRuleLabel,
-  ]);
+    // kpiKey/chartsKey are stable fingerprints; kpis/charts omitted from deps to avoid ReactNode identity loops.
+  }, [enabled, kpiKey, chartsKey, sectionRuleLabel, handlers.setDirectoryCharts, handlers.setDirectoryKpis, handlers.setSectionRuleLabel]);
 }

@@ -9,6 +9,8 @@ export type HubLoadingViewProps = {
   variant?: "full" | "overlay" | "skeleton";
   /** When false, skip portal overlay (hidden/inactive tabs must not block the active screen). */
   enabled?: boolean;
+  /** When false, render inline in the parent (modals / nested panels). Default: portaled main-pane center. */
+  portaled?: boolean;
 };
 
 function HubLoaderOrb({ Icon }: { Icon: LucideIcon }) {
@@ -33,12 +35,17 @@ export function HubLoadingView({
   ariaLabel,
   variant = "full",
   enabled = true,
+  portaled = true,
 }: HubLoadingViewProps) {
   if (!enabled) return null;
   const dim = variant === "overlay" || variant === "skeleton";
   const node = (
     <div
-      className={`hub-tab-loader-fill${dim ? " hub-tab-loader-fill--dim" : ""}`}
+      className={
+        portaled
+          ? `hub-tab-loader-fill${dim ? " hub-tab-loader-fill--dim" : ""}`
+          : `hub-tab-loader-inline${dim ? " hub-tab-loader-inline--dim" : ""}`
+      }
       role="status"
       aria-label={ariaLabel}
       aria-live="polite"
@@ -46,6 +53,7 @@ export function HubLoadingView({
       <HubLoaderOrb Icon={Icon} />
     </div>
   );
+  if (!portaled) return node;
   const root =
     typeof document !== "undefined"
       ? (document.getElementById(HUB_TAB_LOADER_ROOT_ID) ?? ensureHubTabLoaderRoot())

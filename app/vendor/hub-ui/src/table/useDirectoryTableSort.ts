@@ -1,5 +1,17 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useReducer } from "react";
 import type { HubSortDir } from "./HubSortIndicator";
+
+type SortState<TKey extends string> = { sortKey: TKey; sortDir: HubSortDir };
+
+export function directoryTableSortReducer<TKey extends string>(
+  state: SortState<TKey>,
+  key: TKey,
+): SortState<TKey> {
+  if (state.sortKey === key) {
+    return { sortKey: key, sortDir: state.sortDir === "asc" ? "desc" : "asc" };
+  }
+  return { sortKey: key, sortDir: "asc" };
+}
 
 export function useDirectoryTableSort<TKey extends string, TItem>(
   items: TItem[],
@@ -7,18 +19,13 @@ export function useDirectoryTableSort<TKey extends string, TItem>(
   sortableValue: (item: TItem, key: TKey) => string | number,
   defaultDir: HubSortDir = "asc",
 ) {
-  const [sortKey, setSortKey] = useState<TKey>(defaultKey);
-  const [sortDir, setSortDir] = useState<HubSortDir>(defaultDir);
+  const [{ sortKey, sortDir }, dispatch] = useReducer(directoryTableSortReducer<TKey>, {
+    sortKey: defaultKey,
+    sortDir: defaultDir,
+  });
 
   const onSort = useCallback((key: TKey) => {
-    setSortKey((prev) => {
-      if (prev === key) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        return prev;
-      }
-      setSortDir("asc");
-      return key;
-    });
+    dispatch(key);
   }, []);
 
   const sorted = useMemo(() => {
