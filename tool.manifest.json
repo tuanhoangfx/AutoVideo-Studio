@@ -72,6 +72,7 @@
   "vercel": {
     "project": "p0021-autovideo-studio",
     "projectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ",
+    "rootDirectory": "app",
     "productionUrl": "https://p0021-autovideo-studio.vercel.app",
     "customDomain": "https://p0021.infi.io.vn",
     "customDomainStatus": "verified",
