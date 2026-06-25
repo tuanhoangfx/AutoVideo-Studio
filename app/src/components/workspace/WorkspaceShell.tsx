@@ -231,7 +231,7 @@ function resolveHeader(pathname: string): {
       centerStats: [
         { key: 'tabs', icon: Boxes, label: 'Tabs', value: 2, toneClass: 'text-indigo-300' },
         { key: 'systems', icon: Activity, label: 'Ready', value: 1, toneClass: 'text-emerald-300' },
-      ],
+      ] as TabHeaderStatItem[],
     };
   }
 
@@ -247,7 +247,7 @@ function resolveHeader(pathname: string): {
     centerStats: [
       { key: 'voices', icon: Activity, label: 'Voices', value: 55, toneClass: 'text-emerald-300' },
       { key: 'providers', icon: Boxes, label: 'Providers', value: 3, toneClass: 'text-amber-300' },
-    ],
+    ] as TabHeaderStatItem[],
   };
 }
 
