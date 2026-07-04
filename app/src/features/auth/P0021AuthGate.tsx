@@ -10,7 +10,7 @@ import { useHubAuth } from './AuthSessionProvider';
 export function P0021AuthGate() {
   const { signIn, refreshSession } = useHubAuth();
   const profileRoleClient = useMemo(
-    () => (isHubSupabaseConfigured ? getIdentitySupabase() : null),
+    () => (isHubSupabaseConfigured ? getIdentitySupabase() : undefined),
     [],
   );
 
@@ -38,7 +38,7 @@ export function P0021AuthGate() {
       {...createWorkspaceAuthGate({
         code: 'P0021',
         headerLeading: <HubAuthBrandIcon src="/icons/tools/P0021.svg" />,
-        profileRoleClient,
+        profileRoleClient: getIdentitySupabase() as never,
         onPrepareProfileRoleClient: async () => {
           await applyHubIdentitySession();
         },

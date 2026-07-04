@@ -24,6 +24,7 @@ import { useHubAuth } from '@/features/auth/AuthSessionProvider';
 import { isHubSupabaseConfigured } from '@/lib/hub-supabase-env';
 import { getIdentitySupabase } from '@/lib/supabase-identity';
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from './AppTabHeader';
+import type { HubGlyphComponent } from '@/lib/hub-ui';
 import { FooterSettings } from './FooterSettings';
 import { GlobalJobPoller } from './GlobalJobPoller';
 
@@ -218,7 +219,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             <HubWorkspaceUserShell
               session={session}
               labels={labels}
-              profileRoleClient={getIdentitySupabase()}
+              profileRoleClient={getIdentitySupabase() as never}
               profileRoleUserId={session?.user?.id}
               profileRoleEmail={session?.user?.email}
               footerTitle="Open workspace user information"
@@ -258,7 +259,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
 function resolveHeader(pathname: string): {
   ariaLabel: string;
-  titleIcon: IconComponent;
+  titleIcon: HubGlyphComponent;
   titleIconClass: string;
   title: string;
   metaItems: TabHeaderMetaItem[];
