@@ -212,7 +212,16 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
   );
 }
 
-function StatLine({ icon: Icon, brandIcon, dotClass, value, label, toneClass, onClick, active }: TabHeaderStatItem) {
+function StatLine({
+  icon: Icon,
+  brandIcon,
+  dotClass,
+  value,
+  label,
+  toneClass,
+  onClick,
+  active,
+}: Omit<TabHeaderStatItem, "key">) {
   const content = (
     <>
       {dotClass ? (

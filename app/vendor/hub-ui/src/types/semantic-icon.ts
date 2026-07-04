@@ -119,6 +119,7 @@ export type SemanticIconKey =
   | "filter.sync"
   | "filter.share"
   | "filter.service"
+  | "filter.serviceCount"
   | "filter.usage"
   | "filter.platform"
   | "filter.quota"
