@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { HubSidebarNavGroup } from "./HubSidebarNavGroup";
 import { HubSidebarNavScreenButton } from "./HubSidebarNavScreenButton";
 import { NavGroupSubNav } from "./HubSidebarNavGroup";
+import { HubSystemTabSubNav } from "./HubSystemTabSubNav";
 import {
   isNavGroupActive,
   isNavScreenGroup,
@@ -56,6 +57,7 @@ export function HubSidebarNavList<TScreen extends string, TView extends string =
               label={entry.label}
               icon={entry.icon}
               iconTone={entry.iconTone}
+              brandIcon={entry.brandIcon}
               active={active}
               badge={badge}
               onClick={() => onNavigateScreen(entry.screen)}
@@ -65,7 +67,7 @@ export function HubSidebarNavList<TScreen extends string, TView extends string =
           );
         }
 
-        const { id, label, icon, iconTone } = entry;
+        const { id, label, icon, iconTone, brandIcon } = entry;
         const groupActive = isNavGroupActive(entry, activeScreen);
         const subnavOpen = groupOpen[id] ?? true;
 
@@ -89,7 +91,7 @@ export function HubSidebarNavList<TScreen extends string, TView extends string =
         };
 
         const defaultSubnav = isNavViewGroup(entry) ? (
-          <NavGroupSubNav
+          <HubSystemTabSubNav
             activeId={groupActive ? activeView : null}
             items={navViewGroupSubNavItems(entry.children)}
             onSelect={(view) => {
@@ -116,6 +118,7 @@ export function HubSidebarNavList<TScreen extends string, TView extends string =
             label={label}
             icon={icon}
             iconTone={iconTone}
+            brandIcon={brandIcon}
             active={groupActive}
             subnavOpen={subnavOpen}
             showToggleIcon={showToggleIcon}

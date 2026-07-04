@@ -4,17 +4,25 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
-import { Activity, Boxes, Code2, Cpu, GitBranch, HardDrive, RefreshCcw, Settings2, User } from 'lucide-react';
-import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
-import { readSystemStatsIntervalMs } from '@/lib/workspace-prefs';
+import { Activity, Boxes, Code2, Cpu, GitBranch, HardDrive, RefreshCcw, Settings2 } from 'lucide-react';
+import { hubSessionLabels, isWorkspaceAnonymousAllowed } from '@tool-workspace/hub-identity';
 import {
+  HubAuthBootPanel,
+  HubAuthBrandIcon,
+  HubWorkspaceUserShell,
   HubSidebarFooterButton,
   navActiveBarClass,
   navActiveBgClass,
   navActiveTextClass,
   navIconClass,
   type NavIconTone,
-} from '@/lib/hub-ui';
+} from '@tool-workspace/hub-ui';
+import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
+import { readSystemStatsIntervalMs } from '@/lib/workspace-prefs';
+import { P0021AuthGate } from '@/features/auth/P0021AuthGate';
+import { useHubAuth } from '@/features/auth/AuthSessionProvider';
+import { isHubSupabaseConfigured } from '@/lib/hub-supabase-env';
+import { getIdentitySupabase } from '@/lib/supabase-identity';
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from './AppTabHeader';
 import { FooterSettings } from './FooterSettings';
 import { GlobalJobPoller } from './GlobalJobPoller';
@@ -29,7 +37,6 @@ type WorkspaceNavItem = {
   iconTone: NavIconTone;
 };
 
-const APP_USER_LABEL = 'czpgopro';
 const APP_VERSION_LINE = formatAppVersionWithUpdateDate();
 
 const navItems: WorkspaceNavItem[] = [
@@ -39,6 +46,8 @@ const navItems: WorkspaceNavItem[] = [
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { session, loading, authRequired, policyReady, hubConfigured, signOut } = useHubAuth();
+  const labels = hubSessionLabels(session);
   const isSystem = pathname.startsWith('/system');
   const isStudio = pathname.startsWith('/studio');
 
@@ -141,6 +150,32 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     };
   }, [cpuLabel, isStudio, isSystem, jobCounters.active, jobCounters.done, jobCounters.error, pathname, ramLabel]);
 
+  const loginMandatory = hubConfigured && !isWorkspaceAnonymousAllowed();
+  const effectiveAuthRequired = loginMandatory || authRequired;
+
+  const needsAuthGate = hubConfigured && effectiveAuthRequired && policyReady && !loading && !session;
+  const authBootBlocking = hubConfigured && effectiveAuthRequired && (loading || !policyReady) && !session;
+
+  let mainBody: ReactNode = children;
+  if (needsAuthGate) {
+    mainBody = (
+      <div className="flex min-h-[50vh] items-center justify-center py-8">
+        <P0021AuthGate />
+      </div>
+    );
+  } else if (authBootBlocking) {
+    mainBody = (
+      <div className="flex min-h-[50vh] items-center justify-center py-8">
+        <HubAuthBootPanel
+          title="Welcome to AutoVideo Studio"
+          toolInfo={{ name: 'AutoVideo Studio', tagline: 'Local video studio & render jobs' }}
+          headerLeading={<HubAuthBrandIcon src="/icons/tools/P0021.svg" />}
+          status="Checking workspace session…"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="relative z-10 flex h-screen min-h-0 w-full overflow-hidden">
       <GlobalJobPoller />
@@ -179,14 +214,29 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         </nav>
 
         <footer className="mt-2 shrink-0 space-y-0.5 overflow-visible border-t border-white/5 pt-2.5">
-          <HubSidebarFooterButton
-            icon={User}
-            iconClass="text-violet-400"
-            label="User"
-            title="Current workspace user"
-            disabled
-            trailing={<span className="text-xs font-medium text-[var(--text)]/80">{APP_USER_LABEL}</span>}
-          />
+          {hubConfigured ? (
+            <HubWorkspaceUserShell
+              session={session}
+              labels={labels}
+              profileRoleClient={getIdentitySupabase()}
+              profileRoleUserId={session?.user?.id}
+              profileRoleEmail={session?.user?.email}
+              footerTitle="Open workspace user information"
+              emptyEmailLabel="Not signed in"
+              onSignOut={async () => {
+                await signOut();
+                return true;
+              }}
+            />
+          ) : (
+            <HubSidebarFooterButton
+              icon={Settings2}
+              iconClass="text-violet-400"
+              label="User"
+              title="Hub login not configured"
+              disabled
+            />
+          )}
           <HubSidebarFooterButton
             icon={RefreshCcw}
             iconClass="text-emerald-300"
@@ -200,9 +250,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-5">
         <AppTabHeader {...header} />
-        <div className="py-3">
-          {children}
-        </div>
+        <div className="py-3">{mainBody}</div>
       </main>
     </div>
   );

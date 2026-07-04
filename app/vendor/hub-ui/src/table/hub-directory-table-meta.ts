@@ -225,6 +225,9 @@ export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "defa
   if (variant === "fb-accounts") {
     return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-fb-accounts`;
   }
+  if (variant === "pages") {
+    return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-pages`;
+  }
   if (variant === "users-credentials") {
     return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--users-credentials`;
   }
@@ -255,8 +258,7 @@ export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "defa
   return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-${variant}`;
 }
 
-/** Panel-fill divisor — visible tbody rows on this page (not pageSize cap when search/filter shrinks). */
-export function resolveDirectoryPanelFillRows(pageSize: number, visibleRowCount: number): number {
-  if (visibleRowCount <= 0) return 1;
-  return Math.min(Math.max(1, pageSize), visibleRowCount);
+/** Panel-fill row divisor — always `pageSize` so search/filter partial pages keep compact rows under thead (not 100% stretch). */
+export function resolveDirectoryPanelFillRows(pageSize: number, _visibleRowCount = 0): number {
+  return Math.max(1, pageSize);
 }

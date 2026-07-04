@@ -55,6 +55,57 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--selec
 
 table.hub-users-table.hub-users-table--directory {
   min-width: 48rem;
+  --hub-table-body-size: 12px;
+  --hub-table-body-line-height: 1.45;
+}
+
+/* Directory body typography — status / sync / muted match 12px body (frame-table parity). */
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-status,
+table.hub-users-table[data-hub-directory-select] td .hub-users-status {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--text);
+  text-transform: none;
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td.hub-users-cell-muted,
+table.hub-users-table[data-hub-directory-select] td.hub-users-cell-muted,
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-muted,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-muted {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-email,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-email {
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-sub,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-sub {
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-role-badge,
+table.hub-users-table[data-hub-directory-select] td .hub-users-role-badge {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 500;
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-status-dot,
+table.hub-users-table[data-hub-directory-select] td .hub-users-status-dot {
+  width: 7px;
+  height: 7px;
 }
 
 /* Data columns — colgroup inline width is SSOT; neutralize legacy .hub-users-col--* % from hub-users-table.css */
@@ -260,8 +311,6 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 
 /* Split scroll — thead fixed outside scroll; scrollbar only on tbody pane */
 .hub-directory-table-split {
-  --hub-directory-thead-surface: rgba(255, 255, 255, 0.02);
-  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -274,8 +323,11 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
-  /* Constant gutter — empty + loaded same geometry (Notes-style stable gutter) */
-  --hub-directory-split-scrollbar-pad: var(--hub-split-scroll-size, 10px);
+}
+
+/* Flex-pane — head reserves gutter via pad + ::after (same single surface as head; no th stack) */
+.hub-directory-table-split.hub-directory-table-scroll--flex-pane .hub-directory-table-head {
+  padding-right: var(--hub-directory-split-scrollbar-pad, 0px);
 }
 
 .hub-directory-table-split.hub-directory-table-scroll--flex-pane .hub-directory-table-body-scroll {
@@ -291,6 +343,7 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   height: 100%;
   background: var(--hub-directory-thead-surface);
   pointer-events: none;
+  border-top-right-radius: calc(1rem - 1px);
 }
 
 .hub-directory-table-split table.hub-users-table.hub-users-table--directory,
@@ -316,16 +369,17 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   table-layout: fixed;
 }
 
+.hub-directory-table-split .hub-directory-table-head table.hub-users-table thead,
 .hub-directory-table-split .hub-directory-table-head table.hub-users-table thead th {
-  background: var(--hub-directory-thead-surface);
+  background: transparent;
   border-bottom: none;
 }
 
-/* Pane-chrome split wrap — clip head track to inner golden radius */
+/* Pane-chrome split wrap — radius on head track (parent wrap clips) */
 .hub-directory-table-wrap--pane-chrome > .hub-directory-table-head {
   border-top-left-radius: calc(1rem - 1px);
   border-top-right-radius: calc(1rem - 1px);
-  clip-path: inset(0 round 1rem 1rem 0 0);
+  overflow: hidden;
 }
 
 .hub-directory-table-wrap--pane-chrome > .hub-directory-table-head table.hub-users-table {
@@ -338,7 +392,7 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 }
 
 .hub-directory-table-wrap--pane-chrome > .hub-directory-table-head thead th:last-child {
-  border-top-right-radius: calc(1rem - 1px);
+  border-top-right-radius: 0;
 }
 
 /* Directory icon + label cell — platform / proxy / status body parity */
@@ -363,6 +417,19 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   display: block;
   width: 14px;
   height: 14px;
+  object-fit: contain;
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* GitHub tile mark — optional white pad inside platform tone ring only */
+.hub-directory-brand-icon--tile {
+  padding: 1px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.94);
   object-fit: contain;
 }
 

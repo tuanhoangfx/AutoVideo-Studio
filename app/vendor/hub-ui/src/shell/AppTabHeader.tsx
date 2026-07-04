@@ -11,6 +11,9 @@ import { formatHubTimestampFull } from "../lib/format-hub-timestamp-compact";
 import { useRelativeNow } from "../lib/use-relative-now";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { HubSemanticGlyph } from "./HubSemanticGlyph";
+import { HubTabTitleIcon } from "./HubTabTitleIcon";
 import "./app-tab-header.css";
 
 export type TabTitleMenuItem = {
@@ -21,6 +24,7 @@ export type TabTitleMenuItem = {
 
 export type TabHeaderMetaItem = {
   icon: ElementType<{ size?: number; className?: string }>;
+  /** Native tooltip on the meta chip — not rendered as visible label text. */
   title?: string;
   value: string;
   live?: boolean;
@@ -31,6 +35,7 @@ export type TabHeaderMetaItem = {
 export type TabHeaderStatItem = {
   key: string;
   icon?: ElementType<{ size?: number; className?: string }>;
+  brandIcon?: HubBrandIconId;
   dotClass?: string;
   label: string;
   value: number | string;
@@ -44,6 +49,7 @@ type AppTabHeaderProps = {
   ariaLabel: string;
   titleIcon: ElementType<{ size?: number; className?: string }>;
   titleIconClass?: string;
+  titleBrandIcon?: HubBrandIconId;
   title: string;
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;
@@ -58,8 +64,9 @@ type AppTabHeaderProps = {
 
 function TitleWithMenu({
   title,
-  titleIcon: TitleIcon,
+  titleIcon,
   titleIconClass,
+  titleBrandIcon,
   titleMenu,
   activeTitleMenuId,
   onTitleMenuSelect,
@@ -67,6 +74,7 @@ function TitleWithMenu({
   title: string;
   titleIcon: ElementType<{ size?: number; className?: string }>;
   titleIconClass: string;
+  titleBrandIcon?: HubBrandIconId;
   titleMenu: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
@@ -93,9 +101,13 @@ function TitleWithMenu({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pr-1 text-left transition-colors hover:bg-white/[.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/50"
       >
-        <TitleIcon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+        <HubTabTitleIcon
+          titleIcon={titleIcon}
+          titleIconClass={titleIconClass}
+          titleBrandIcon={titleBrandIcon}
+        />
         <span className="flex min-w-0 flex-col leading-tight">
-          <span className="text-base font-semibold tracking-tight text-[var(--text)]">{title}</span>
+          <span className="app-tab-header__chrome-text tracking-tight text-[var(--text)]">{title}</span>
           {active ? (
             <span className="truncate text-[10px] font-medium text-indigo-300/90">{active.label}</span>
           ) : null}
@@ -183,9 +195,11 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
   const showLiveDot = live !== undefined && !showActivity;
 
   return (
-    <div className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]">
+    <div
+      className="app-tab-header__chrome-text inline-flex max-w-full min-w-0 items-center gap-1.5 text-[var(--muted)]"
+      title={title}
+    >
       <Icon size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
-      {title ? <span className="shrink-0">{title}</span> : null}
       {showLiveDot ? (
         <span
           className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-emerald-400" : "bg-amber-400"}`}
@@ -198,15 +212,15 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
   );
 }
 
-function StatLine({ icon: Icon, dotClass, value, label, toneClass, onClick, active }: TabHeaderStatItem) {
+function StatLine({ icon: Icon, brandIcon, dotClass, value, label, toneClass, onClick, active }: TabHeaderStatItem) {
   const content = (
     <>
       {dotClass ? (
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
-      ) : Icon ? (
-        <Icon size={13} className={`shrink-0 ${toneClass}`} aria-hidden />
+      ) : Icon || brandIcon ? (
+        <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={13} className={`shrink-0 ${toneClass}`} />
       ) : null}
-      <span className="font-semibold tabular-nums text-[var(--text)]/90">{value}</span>
+      <span className="tabular-nums text-[var(--text)]/90">{value}</span>
       <span className="text-[var(--muted)]/80">{label}</span>
     </>
   );
@@ -217,7 +231,7 @@ function StatLine({ icon: Icon, dotClass, value, label, toneClass, onClick, acti
         type="button"
         onClick={onClick}
         title={label}
-        className={`inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[13px] leading-none transition-colors ${
+        className={`app-tab-header__chrome-text inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors ${
           active ? "bg-white/10 text-[var(--text)]" : "text-[var(--muted)] hover:bg-white/5"
         }`}
       >
@@ -227,7 +241,7 @@ function StatLine({ icon: Icon, dotClass, value, label, toneClass, onClick, acti
   }
 
   return (
-    <div className="inline-flex items-center gap-1 text-[13px] leading-none text-[var(--muted)]" title={label}>
+    <div className="app-tab-header__chrome-text inline-flex items-center gap-1 text-[var(--muted)]" title={label}>
       {content}
     </div>
   );
@@ -235,7 +249,7 @@ function StatLine({ icon: Icon, dotClass, value, label, toneClass, onClick, acti
 
 function SessionLine({ sessionMmSs }: { sessionMmSs: string }) {
   return (
-    <div className="inline-flex items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]">
+    <div className="app-tab-header__chrome-text inline-flex items-center gap-1.5 text-[var(--muted)]">
       <Clock size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
       <span className="hidden xl:inline">Session</span>
       <span className="tabular-nums text-[var(--text)]/90">{sessionMmSs}</span>
@@ -247,6 +261,7 @@ export function AppTabHeader({
   ariaLabel,
   titleIcon: TitleIcon,
   titleIconClass = "text-indigo-400",
+  titleBrandIcon,
   title,
   titleMenu,
   activeTitleMenuId,
@@ -274,14 +289,19 @@ export function AppTabHeader({
             title={title}
             titleIcon={TitleIcon}
             titleIconClass={titleIconClass}
+            titleBrandIcon={titleBrandIcon}
             titleMenu={titleMenu}
             activeTitleMenuId={activeTitleMenuId}
             onTitleMenuSelect={onTitleMenuSelect}
           />
         ) : (
           <>
-            <TitleIcon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
-            <h1 className="min-w-0 truncate text-base font-semibold leading-none tracking-tight text-[var(--text)]">
+            <HubTabTitleIcon
+              titleIcon={TitleIcon}
+              titleIconClass={titleIconClass}
+              titleBrandIcon={titleBrandIcon}
+            />
+            <h1 className="app-tab-header__chrome-text min-w-0 truncate tracking-tight text-[var(--text)]">
               {title}
             </h1>
           </>
@@ -302,19 +322,22 @@ export function AppTabHeader({
       </div>
 
       <div
-        className="app-tab-header-center-stats flex min-w-0 items-center justify-center justify-self-center gap-x-2.5 overflow-x-auto"
+        className="app-tab-header-center-stats flex min-w-0 items-center justify-center justify-self-center gap-x-2.5 overflow-x-auto text-[13px]"
         role="status"
         aria-label={`${title} summary`}
       >
-        {centerStats.map((stat, index) => (
-          <span key={stat.key} className="inline-flex items-center gap-x-2.5">
-            {index > 0 ? <Rule /> : null}
-            <StatLine {...stat} />
-          </span>
-        ))}
+        {centerStats.map((stat, index) => {
+          const { key, ...statProps } = stat;
+          return (
+            <span key={key} className="inline-flex items-center gap-x-2.5">
+              {index > 0 ? <Rule /> : null}
+              <StatLine {...statProps} />
+            </span>
+          );
+        })}
       </div>
 
-      <div className="app-tab-header__end flex shrink-0 items-center justify-self-end gap-2 text-[13px] leading-none text-[var(--muted)]">
+      <div className="app-tab-header__end app-tab-header__chrome-text flex shrink-0 items-center justify-self-end gap-2 text-[var(--muted)]">
         {actions}
       </div>
     </header>

@@ -28,6 +28,9 @@
     "test:worker": "powershell -ExecutionPolicy Bypass -File ../scripts/test-worker-smoke.ps1"
   },
   "dependencies": {
+    "@tool-workspace/hub-ui": "file:./vendor/hub-ui",
+    "@tool-workspace/hub-identity": "file:./vendor/hub-identity",
+    "@supabase/supabase-js": "^2.45.4",
     "electron-updater": "^6.8.3",
     "lucide-react": "^0.451.0",
     "next": "14.2.15",

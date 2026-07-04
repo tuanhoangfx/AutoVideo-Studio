@@ -181,6 +181,8 @@ export {
   HubFilterDropdownTrigger,
   HUB_FILTER_OPTION_EMOJI_CLASS,
   HUB_FILTER_BRAND_ICON_CLASS,
+  hubBrandIconImgClass,
+  type HubBrandIconShell,
   filterDropdownPanelSearchPlaceholder,
   folderFilterButtonLabel,
   multiFilterTriggerTitle,
@@ -310,6 +312,7 @@ export {
 } from "./shell/HubTabChrome";
 export { HubTabSectionRule } from "./shell/HubTabSectionRule";
 export { HubAlert } from "./content/HubAlert";
+export { HubDriftBanner, type HubDriftBannerAction, type HubDriftBannerProps } from "./content/HubDriftBanner";
 export { HubDataTable, HubTableEmptyRow, type HubTableColumn } from "./content/HubDataTable";
 export { HubPaginatedDataTable, type HubPaginatedDataTableProps } from "./content/HubPaginatedDataTable";
 export { HubReadOnlyDataTable, type HubReadOnlyDataTableProps } from "./content/HubReadOnlyDataTable";
@@ -375,6 +378,8 @@ export {
   HUB_DIRECTORY_TABLE_SCROLL_CLASS,
   HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
   HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_INLINE_SCROLL_CLASS,
   HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS,
 } from "./table/directory-table-scroll";
 export {
@@ -497,10 +502,35 @@ export {
   type HubSidebarFooterButtonProps,
 } from "./shell/HubSidebarFooterButton";
 export {
+  HubSemanticGlyph,
+} from "./shell/HubSemanticGlyph";
+export {
+  HubBrandIcon,
+} from "./shell/HubBrandIcon";
+export {
+  HubTabTitleIcon,
+} from "./shell/HubTabTitleIcon";
+export type { HubBrandIconProps } from "./shell/HubBrandIcon";
+export {
+  HubNavIcon,
+} from "./shell/HubNavIcon";
+export type { HubNavIconProps } from "./shell/HubNavIcon";
+export {
+  listHubBrandIconIds,
+  resolveHubBrandIcon,
+  resolveHubBrandIconByMatch,
+  clearHubBrandIconMatchCache,
+} from "./lib/resolve-hub-brand-icon";
+export type { HubBrandIconId, HubBrandIconMeta } from "./lib/resolve-hub-brand-icon";
+export {
   HubSidebarNavGroup,
   HubSidebarNavGroupHeader,
   NavGroupSubNav,
 } from "./shell/HubSidebarNavGroup";
+export {
+  HubSystemTabSubNav,
+  HUB_SYSTEM_TAB_SUBNAV_CLASS,
+} from "./shell/HubSystemTabSubNav";
 export type {
   HubSidebarNavGroupHeaderProps,
   HubSidebarNavGroupProps,
@@ -863,6 +893,12 @@ export {
   type HubDirectoryToolbarSelectionProps,
 } from "./shell/HubDirectoryToolbarSelection";
 export {
+  HubDirectoryToolAccessBadge,
+  type HubDirectoryToolAccessBadgeKind,
+  type HubDirectoryToolAccessBadgeProps,
+} from "./shell/HubDirectoryToolAccessBadge";
+export { hubModalDirectoryFilterSelection } from "./shell/hub-modal-directory-filter-preset";
+export {
   buildHubDirectorySelectionSlots,
   type HubDirectorySelectionSlots,
 } from "./shell/hubDirectorySelectionSlots";
@@ -983,6 +1019,7 @@ export {
   type HubWorkspaceUserShellProps,
 } from "./auth/HubWorkspaceUserShell";
 export { HubAccessDeniedPanel, type HubAccessDeniedPanelProps } from "./auth/HubAccessDeniedPanel";
+export { HubAuthBrandIcon, type HubAuthBrandIconProps } from "./auth/HubAuthBrandIcon";
 export { HubAuthBootPanel, type HubAuthBootPanelProps } from "./auth/HubAuthBootPanel";
 export { HubSidebarUserFooter, type HubSidebarUserFooterProps } from "./auth/HubSidebarUserFooter";
 export { HubWorkspaceUserAvatar, type HubWorkspaceUserAvatarProps } from "./auth/HubWorkspaceUserAvatar";

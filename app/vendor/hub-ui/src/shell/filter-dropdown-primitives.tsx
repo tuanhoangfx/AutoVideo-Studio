@@ -19,7 +19,7 @@ export function folderFilterButtonLabel(
   label: string,
   selectedCount: number,
   soleName?: string,
-  showAllLabel = true,
+  showAllLabel = false,
 ): string {
   if (selectedCount === 0) return showAllLabel ? `All ${label}` : label;
   if (selectedCount === 1) return soleName ?? label;
@@ -118,24 +118,37 @@ export function HubFilterDropdownCircle({ checked, indeterminate }: { checked: b
 }
 
 /** Scrollable option list inside filter / period dropdown panels. */
-export const HUB_FILTER_DROPDOWN_LIST_CLASS = "max-h-72 overflow-auto p-1";
+export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list max-h-72 overflow-y-auto overflow-x-hidden p-1 min-w-0";
 
 export const HUB_FILTER_DROPDOWN_PANEL_CLASS =
-  "anim-pop absolute top-full z-30 mt-1 w-72 rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
+  "anim-pop absolute top-full z-30 mt-1 w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
 
 /** Portaled panel — fixed position, escapes modal overflow clipping. */
 export const HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS =
-  "anim-pop fixed z-[2600] w-72 rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
+  "anim-pop fixed z-[2600] w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
 
 /** Golden filter panel row — All {label} + options share one weight (P0004 Group filter). */
 export const HUB_FILTER_DROPDOWN_ROW_CLASS =
-  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-white/5";
+  "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-white/5";
 
 /** Emoji / glyph slot in filter trigger + option rows. */
 export const HUB_FILTER_OPTION_EMOJI_CLASS = "shrink-0 text-base leading-none";
 
-/** Brand logo in filter rows/trigger — styled by product CSS (light tile on dark dropdown). */
-export const HUB_FILTER_BRAND_ICON_CLASS = "hub-filter-brand-icon";
+/** Brand logo in filter rows/trigger — see `hubBrandIconImgClass`. */
+export const HUB_FILTER_BRAND_ICON_CLASS = "hub-filter-brand-icon hub-filter-brand-icon--tile";
+
+export type HubBrandIconShell = "bare" | "tile" | "darkInk";
+
+export function hubBrandIconImgClass(shell: HubBrandIconShell = "bare"): string {
+  switch (shell) {
+    case "darkInk":
+      return "hub-filter-brand-icon hub-filter-brand-icon--dark-ink";
+    case "tile":
+      return HUB_FILTER_BRAND_ICON_CLASS;
+    default:
+      return "hub-filter-brand-icon-bare";
+  }
+}
 
 export function filterDropdownPanelSearchPlaceholder(filterLabel: string) {
   return `Search ${filterLabel.toLowerCase()}…`;

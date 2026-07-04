@@ -28,11 +28,14 @@ import { resolveFilterAllIcon, resolveFilterOptionIcon } from "./filter-icons";
 import {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
+  HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
   HubFilterDropdownCircle,
   HubFilterDropdownPanelSearch,
   HUB_FILTER_OPTION_EMOJI_CLASS,
   HUB_FILTER_BRAND_ICON_CLASS,
+  hubBrandIconImgClass,
+  type HubBrandIconShell,
   filterDropdownPanelSearchPlaceholder,
   hubFilterTriggerClass,
   multiFilterTriggerTitle,
@@ -47,12 +50,15 @@ export type FilterOption = {
   color?: string;
   count?: number;
   iconSrc?: string;
+  /** Brand img shell — bare (colored), tile (dark mark), darkInk (white mono). Default bare. */
+  iconShell?: HubBrandIconShell;
   emoji?: string;
 };
 export type FilterDef = {
   key: string;
   label: string;
   options: FilterOption[];
+  /** When true, empty trigger + panel “select all” row prefix with `All `. Default: false (golden — `Role`, not `All Role`). */
   showAllLabel?: boolean;
   totalCount?: number;
   triggerEmoji?: string;
@@ -314,7 +320,7 @@ function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: F
       <img
         src={option.iconSrc}
         alt=""
-        className={HUB_FILTER_BRAND_ICON_CLASS}
+        className={hubBrandIconImgClass(option.iconShell)}
         aria-hidden
       />
     );
@@ -342,7 +348,7 @@ function FilterAllRowGlyph({ filter }: { filter: FilterDef }) {
 }
 
 function filterAllRowLabel(filter: FilterDef): string {
-  return filter.showAllLabel ? `All ${filter.label}` : filter.label;
+  return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
 }
 
 function resolveFilterTriggerIcon(filter: FilterDef, selected: string[]): FilterIconMeta | null {
@@ -428,14 +434,14 @@ export function HubMultiFilterDropdown({
 
   const buttonLabel = (() => {
     if (triggerFormat === "value") {
-      if (selected.length === 0) return filter.showAllLabel ? `All ${filter.label}` : filter.label;
+      if (selected.length === 0) return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
       if (selected.length === 1) {
         const opt = filter.options.find((o) => o.value === selected[0]);
         return opt?.label ?? selected[0];
       }
       return `${selected.length} selected`;
     }
-    if (selected.length === 0) return filter.showAllLabel ? `All ${filter.label}` : filter.label;
+    if (selected.length === 0) return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
     if (selected.length === 1) {
       const opt = filter.options.find((o) => o.value === selected[0]);
       return opt?.label ?? selected[0];
@@ -465,7 +471,12 @@ export function HubMultiFilterDropdown({
         className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
         {triggerIconSrc ? (
-          <img src={triggerIconSrc} alt="" className={`${HUB_FILTER_BRAND_ICON_CLASS} !h-3 !w-3`} aria-hidden />
+          <img
+            src={triggerIconSrc}
+            alt=""
+            className={`${hubBrandIconImgClass(selectedOpt?.iconShell)} !h-3 !w-3`}
+            aria-hidden
+          />
         ) : selected.length === 1 && selectedOpt?.color ? (
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
         ) : filter.triggerEmoji ? (
@@ -494,7 +505,7 @@ export function HubMultiFilterDropdown({
           createPortal(
             <div
               data-hub-multi-filter-panel
-              className={HUB_FILTER_DROPDOWN_PANEL_CLASS}
+              className={HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS}
               style={{
                 position: "fixed",
                 top: panelPos.top,
@@ -513,7 +524,7 @@ export function HubMultiFilterDropdown({
                 <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                   <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
                   <FilterAllRowGlyph filter={filter} />
-                  <span>{filterAllRowLabel(filter)}</span>
+                  <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
                   <FilterOptionCount
                     value={
                       filter.totalCount ??
@@ -528,7 +539,7 @@ export function HubMultiFilterDropdown({
                   <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                     <HubFilterDropdownCircle checked={selected.includes(o.value)} />
                     <FilterOptionGlyph filterKey={filter.key} option={o} />
-                    <span className="flex-1 truncate text-left" title={o.label}>
+                    <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                       {o.label}
                     </span>
                     <FilterOptionCount value={o.count} />
@@ -550,7 +561,7 @@ export function HubMultiFilterDropdown({
               <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                 <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
                 <FilterAllRowGlyph filter={filter} />
-                <span>{filterAllRowLabel(filter)}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
                 <FilterOptionCount
                   value={
                     filter.totalCount ??
@@ -565,7 +576,7 @@ export function HubMultiFilterDropdown({
                 <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                   <HubFilterDropdownCircle checked={selected.includes(o.value)} />
                   <FilterOptionGlyph filterKey={filter.key} option={o} />
-                  <span className="flex-1 truncate text-left" title={o.label}>
+                  <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                     {o.label}
                   </span>
                   <FilterOptionCount value={o.count} />
@@ -592,6 +603,10 @@ export type HubSingleFilterDropdownProps = {
   usePortal?: boolean;
   /** `label-value` (default): `Label: value`. `value`: selected option label only — pair with external `HubFormFieldLabel`. */
   triggerFormat?: "label-value" | "value";
+  /** Custom trigger body (e.g. icon-only access badge in directory cells). */
+  triggerContent?: React.ReactNode;
+  triggerHideChevron?: boolean;
+  ariaLabel?: string;
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -606,6 +621,9 @@ export function HubSingleFilterDropdown({
   triggerClassName = "",
   usePortal = true,
   triggerFormat = "label-value",
+  triggerContent,
+  triggerHideChevron = false,
+  ariaLabel,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -672,7 +690,7 @@ export function HubSingleFilterDropdown({
           >
             <HubFilterDropdownCircle checked={o.value === value} />
             <FilterOptionGlyph filterKey={filterKey} option={o} />
-            <span className="flex-1 truncate text-left" title={o.label}>
+            <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
               {o.label}
             </span>
             <FilterOptionCount value={o.count} />
@@ -688,7 +706,7 @@ export function HubSingleFilterDropdown({
   const panelEl = open ? (
     <div
       data-hub-single-filter-panel
-      className={HUB_FILTER_DROPDOWN_PANEL_CLASS}
+      className={usePortal ? HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS : HUB_FILTER_DROPDOWN_PANEL_CLASS}
       style={
         usePortal
           ? {
@@ -714,21 +732,39 @@ export function HubSingleFilterDropdown({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={ariaLabel ?? label}
         onClick={() => !disabled && setOpen((v) => !v)}
         className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
-        {triggerIconNode}
-        <span className="min-w-0 truncate">
-          {triggerFormat === "value" ? (
-            opt?.label ?? label
-          ) : (
-            <>
-              <span className="hub-filter-trigger-text__prefix">{label}:</span>{" "}
-              <span className="hub-filter-trigger-text__value">{opt?.label ?? label}</span>
-            </>
-          )}
-        </span>
-        <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        {triggerContent ? (
+          <>
+            {triggerContent}
+            {!triggerHideChevron ? (
+              <ChevronDown
+                size={compactIconSize(12)}
+                className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
+            {triggerIconNode}
+            <span className="min-w-0 truncate">
+              {triggerFormat === "value" ? (
+                opt?.label ?? label
+              ) : (
+                <>
+                  <span className="hub-filter-trigger-text__prefix">{label}:</span>{" "}
+                  <span className="hub-filter-trigger-text__value">{opt?.label ?? label}</span>
+                </>
+              )}
+            </span>
+            <ChevronDown
+              size={compactIconSize(12)}
+              className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </>
+        )}
       </button>
       {panelEl &&
         (usePortal ? createPortal(panelEl, document.body) : (

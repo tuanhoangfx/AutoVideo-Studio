@@ -1,6 +1,6 @@
 {
   "name": "@tool-workspace/hub-ui",
-  "version": "0.2.1",
+  "version": "0.2.16",
   "private": true,
   "type": "module",
   "description": "Shared Hub shell UI — DisplayPrefs menu and hub-check-indicator styles.",
@@ -13,7 +13,9 @@
     "./styles/hub-users-table.css": "./src/styles/hub-users-table.css",
     "./styles/hub-modal.css": "./src/styles/hub-modal.css",
     "./styles/hub-route-detail.css": "./src/styles/hub-route-detail.css",
-    "./styles/hub-thread-preview.css": "./src/styles/hub-thread-preview.css"
+    "./styles/hub-thread-preview.css": "./src/styles/hub-thread-preview.css",
+    "./styles/hub-filter-brand-icon.css": "./src/styles/hub-filter-brand-icon.css",
+    "./styles/hub-chrome-brand-icon.css": "./src/styles/hub-chrome-brand-icon.css"
   },
   "peerDependencies": {
     "lucide-react": ">=0.451.0",
