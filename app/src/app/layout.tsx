@@ -4,6 +4,9 @@ import { ClientProviders } from '@/components/workspace/ClientProviders';
 export const metadata = {
   title: 'AutoVideo Studio',
   description: 'Create videos from existing images with the Hub theme',
+  other: {
+    'app-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '0.0.0',
+  },
   icons: {
     icon: '/icons/tools/P0021.svg',
     shortcut: '/icons/tools/P0021.svg',
