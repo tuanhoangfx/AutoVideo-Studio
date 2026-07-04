@@ -5,6 +5,9 @@ import type { MetricBadgeTone } from "../types/filter-badge";
 
 export type HubAuthSessionMode = "anonymous" | "signed_in";
 
+const AnonymousIcon = UserRound as ElementType<{ size?: number; className?: string }>;
+const SignedInIcon = ShieldCheck as ElementType<{ size?: number; className?: string }>;
+
 const SESSION_META: Record<
   HubAuthSessionMode,
   { label: string; tone: MetricBadgeTone; icon: ElementType<{ size?: number; className?: string }>; iconClass: string }
@@ -12,13 +15,13 @@ const SESSION_META: Record<
   anonymous: {
     label: "Anonymous",
     tone: "warn",
-    icon: UserRound,
+    icon: AnonymousIcon,
     iconClass: "text-violet-400",
   },
   signed_in: {
     label: "Signed in",
     tone: "ok",
-    icon: ShieldCheck,
+    icon: SignedInIcon,
     iconClass: "text-emerald-400",
   },
 };
