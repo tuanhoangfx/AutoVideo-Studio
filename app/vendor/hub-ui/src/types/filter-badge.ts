@@ -6,7 +6,7 @@ export type MetricBadgeTone = "ok" | "bad" | "warn" | "neutral";
 export type HubGlyphComponent = ComponentType<{
   size?: number | string;
   className?: string;
-  strokeWidth?: number;
+  strokeWidth?: number | string;
 }>;
 
 /** Portable filter/badge icon metadata (full registry lives in each app's `lib/badge-registry`). */
