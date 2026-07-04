@@ -1,16 +1,16 @@
-import type { ElementType } from "react";
+import type { ComponentType } from "react";
 import { ShieldCheck, UserRound } from "lucide-react";
 import { MetricBadge } from "../shell/MetricBadge";
-import type { MetricBadgeTone } from "../types/filter-badge";
+import type { HubGlyphComponent, MetricBadgeTone } from "../types/filter-badge";
 
 export type HubAuthSessionMode = "anonymous" | "signed_in";
 
-const AnonymousIcon = UserRound as ElementType<{ size?: number; className?: string }>;
-const SignedInIcon = ShieldCheck as ElementType<{ size?: number; className?: string }>;
+const AnonymousIcon = UserRound as HubGlyphComponent;
+const SignedInIcon = ShieldCheck as HubGlyphComponent;
 
 const SESSION_META: Record<
   HubAuthSessionMode,
-  { label: string; tone: MetricBadgeTone; icon: ElementType<{ size?: number; className?: string }>; iconClass: string }
+  { label: string; tone: MetricBadgeTone; icon: HubGlyphComponent; iconClass: string }
 > = {
   anonymous: {
     label: "Anonymous",
