@@ -8,9 +8,9 @@ export const metadata = {
     'app-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '0.0.0',
   },
   icons: {
-    icon: '/icons/tools/P0021.svg',
-    shortcut: '/icons/tools/P0021.svg',
-    apple: '/icons/tools/P0021.svg',
+    icon: "/favicon.svg?v=c920baa4",
+    shortcut: "/favicon.svg?v=c920baa4",
+    apple: "/icons/tools/P0021.svg",
   },
 };
 

@@ -1,7 +1,14 @@
 /* Hub Users table — compact rows aligned with Hub lib-table */
 
+:root {
+  --hub-directory-pane-surface: var(--panel);
+  --hub-directory-thead-surface: color-mix(in srgb, var(--panel) 92%, white 8%);
+  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
+  --hub-modal-panel-surface: var(--hub-directory-pane-surface);
+}
+
 .hub-users-table-wrap {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-directory-pane-surface, var(--panel));
   margin-bottom: 10px;
 }
 
@@ -13,7 +20,7 @@ table.hub-users-table {
 }
 
 .hub-users-table thead {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-directory-thead-surface, var(--panel));
 }
 
 .hub-users-table th {
@@ -23,8 +30,8 @@ table.hub-users-table {
   font-weight: 600;
   font-size: 12px;
   vertical-align: middle;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--hub-directory-thead-border, rgba(255, 255, 255, 0.08));
+  background: var(--hub-directory-thead-surface, var(--panel));
 }
 
 .hub-users-th-btn {

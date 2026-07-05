@@ -5,6 +5,7 @@ export type WorkspaceAuthToolCode =
   | "P0003"
   | "P0004"
   | "P0005"
+  | "P0013"
   | "P0016"
   | "P0020"
   | "P0021";
@@ -68,6 +69,15 @@ const BASE: Record<
     toolInfo: { name: "CRM" },
     forgotPassword: {},
   },
+  P0013: {
+    title: "Welcome to YouTube Channel Dashboard",
+    toolInfo: { name: "YouTube Channel Dashboard" },
+    forgotPassword: {
+      syntheticHint:
+        "Link your email in Account after sign-in, or ask an admin to reset your password.",
+      successMessage: "Check your inbox for a reset link.",
+    },
+  },
   P0016: {
     title: "Welcome to Chat Center",
     toolInfo: { name: "Chat Center" },
@@ -113,6 +123,8 @@ export function createWorkspaceAuthGatePreset(
         ? ""
       : options.code === "P0005"
         ? "CRM · customers & orders"
+      : options.code === "P0013"
+        ? "Channel analytics & team ops"
       : options.code === "P0021"
         ? "Local video studio & render jobs"
       : options.code === "P0020"

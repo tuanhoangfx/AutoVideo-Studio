@@ -248,7 +248,7 @@ HubSplitDirectoryPane scroll? fixedRows?
   │    └─ toolbar: DirectorySearchToolbar (tablePageSize + onTablePageSizeChange when paginated)
   └─ hub-split-directory-pane__body
        └─ HubDirectoryTableShell flushWrap
-            └─ inner .hub-users-table-wrap (border + bg rgba white 2%)
+            └─ inner .hub-users-table-wrap (border + `--hub-directory-pane-surface` = `var(--panel)`)
 ```
 
 **Rules**
@@ -297,6 +297,44 @@ import {
 - **One table** — pane mode uses `DirectoryInlineTable` (single `<table>`); split head/body only for legacy P0001 flex-pane migration backlog.
 - **Thead paint SSOT** — `hub-directory-table.css` golden header; `hub-split-directory-pane.css` owns wrap chrome (border/radius) only — no duplicate `thead th` background.
 - **Panel-fill** — `hub-directory-frame--panel-fill` + `hub-directory-frame-table.css` stretch N rows; no inner scrollbar on wrap.
+
+### Directory table surface tokens (hub-ui 0.2.18+)
+
+**Canonical source:** `packages/hub-ui/src/styles/hub-users-table.css` (`:root`), consumed by `hub-directory-table.css`, `hub-split-directory-pane.css`, `hub-directory-frame-table.css`.
+
+| Token | Value | Applies to |
+|-------|-------|------------|
+| `--hub-directory-pane-surface` | `var(--panel)` (`#121830`) | `.hub-users-table-wrap`, split-pane inner wrap, modal directory wrap |
+| `--hub-directory-thead-surface` | `color-mix(in srgb, var(--panel) 92%, white 8%)` | `thead` / directory golden header |
+| `--hub-directory-thead-border` | `rgba(255, 255, 255, 0.08)` | Header bottom rule |
+
+**Layout vs color:** Standalone directories (P0004 Hub/Dashboard/Users) sit on page `--bg`; split panes (P0003 Profiles) add outer `bg-[var(--panel)]` — **table wrap uses the same `--hub-directory-pane-surface` in both**, so perceived brightness matches P0003 Profiles.
+
+**Rules**
+
+- Do **not** set `.hub-users-table-wrap { background: rgba(255,255,255,0.02) }` in tools — use SSOT tokens or omit (inherits from vendor).
+- Sheet grid thead overlay (P0020): `background-color: var(--panel)` + `background-image: linear-gradient(var(--hub-directory-thead-surface), …)` — never hardcode old 2% white fallback.
+- Legacy `.lib-table` / `.table-view` (P0004 `library.css`) are **not** Hub directory SSOT — migrate to `HubDirectoryTableShell` when touching those screens.
+
+**Verify:** `node Tool/scripts/hub-ui-parity-check.mjs --code P00xx` · browser: `getComputedStyle(.hub-users-table-wrap).backgroundColor` → `rgb(18, 24, 48)`.
+
+### Modal / detail panel surface (hub-ui 0.2.19+)
+
+**Canonical source:** `hub-users-table.css` (`--hub-modal-panel-surface`), `hub-modal.css` (`.hub-tool-detail-section`).
+
+| Token | Value | Applies to |
+|-------|-------|------------|
+| `--hub-modal-panel-surface` | `var(--hub-directory-pane-surface)` → `var(--panel)` | `.hub-tool-detail-section`, modal stat frames, bulk-input frames, route cards |
+
+**Rules**
+
+- Tool modals (P0013 channel stats, P0020 2FA detail/add, cookie route cards) **must** use `var(--hub-modal-panel-surface, var(--panel))` — never `rgba(255,255,255,0.02)` on panel chrome.
+- Product-local vars (e.g. `--twofa-adm-panel`) **alias** `--hub-modal-panel-surface`, do not hardcode rgba.
+- Nested list items (recent changes rail) may use `rgba(0,0,0,0.12)` inset — not the outer panel surface.
+
+**Golden refs:** P0013 `p0013-channel-detail-modal.css` · P0020 `twofa-account-detail-modal.css` · hub-ui `.hub-tool-detail-section`
+
+**Verify:** `node Tool/scripts/hub-ui-css-check.mjs --code P0013` (vendor surface token gate).
 
 **Do not**
 
@@ -742,6 +780,76 @@ Do **not** fork select column width per tool — use shell + meta helpers only.
 
 ---
 
+## Directory table body cells — one line per column (golden)
+
+**Table rows are flat.** Each data column = **exactly one truncated line** in the body. Multi-field content belongs in **separate columns** or the cell `title` tooltip — never stacked under Name.
+
+| Column type | Pattern | Golden |
+|-------------|---------|--------|
+| **Name** | `hub-users-name-title` + `DIRECTORY_CELL_TRUNCATE` | P0004 `hub-tools-directory-cells.tsx` |
+| **Status** | `HubUsersStatusLabel` in **Status** column | Hub tools `status`, P0003 store `status` |
+| **Timestamps** | `HubUsersStatusLabel` or `HubActivityTimestampLabel` — one label | Users, Hub tools `updated` |
+| **Icon + label** | `HubDirectoryIconCell` — horizontal single line | Scripts platform, store platform |
+| **Long text** | `title={full text}` on truncate span — not a second line in cell | All directory tables |
+
+**Forbidden in `*directory-cells.tsx`:** `<p>` under name, `line-clamp-2+`, badge flex rows inside one column, description subtitle in Name.
+
+**Card view is different:** `HubDirectoryCardMetaRow` stacks icon + truncated lines — OK in `*Card.tsx` only.
+
+**Gate:** `node Tool/scripts/hub-directory-table-gate.mjs --code P00xx` — rules `directory-cell-single-line`, `directory-cell-no-multiline-clamp`, `directory-cell-name-title-class`.
+
+**Helper:** `DIRECTORY_CELL_TRUNCATE = "block max-w-full truncate"` — P0004 `src/lib/directory-cell-format.ts`; copy per tool.
+
+---
+
+## Workflow runtime rail — Console + Run History (SSOT)
+
+**Canonical:** `packages/hub-ui` — `HubRuntimeChannelBadge`, `HubRuntimeConsoleTerm`, `HubRuntimeConsoleLine`, `HubRuntimeHistoryList`, `hub-runtime-rail.css`.
+
+| Piece | Role |
+|-------|------|
+| `HubRuntimeChannelBadge` | Pill icon + **Title Case** label — parity P0020 `TodoHubBadge` priority pills |
+| `HubRuntimeConsoleTerm` | Legend row + scrollable mono body |
+| `HubRuntimeConsoleLine` | Single log line — time, channel badge, source, message, optional duration |
+| `HubRuntimeHistoryList` | Clickable completed-run rows — **2 lines**: primary (ID · name · task + status trailing) + meta (time · duration) |
+| `formatHubRuntimeLogTime` / `hubRuntimeConsoleLineClass` | Shared log formatting |
+
+**Product channel registries (local):**
+
+| Tool | Channels (`variant` CSS modifier) |
+|------|-----------------------------------|
+| P0003 | `workflow`, `profile`, `backup`, `system` |
+| P0027 | `worker`, `api`, `n8n`, `job`, `ui`, `system` |
+
+**Import CSS:** `@import ".../hub-runtime-rail.css"` in `hub-ui-styles.css` (vendor path).
+
+**Do not** duplicate `.stealth-term*` / `.reup-term__tag` — use hub-runtime classes only.
+
+---
+
+## Platform brand icons vs status dots (SSOT)
+
+Khi entity / catalog source có **icon chuẩn** trong `hub-brand-icons.registry.json`, dùng **`HubBrandIcon` chip** (`WorkflowStoreSourceChip`, filter dropdown, directory cards) — **không** dùng nhãn trạng thái màu (`HubUsersStatusLabel` dot) cho các nền tảng đó.
+
+**Canonical registry:** `packages/hub-ui/src/lib/hub-brand-icons.registry.json` · component `HubBrandIcon` · sync assets: `node Tool/scripts/sync-hub-brand-icons.mjs`.
+
+### Workflow Store catalog sources (P0003)
+
+| `WorkflowStoreSource` | `HubBrandIconId` | Label |
+|---------------------|------------------|-------|
+| `supabase` | `supabase` | Supabase |
+| `drive` | `google-drive` | Drive |
+
+**SSOT implementation:** P0003 `workflow-store-source-brand.tsx` — `WorkflowStoreSourceChip`, `WORKFLOW_STORE_SOURCE_BRAND_ID`.
+
+**Chip chrome:** `hub-chrome-type--micro` + `HubBrandIcon` (`context="filter"`, 11px) — same height as `MetricBadge` (`h-[22px]`).
+
+**Local / Installed:** `MetricBadge` + `resolveLocalOnlyIcon()` — lifecycle status, not catalog source.
+
+**Toolbar:** No aggregate catalog hint in FilterBar — source is per-row/card chip only.
+
+---
+
 ## Directory card shell (golden — hub-ui)
 
 **Canonical source:** `packages/hub-ui/src/content/HubDirectoryCardShell.tsx` → fan-out via `node Tool/scripts/sync-hub-ui-vendor.cjs`.
@@ -817,7 +925,8 @@ HubDirectoryBulkActionBar
 
 DirectorySearchToolbar (row 1)
   ├─ selectionToolbar? → HubDirectoryToolbarSelection (table view — replaces HubResultCount)
-  └─ showResultCount → HubResultCount (when no selectionToolbar)
+  ├─ hasSearchSelectionChip → omit HubResultCount (SSOT: `shouldShowHubDirectoryResultCount`)
+  └─ showResultCount → HubResultCount (when no selection chip in search)
 ```
 
 Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`ml-auto flex gap-2`).
