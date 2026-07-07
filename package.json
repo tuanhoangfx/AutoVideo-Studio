@@ -1,6 +1,7 @@
 {
   "name": "autovideo-studio-workspace",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "open": "node ../scripts/open-tool.cjs --open",
     "desktop:dev": "run-desktop-dev.bat"
