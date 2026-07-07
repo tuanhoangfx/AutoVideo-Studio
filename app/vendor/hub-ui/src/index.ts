@@ -240,6 +240,10 @@ export {
   multiFilterTriggerTitle,
   hubFilterTriggerClass,
 } from "./shell/filter-dropdown-primitives";
+export {
+  configureDirectoryFilterColumnRoles,
+  resolveDirectoryFilterColumnIcon,
+} from "./shell/filter-directory-column-roles";
 export { enrichFilterDefs } from "./lib/filter-option-counts";
 export {
   fetchWorkspaceUserDirectoryRows,
@@ -380,13 +384,17 @@ export {
 } from "./lib/format-order-price";
 export {
   HubOrderPriceBadge,
+  HubOrderPriceText,
   type HubOrderPriceBadgeProps,
+  type HubOrderPriceBadgeTone,
 } from "./shell/HubOrderPriceBadge";
 export {
+  HUB_ORDER_PRICE_TEXT_CLASS,
+  HUB_ORDER_PRICE_TEXT_DEFAULT_TONE,
   HUB_ORDER_PRICE_BADGE_CLASS,
   HUB_ORDER_PRICE_BADGE_DESIGN_LOCK,
   HUB_ORDER_PRICE_BADGE_DEFAULT_TONE,
-  type HubOrderPriceBadgeTone,
+  type HubOrderPriceTextTone,
 } from "./shell/hub-order-price-badge";
 export {
   HubDirectoryCopyText,

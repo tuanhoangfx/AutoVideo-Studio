@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { FilterIconMeta, HubGlyphComponent } from "./filter-icons";
 import { resolveFilterAllIcon, resolveFilterOptionIcon } from "./filter-icons";
+import { resolveDirectoryFilterColumnIcon } from "./filter-directory-column-roles";
 import {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
@@ -367,8 +368,12 @@ function FilterAllRowGlyph({
       </span>
     );
   }
-  const allIcon = resolveFilterAllIcon(filter.key);
-  if (allIcon) return <FilterIconGlyph meta={allIcon} size={compactIconSize(hubFilterGlyphPx({ directoryParity, compact }))} />;
+  const allIcon = directoryParity
+    ? resolveDirectoryFilterColumnIcon(filter.key) ?? resolveFilterAllIcon(filter.key)
+    : resolveFilterAllIcon(filter.key);
+  if (allIcon) {
+    return <FilterIconGlyph meta={allIcon} size={compactIconSize(hubFilterGlyphPx({ directoryParity, compact }))} />;
+  }
   return null;
 }
 
@@ -376,13 +381,21 @@ function filterAllRowLabel(filter: FilterDef): string {
   return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
 }
 
-function resolveFilterTriggerIcon(filter: FilterDef, selected: string[]): FilterIconMeta | null {
+function resolveFilterTriggerIcon(
+  filter: FilterDef,
+  selected: string[],
+  directoryParity = false,
+): FilterIconMeta | null {
   if (selected.length === 1) {
     const opt = filter.options.find((o) => o.value === selected[0]);
     if (opt) {
       const icon = resolveFilterOptionIcon(filter.key, opt.value);
       if (icon) return icon;
     }
+  }
+  if (directoryParity) {
+    const dirIcon = resolveDirectoryFilterColumnIcon(filter.key);
+    if (dirIcon) return dirIcon;
   }
   const allIcon = resolveFilterAllIcon(filter.key);
   if (allIcon) return allIcon;
@@ -485,7 +498,7 @@ export function HubMultiFilterDropdown({
     return `${selected.length} selected`;
   })();
 
-  const triggerIcon = resolveFilterTriggerIcon(filter, selected);
+  const triggerIcon = resolveFilterTriggerIcon(filter, selected, directoryValueTypo);
   const selectedOpt = selected.length === 1 ? filter.options.find((o) => o.value === selected[0]) : undefined;
   const triggerIconSrc = selectedOpt?.iconSrc;
   const showTotalOnTrigger = selected.length === 0 && filter.totalCount !== undefined;
