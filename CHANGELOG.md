@@ -4,6 +4,39 @@
 > **Template:** `E:\Dev\Rules\templates\tool-docs\CHANGELOG_ENTRY_TEMPLATE.md`  
 > **Script:** `powershell -File E:\Dev\Tool\scripts\ship-product.ps1 -Code P0021 -Keyword Push`
 
+## 2026-07-06 - Vendor sync + Supabase 2.106 + lighter postinstall
+
+- Version: `1.2.5`
+- Type: Patch
+- Product: P0021
+- Timestamp: 2026-07-06 15:25 (UTC+7)
+- Prompt: Sync hub-identity vendor; align @supabase/supabase-js with workspace SSOT
+- Status: Committed
+
+### Changes
+
+- `app/package.json` — pin `@supabase/*` 2.106.1 (match P0020); vendor hub-identity/hub-ui re-synced.
+- Removed stale `app/dist-desktop/` (~1.5 GB); prune + `.cursorignore` cover `dist-desktop/`.
+
+Version: 1.2.4 → 1.2.5
+
+## 2026-07-06 - Workspace: React 19 + hub-ui peer alignment
+
+- Version: `1.2.4`
+- Type: Patch
+- Product: P0021
+- Timestamp: 2026-07-06 15:10 (UTC+7)
+- Prompt: Align React 19 with `@tool-workspace/hub-ui` peers after pnpm workspace hoist
+- Status: Verified
+- Release: https://p0021.infi.io.vn
+
+### Changes
+
+- `app/package.json` — `react` / `react-dom` ^19.2.1; Next.js 15; `@types/react*` ^19.
+- `tool.manifest.json` — stack React 19; release `1.2.4`.
+
+Version: 1.2.3 → 1.2.4
+
 ## 2026-06-03 - Vercel: unset NEXT_PUBLIC_WORKER_URL script
 
 - Version: `1.2.3`

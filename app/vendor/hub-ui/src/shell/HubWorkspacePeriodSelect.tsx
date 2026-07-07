@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { HubPeriodSelect } from "../shell/HubPeriodSelect";
+import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "../shell/hub-typography";
 import { useWorkspacePeriod } from "../hooks/useWorkspacePeriod";
 import {
   workspacePeriodOptions,
@@ -19,8 +20,8 @@ export type HubWorkspacePeriodSelectProps = {
 /** Golden Period filter — HubPeriodSelect + per-tab URL prefs. */
 export function HubWorkspacePeriodSelect({
   scope,
-  defaultRange = "last30Days",
-  inactiveKeys = ["all", "last30Days"],
+  defaultRange = "all",
+  inactiveKeys = ["all"],
   language = typeof navigator !== "undefined" ? navigator.language : "en",
   labels,
   applyLabel = "Apply",
@@ -53,6 +54,7 @@ export function HubWorkspacePeriodSelect({
       applyLabel={applyLabel}
       startLabel="Start"
       endLabel="End"
+      triggerTypoClass={HUB_DIRECTORY_TOOLBAR_TYPO_CLASS}
     />
   );
 }

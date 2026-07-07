@@ -17,16 +17,24 @@ type Props = {
   sectionIdPrefix?: string;
   scrollRootSelector?: string;
   className?: string;
+  /** Plain Lucide glyphs — no bordered icon tile (tool-detail modals). */
+  plainIcons?: boolean;
+  /** ADM account-detail modal — inherit `--hub-adm-type-nav-*` (12px semibold) from shell CSS. */
+  admNav?: boolean;
 };
 
 function HubTocSectionNavItem({
   item,
   sectionId,
   scrollRootSelector,
+  plainIcons = false,
+  admNav = false,
 }: {
   item: HubTocNavItem;
   sectionId: string;
   scrollRootSelector?: string;
+  plainIcons?: boolean;
+  admNav?: boolean;
 }) {
   const isHighlighted = useHubTocNavHighlight(sectionId);
   const isActive = useHubTocNavActive(sectionId);
@@ -38,18 +46,28 @@ function HubTocSectionNavItem({
         event.preventDefault();
         scrollToHubTocSection(sectionId, scrollRootSelector);
       }}
-      className={`hub-toc-nav__item group relative z-[1] min-h-[var(--overview-toc-row-h,2rem)] w-full cursor-pointer text-left text-[13px] transition-colors${
-        isHighlighted ? " is-highlighted" : isActive ? " is-active" : ""
-      }`}
+      className={`hub-toc-nav__item group relative z-[1] min-h-[var(--overview-toc-row-h,2rem)] w-full cursor-pointer text-left transition-colors${
+        admNav ? "" : " text-[13px]"
+      }${isHighlighted ? " is-highlighted" : isActive ? " is-active" : ""}`}
     >
-      <span className="hub-toc-nav__label flex min-w-0 items-center gap-1.5 truncate rounded-lg px-2 py-1 font-medium text-[var(--muted)] transition-all duration-200 group-hover:text-[var(--text)]">
+      <span
+        className={`hub-toc-nav__label flex min-w-0 items-center gap-1.5 truncate rounded-lg px-2 py-1 transition-all duration-200${
+          admNav
+            ? ""
+            : " font-medium text-[var(--muted)] group-hover:text-[var(--text)]"
+        }`}
+      >
         {item.emoji ? (
           <span className="shrink-0 text-[12px] leading-none opacity-90" aria-hidden>
             {item.emoji}
           </span>
         ) : item.icon ? (
           <span
-            className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[.03] text-[var(--muted)] group-hover:text-indigo-200 [&>svg]:size-[11px]"
+            className={
+              plainIcons
+                ? "hub-toc-nav__icon hub-toc-nav__icon--plain shrink-0 text-[var(--muted)] group-hover:text-indigo-200"
+                : "grid h-5 w-5 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[.03] text-[var(--muted)] group-hover:text-indigo-200 [&>svg]:size-[11px]"
+            }
             aria-hidden
           >
             {item.icon}
@@ -67,6 +85,8 @@ export function HubTocSectionNav({
   sectionIdPrefix = "",
   scrollRootSelector = HUB_TOOL_DETAIL_SCROLL_ROOT,
   className = "",
+  plainIcons = false,
+  admNav = false,
 }: Props) {
   if (!items.length) return null;
 
@@ -80,6 +100,8 @@ export function HubTocSectionNav({
             item={item}
             sectionId={sectionId}
             scrollRootSelector={scrollRootSelector}
+            plainIcons={plainIcons}
+            admNav={admNav}
           />
         );
       })}

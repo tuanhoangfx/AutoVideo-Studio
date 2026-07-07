@@ -2,6 +2,12 @@
 
 Auto-generate videos from images + narration script → TTS → optional BGM/subtitles → MP4.
 
+## Agent contract
+
+- **Dev:** `node Tool/scripts/ensure-dev-product.cjs P0021 --open` (UI `:3021`, worker `:8021`)
+- **Verify:** `node Tool/scripts/agent-verify-gate.mjs --code P0021 --json --ensure-dev --mark-active`
+- **Shell SSOT:** [Tool/docs/ssot/hub-shell-ssot.md](../docs/ssot/hub-shell-ssot.md)
+
 ## Tech stack
 
 | Layer | Stack |

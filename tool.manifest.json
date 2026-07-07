@@ -15,8 +15,8 @@
   "icon": "app/public/icons/tools/P0021.svg",
   "summary": "Auto-gen video: LLM script → ảnh (gen SD/DALL-E hoặc upload) → TTS (edge-tts VN) → subtitle (whisper) → Ken Burns + transition → MP4. Next.js UI + Python FastAPI worker.",
   "stack": [
-    "Next.js 14",
-    "React 18",
+    "Next.js 15",
+    "React 19",
     "TypeScript",
     "Tailwind",
     "Python 3.11",
@@ -38,6 +38,11 @@
     "Render MP4 1080x1920 (Shorts) / 1920x1080 (landscape)",
     "Batch job queue, preview player trước khi render"
   ],
+  "uiShell": {
+    "golden": "P0020",
+    "mainMode": "directory",
+    "userFooter": "workspace"
+  },
   "commands": {
     "dev": "cd app && pnpm dev",
     "build": "cd app && pnpm build",
@@ -81,7 +86,7 @@
     "team": "tuanhoangfxs-projects"
   },
   "release": {
-    "version": "1.2.3",
+    "version": "1.2.5",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
@@ -174,6 +179,6 @@
     "preShipCommands": {
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published"
     },
-    "syncedAt": "2026-07-05T00:24:14.303Z"
+    "syncedAt": "2026-07-05T01:10:19.892Z"
   }
 }

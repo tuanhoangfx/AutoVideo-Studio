@@ -1,0 +1,33 @@
+﻿{
+  "name": "P0021 AutoVideo Studio",
+  "dockerComposeFile": [
+    "../../../docker/compose/docker-compose.infra.yml",
+    "../../../docker/compose/docker-compose.dev.yml"
+  ],
+  "service": "dev",
+  "workspaceFolder": "/workspace/Tool/P0021-AutoVideo-Studio/app",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "corepack enable && corepack prepare pnpm@9.15.9 --activate",
+  "forwardPorts": [
+    3021
+  ],
+  "portsAttributes": {
+    "3021": {
+      "label": "P0021:3021",
+      "onAutoForward": "notify"
+    }
+  }
+}
+
