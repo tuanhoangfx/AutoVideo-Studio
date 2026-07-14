@@ -5,6 +5,7 @@ import {
   formatHubActivityStaleLabel,
   hubActivityAgeHubTone,
   hubActivityAgeTone,
+  hubActivityAgeUsesCalendarLabel,
   parseHubActivityMs,
 } from "../lib/format-hub-activity-time";
 import { formatHubTimestampFull } from "../lib/format-hub-timestamp-compact";
@@ -13,6 +14,11 @@ import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubGlyphComponent } from "../types/filter-badge";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+  type HubDirectoryColumnHintGlyph,
+} from "../table/HubDirectoryColumnHint";
 import { HubSemanticGlyph } from "./HubSemanticGlyph";
 import { HubTabTitleIcon } from "./HubTabTitleIcon";
 import "./app-tab-header.css";
@@ -36,14 +42,20 @@ export type TabHeaderMetaItem = {
 export type TabHeaderStatItem = {
   key: string;
   icon?: HubGlyphComponent;
+  /** Sheet-parity emoji sticker — takes precedence over `icon` when set. */
+  emojiGlyph?: string;
   brandIcon?: HubBrandIconId;
   dotClass?: string;
   label: string;
   value: number | string;
   toneClass: string;
+  /** `money` — amber tabular text (hub-order-price-text SSOT). */
+  valueKind?: "number" | "money";
   /** Optional — interactive header stat (P0020 Todo preview popover). */
   onClick?: () => void;
   active?: boolean;
+  /** Popover hint for stat label (hover). */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 type AppTabHeaderProps = {
@@ -51,12 +63,16 @@ type AppTabHeaderProps = {
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
+  /** Sheet-parity emoji sticker — takes precedence over `titleIcon` when set. */
+  titleEmojiGlyph?: string;
   title: string;
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
   metaItems: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
+  /** Custom center rail (live tickers, tool-specific KPI). Takes precedence over `centerStats`. */
+  centerContent?: ReactNode;
   pinSticky?: boolean;
   dividerBelow?: boolean;
   embedded?: boolean;
@@ -68,6 +84,7 @@ function TitleWithMenu({
   titleIcon,
   titleIconClass,
   titleBrandIcon,
+  titleEmojiGlyph,
   titleMenu,
   activeTitleMenuId,
   onTitleMenuSelect,
@@ -76,6 +93,7 @@ function TitleWithMenu({
   titleIcon: HubGlyphComponent;
   titleIconClass: string;
   titleBrandIcon?: HubBrandIconId;
+  titleEmojiGlyph?: string;
   titleMenu: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
@@ -106,6 +124,7 @@ function TitleWithMenu({
           titleIcon={titleIcon}
           titleIconClass={titleIconClass}
           titleBrandIcon={titleBrandIcon}
+          titleEmojiGlyph={titleEmojiGlyph}
         />
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="app-tab-header__chrome-text tracking-tight text-[var(--text)]">{title}</span>
@@ -162,6 +181,8 @@ function metaActivityDotClass(hubTone: ReturnType<typeof hubActivityAgeHubTone>)
   if (hubTone === "age-fresh") return "bg-[var(--hub-activity-age-fresh)]";
   if (hubTone === "age-recent") return "bg-[var(--hub-activity-age-recent)]";
   if (hubTone === "age-aging") return "bg-[var(--hub-activity-age-aging)]";
+  if (hubTone === "age-days") return "bg-[var(--hub-activity-age-days)]";
+  if (hubTone === "age-week") return "bg-[var(--hub-activity-age-week)]";
   return "bg-[var(--hub-activity-age-stale)]";
 }
 
@@ -173,8 +194,9 @@ function MetaActivityAt({ at }: { at: string | number }) {
 
   const ageTone = hubActivityAgeTone(ms, now);
   const hubTone = hubActivityAgeHubTone(ageTone);
-  const label =
-    ageTone === "stale" ? formatHubActivityStaleLabel(ms) : formatHubActivityRelativeAge(ms, now);
+  const label = hubActivityAgeUsesCalendarLabel(ageTone)
+    ? formatHubActivityStaleLabel(ms)
+    : formatHubActivityRelativeAge(ms, now);
   const resolvedTitle =
     formatHubTimestampFull(typeof at === "string" ? at : new Date(ms).toISOString()) ||
     new Date(ms).toLocaleString();
@@ -214,25 +236,78 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
   );
 }
 
+function headerStatLabelGlyph({
+  emojiGlyph,
+  icon: Icon,
+  brandIcon,
+  toneClass,
+}: {
+  emojiGlyph?: string;
+  icon?: HubGlyphComponent;
+  brandIcon?: HubBrandIconId;
+  toneClass: string;
+}): HubDirectoryColumnHintGlyph | undefined {
+  if (emojiGlyph) return { emoji: emojiGlyph };
+  if (Icon) return { icon: Icon, toneClass };
+  if (brandIcon) return { brandIcon, toneClass };
+  return undefined;
+}
+
+function StatLabel({
+  label,
+  labelHint,
+  titleGlyph,
+}: {
+  label: string;
+  labelHint?: HubDirectoryColumnHintContent;
+  titleGlyph?: HubDirectoryColumnHintGlyph;
+}) {
+  const labelNode = <span className="shrink-0 text-[var(--muted)]/80">{label}</span>;
+  if (!labelHint) return labelNode;
+  return (
+    <HubDirectoryColumnHint content={labelHint} titleGlyph={titleGlyph}>
+      {labelNode}
+    </HubDirectoryColumnHint>
+  );
+}
+
 function StatLine({
   icon: Icon,
+  emojiGlyph,
   brandIcon,
   dotClass,
   value,
   label,
   toneClass,
+  valueKind = "number",
   onClick,
   active,
+  labelHint,
 }: Omit<TabHeaderStatItem, "key">) {
+  const valueClassName = [
+    "app-tab-header-stat-value tabular-nums",
+    valueKind === "money"
+      ? "hub-order-price-text hub-order-price-text--amber"
+      : "text-[var(--text)]/90",
+  ].join(" ");
+
   const content = (
     <>
       {dotClass ? (
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
+      ) : emojiGlyph ? (
+        <span className="app-tab-header-stat-emoji shrink-0" aria-hidden>
+          {emojiGlyph}
+        </span>
       ) : Icon || brandIcon ? (
         <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={13} className={`shrink-0 ${toneClass}`} />
       ) : null}
-      <span className="tabular-nums text-[var(--text)]/90">{value}</span>
-      <span className="text-[var(--muted)]/80">{label}</span>
+      <span className={valueClassName}>{value}</span>
+      <StatLabel
+        label={label}
+        labelHint={labelHint}
+        titleGlyph={headerStatLabelGlyph({ emojiGlyph, icon: Icon, brandIcon, toneClass })}
+      />
     </>
   );
 
@@ -241,8 +316,8 @@ function StatLine({
       <button
         type="button"
         onClick={onClick}
-        title={label}
-        className={`app-tab-header__chrome-text inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors ${
+        title={labelHint ? undefined : label}
+        className={`app-tab-header-stat-line app-tab-header__chrome-text inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-1 py-0.5 transition-colors ${
           active ? "bg-white/10 text-[var(--text)]" : "text-[var(--muted)] hover:bg-white/5"
         }`}
       >
@@ -252,7 +327,10 @@ function StatLine({
   }
 
   return (
-    <div className="app-tab-header__chrome-text inline-flex items-center gap-1 text-[var(--muted)]" title={label}>
+    <div
+      className="app-tab-header-stat-line app-tab-header__chrome-text inline-flex min-w-0 max-w-full items-center gap-1 text-[var(--muted)]"
+      title={labelHint ? undefined : label}
+    >
       {content}
     </div>
   );
@@ -273,12 +351,14 @@ export function AppTabHeader({
   titleIcon: TitleIcon,
   titleIconClass = "text-indigo-400",
   titleBrandIcon,
+  titleEmojiGlyph,
   title,
   titleMenu,
   activeTitleMenuId,
   onTitleMenuSelect,
   metaItems,
   centerStats,
+  centerContent,
   pinSticky = true,
   dividerBelow = true,
   embedded = false,
@@ -301,6 +381,7 @@ export function AppTabHeader({
             titleIcon={TitleIcon}
             titleIconClass={titleIconClass}
             titleBrandIcon={titleBrandIcon}
+            titleEmojiGlyph={titleEmojiGlyph}
             titleMenu={titleMenu}
             activeTitleMenuId={activeTitleMenuId}
             onTitleMenuSelect={onTitleMenuSelect}
@@ -311,6 +392,7 @@ export function AppTabHeader({
               titleIcon={TitleIcon}
               titleIconClass={titleIconClass}
               titleBrandIcon={titleBrandIcon}
+              titleEmojiGlyph={titleEmojiGlyph}
             />
             <h1 className="app-tab-header__chrome-text min-w-0 truncate tracking-tight text-[var(--text)]">
               {title}
@@ -337,15 +419,16 @@ export function AppTabHeader({
         role="status"
         aria-label={`${title} summary`}
       >
-        {centerStats.map((stat, index) => {
-          const { key, ...statProps } = stat;
-          return (
-            <span key={key} className="inline-flex items-center gap-x-2.5">
-              {index > 0 ? <Rule /> : null}
-              <StatLine {...statProps} />
-            </span>
-          );
-        })}
+        {centerContent ??
+          centerStats.map((stat, index) => {
+            const { key, ...statProps } = stat;
+            return (
+              <span key={key} className="inline-flex min-w-0 shrink items-center gap-x-2.5">
+                {index > 0 ? <Rule /> : null}
+                <StatLine {...statProps} />
+              </span>
+            );
+          })}
       </div>
 
       <div className="app-tab-header__end app-tab-header__chrome-text flex shrink-0 items-center justify-self-end gap-2 text-[var(--muted)]">
