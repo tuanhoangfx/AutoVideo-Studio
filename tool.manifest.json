@@ -86,7 +86,7 @@
     "team": "tuanhoangfxs-projects"
   },
   "release": {
-    "version": "1.2.5",
+    "version": "1.2.7",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
@@ -165,7 +165,7 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-07-05T01:00:41.730Z",
+  "manifestUpdatedAt": "2026-07-17T04:16:55.968Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Deploy",
@@ -174,11 +174,13 @@
     "playbook": "Tool/docs/playbooks/release-fast-path.md",
     "script": "powershell -File E:\\Dev\\Tool\\scripts\\ship-product.ps1",
     "preShip": [
-      "check-version-sync"
+      "check-version-sync",
+      "verify-lockfile-importers"
     ],
     "preShipCommands": {
-      "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published"
+      "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
+      "verify-lockfile-importers": "node E:\\Dev\\Tool\\scripts\\verify-lockfile-importers.mjs --product-root ."
     },
-    "syncedAt": "2026-07-05T01:10:19.892Z"
+    "syncedAt": "2026-07-17T04:35:11.199Z"
   }
 }

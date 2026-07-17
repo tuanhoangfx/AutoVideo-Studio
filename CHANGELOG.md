@@ -1,3 +1,33 @@
+# Changelog
+
+## 2026-07-17 - PWA install icon (Next.js manifest + maskable PNG)
+
+- Version: `1.2.7`
+- Timestamp: 2026-07-17 18:25 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **PWA "Install as app" icon:** added `app/public/manifest.json` + raster icons (`icon-192/512.png` any + maskable, `apple-touch-icon.png` 180) rendered from `favicon.svg` via SSOT `Tool/scripts/ensure-pwa-manifest.mjs`; declared `manifest: "/manifest.json"` in the App Router `metadata` export (`src/app/layout.tsx`). Fixes Chrome install showing a generated letter placeholder.
+- Verified: `check-tool-favicons.mjs` OK (manifest cache-bust + raster icons present); PNG 192/512/180 present.
+
+## 2026-07-17 - Vendor sync + Supabase 2.106 + lighter postinstall
+
+- Version: `1.2.6`
+- Timestamp: 2026-07-17 11:16 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0021).
+
+### Verification
+
+- pending
+
+---
 # Changelog â€” P0021-AutoVideo-Studio
 
 > **Ship keywords:** `Git P0021` Â· `Push P0021` Â· `Release P0021`  

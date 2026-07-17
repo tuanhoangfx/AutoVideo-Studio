@@ -2,6 +2,7 @@ import './globals.css';
 import { ClientProviders } from '@/components/workspace/ClientProviders';
 
 export const metadata = {
+  manifest: "/manifest.json",
   title: 'AutoVideo Studio',
   description: 'Create videos from existing images with the Hub theme',
   other: {
