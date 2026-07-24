@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-24 - preShip SSOT: verify-untracked-imports gate
+
+- Version: `1.2.9`
+- Timestamp: 2026-07-24
+- Type: Patch
+- Status: Pending
+
+### Changes
+
+- preShip SSOT: verify-untracked-imports gate
+
+### Verification
+
+- ship-pipeline slice → commit scoped paths only
+
+---
+## 2026-07-17 - hub-ui SSOT hook-stability vendor sync
+
+- Version: `1.2.8`
+- Timestamp: 2026-07-17 22:26 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Sync hub-ui SSOT hook-stability patch into vendor/hub-ui: `useHubDirectorySelection`, `useDirectoryHaystackFilter`, and `useDirectoryTableSort` now self-stabilize their row-projection callbacks (idOf/keyOf/sortableValue) via refs, so inline `(row) => row.id` no longer rebuilds the selection/haystack/sort memos every render — snappier checkbox click, drag-sweep, search, and sort with no consumer code changes.
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-17 - PWA install icon (Next.js manifest + maskable PNG)
 
 - Version: `1.2.7`
