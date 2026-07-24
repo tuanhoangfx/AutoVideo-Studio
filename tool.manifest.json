@@ -86,7 +86,7 @@
     "team": "tuanhoangfxs-projects"
   },
   "release": {
-    "version": "1.2.9",
+    "version": "1.2.10",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
@@ -176,13 +176,15 @@
     "preShip": [
       "check-version-sync",
       "verify-untracked-imports",
+      "verify-no-sibling-tool-imports",
       "verify-lockfile-importers"
     ],
     "preShipCommands": {
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
       "verify-untracked-imports": "node E:\\Dev\\Tool\\scripts\\verify-untracked-imports.mjs --product-root .",
+      "verify-no-sibling-tool-imports": "node E:\\Dev\\Tool\\scripts\\verify-no-sibling-tool-imports.mjs --product-root .",
       "verify-lockfile-importers": "node E:\\Dev\\Tool\\scripts\\verify-lockfile-importers.mjs --product-root ."
     },
-    "syncedAt": "2026-07-24T08:57:14.694Z"
+    "syncedAt": "2026-07-24T09:47:01.397Z"
   }
 }
