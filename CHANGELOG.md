@@ -3,12 +3,13 @@
 - Version: `2.1.1`
 - Timestamp: 2026-07-31
 - Type: Major
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.1.1
 
 ### Changes
 
 - **Release:** Major release bundling the worker noconsole stdout guard (`1.2.12`) and restored `app/build/icon.ico`; worker exe rebuilt.
-- **Security:** Next.js `15.2.4` ? `15.2.6` — patches CVE-2025-66478 (React2Shell); unblocks Vercel deploy.
+- **Security:** Next.js `15.2.4` ? `15.2.6` ï¿½ patches CVE-2025-66478 (React2Shell); unblocks Vercel deploy.
 
 ### Verification
 
