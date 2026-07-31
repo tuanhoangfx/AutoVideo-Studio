@@ -1,3 +1,4 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "installCommand": "npx pnpm@9.15.9 install --no-frozen-lockfile"
 }
