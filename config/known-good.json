@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "label": "stable-2.1.1",
+  "version": "2.1.1",
+  "gitCommit": null,
+  "gitTag": "v2.1.1-stable",
+  "productType": "Web",
+  "backup": {
+    "dir": null,
+    "capturedAt": "2026-07-31T08:03:08.620Z"
+  },
+  "notes": "Web tool — add deploy.deploymentId after Vercel ship"
+}

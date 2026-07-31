@@ -1,3 +1,21 @@
+# Changelog
+
+## 2026-07-31 - Release 2.1.1 - Desktop worker noconsole hardening
+
+- Version: `2.1.2`
+- Timestamp: 2026-07-31 15:14 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0021).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-31 - Release 2.1.1 - Desktop worker noconsole hardening
 
 - Version: `2.1.1`
