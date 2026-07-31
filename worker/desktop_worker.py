@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 import uvicorn
 
-from main import app
+
+def _ensure_streams() -> None:
+    # PyInstaller --noconsole + no stdio redirect: sys.stdout/stderr are None.
+    # uvicorn's default formatter calls sys.stdout.isatty() -> AttributeError.
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
+
+
+_ensure_streams()
+
+from main import app  # noqa: E402
 
 
 def main() -> None:

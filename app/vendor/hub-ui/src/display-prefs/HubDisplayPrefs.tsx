@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Settings } from "lucide-react";
+import { RotateCcw, Settings } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
-import { LIMIT_OPTIONS, TIME_RANGES } from "./constants";
+import { LIMIT_OPTIONS, TABLE_PAGE_SIZE_OPTIONS, TIME_RANGES } from "./constants";
 import { MAX_VISIBLE_CHART } from "./chart-visible";
 import { MAX_VISIBLE_KPI } from "./kpi-visible";
 import { Section, ToggleRow } from "./primitives";
+import { SettingsAdmSection } from "./SettingsAdmSection";
 import type { HubDisplayPrefsProps, PrefItem } from "./types";
 import {
   countVisiblePrefs,
@@ -20,6 +21,7 @@ import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "../shell/H
 import { HubTocSectionNav, type HubTocNavItem } from "../shell/HubTocSectionNav";
 import { registerHubSettingsOpen } from "../keyboard/hub-keyboard-shortcuts";
 import { HubDirectoryTableColumnPresetMenu } from "../prefs/HubDirectoryTableColumnPresetMenu";
+import { patchHubTablePageSizeValue } from "../table/hub-table-page-size";
 
 function parseSet(raw: string | null): Set<string> | null {
   if (raw === null) return null;
@@ -44,6 +46,7 @@ export function HubDisplayPrefs({
   showHeaderPin = true,
   showRange = true,
   showLimit = true,
+  showPageSize = false,
   showNavToggle = false,
   hideSearchPinOnSystem = false,
   defaultKpiKeys,
@@ -63,6 +66,7 @@ export function HubDisplayPrefs({
   getSubTab,
   subTabDisplay,
   generalExtras,
+  headerExtras,
   displayExtras,
   footerActions,
   tablePanel,
@@ -110,7 +114,11 @@ export function HubDisplayPrefs({
   useEffect(() => {
     const sync = () => setPrefs(readPrefs());
     window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
+    window.addEventListener("hub-list-prefs-change", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hub-list-prefs-change", sync);
+    };
   }, [readPrefs]);
 
   const isSystem = screen === "system";
@@ -145,7 +153,11 @@ export function HubDisplayPrefs({
     : usesLegacySystemDisplay
       ? (systemSlice?.charts ?? null)
       : prefs.charts;
-  const visHubFilters = filtersFromUrl ? parseSet(rawFilters) : (prefs.hubFilters ?? null);
+  const visHubFilters = usesSubTabDisplay
+    ? (subTabSlice?.filters ?? null)
+    : filtersFromUrl
+      ? parseSet(rawFilters)
+      : (prefs.hubFilters ?? null);
 
   const isGlobalScope = scope === "global";
   const tabKpis = isGlobalScope ? [] : (kpis ?? []);
@@ -227,9 +239,10 @@ export function HubDisplayPrefs({
       return;
     }
 
-    if (usesSubTabDisplay && subTabDisplay && (param === "kpi" || param === "charts")) {
+    if (usesSubTabDisplay && subTabDisplay && (param === "kpi" || param === "charts" || param === filterParam)) {
+      const subKey = param === filterParam ? "filters" : param;
       subTabDisplay.adapter.patch(effectiveSubTab, {
-        [param]: allDefault ? null : [...next],
+        [subKey]: allDefault ? null : [...next],
       });
       setDisplayTick((n) => n + 1);
       const evt = subTabDisplay.changeEvent ?? "subtab-display-change";
@@ -370,29 +383,54 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (showHeaderPin) {
+  if (showHeaderPin || headerExtras) {
+    const showSearchPin = !(hideSearchPinOnSystem && isSystem);
     displayParts.push(
-      <Section key="header" label="Header" icon={buildSemanticTocIcon("settings.header")}>
-        <ToggleRow
-          label="Pin header (sticky)"
-          on={prefs.headerPin}
-          onChange={() => update({ hpin: prefs.headerPin ? "0" : null })}
-        />
-        {!(hideSearchPinOnSystem && isSystem) ? (
-          <ToggleRow
-            label="Pin search bar (sticky)"
-            on={prefs.searchPin}
-            onChange={() => update({ spin: prefs.searchPin ? "0" : null })}
-          />
+      <SettingsAdmSection key="header" label="Header" emoji="🗂️">
+        {showHeaderPin ? (
+          <>
+            <div className={showSearchPin ? "hub-settings-pin-row" : undefined}>
+              <ToggleRow
+                label="Pin header (sticky)"
+                on={prefs.headerPin}
+                onChange={() => update({ hpin: prefs.headerPin ? "0" : null })}
+              />
+              {showSearchPin ? (
+                <ToggleRow
+                  label="Pin search bar (sticky)"
+                  on={prefs.searchPin}
+                  onChange={() => update({ spin: prefs.searchPin ? "0" : null })}
+                />
+              ) : null}
+            </div>
+            {showNavToggle && prefs.navToggleIcon !== undefined ? (
+              <ToggleRow
+                label="Show submenu +/- icon"
+                on={prefs.navToggleIcon}
+                onChange={() => update({ navicon: prefs.navToggleIcon ? "0" : null })}
+              />
+            ) : null}
+          </>
         ) : null}
-        {showNavToggle && prefs.navToggleIcon !== undefined ? (
-          <ToggleRow
-            label="Show submenu +/- icon"
-            on={prefs.navToggleIcon}
-            onChange={() => update({ navicon: prefs.navToggleIcon ? "0" : null })}
-          />
-        ) : null}
-      </Section>,
+        {headerExtras}
+      </SettingsAdmSection>,
+    );
+  }
+
+  if (showPageSize) {
+    displayParts.push(
+      <SettingsAdmSection key="page-size" label="Rows per page" emoji="📄">
+        <div className="space-y-0.5">
+          {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
+            <ToggleRow
+              key={n}
+              label={`${n} rows`}
+              on={prefs.tablePageSize === n}
+              onChange={() => update({ tpage: patchHubTablePageSizeValue(n) }, `Page size: ${n}`)}
+            />
+          ))}
+        </div>
+      </SettingsAdmSection>,
     );
   }
 
@@ -423,6 +461,10 @@ export function HubDisplayPrefs({
               label={f.label}
               icon={f.icon}
               iconClassName={f.iconClassName}
+              emoji={f.emoji}
+              brandIcon={f.brandIcon}
+              imageSrc={f.imageSrc}
+              labelHint={f.labelHint}
               on={isVisible(visHubFilters, filterDefaults, f.key)}
               onChange={() => toggle(filterParam, tabFilters, filterDefaults, f.key)}
             />
@@ -510,7 +552,11 @@ export function HubDisplayPrefs({
         footer={
           <>
             {footerActions}
-            <HubToolDetailModalSecondaryAction label="Reset to defaults" onClick={resetDefaults} />
+            <HubToolDetailModalSecondaryAction
+              label="Reset to defaults"
+              onClick={resetDefaults}
+              icon={RotateCcw}
+            />
           </>
         }
       >

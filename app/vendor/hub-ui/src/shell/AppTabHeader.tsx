@@ -42,8 +42,10 @@ export type TabHeaderMetaItem = {
 export type TabHeaderStatItem = {
   key: string;
   icon?: HubGlyphComponent;
-  /** Sheet-parity emoji sticker — takes precedence over `icon` when set. */
+  /** Sheet-parity emoji sticker — takes precedence over `iconSrc` / `icon` when set. */
   emojiGlyph?: string;
+  /** Custom SVG/raster stat mark — after emoji, before Lucide/brand. */
+  iconSrc?: string;
   brandIcon?: HubBrandIconId;
   dotClass?: string;
   label: string;
@@ -63,7 +65,9 @@ type AppTabHeaderProps = {
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
-  /** Sheet-parity emoji sticker — takes precedence over `titleIcon` when set. */
+  /** Custom SVG/raster tab mark — takes precedence over Lucide/brand when set. */
+  titleIconSrc?: string;
+  /** Sheet-parity emoji sticker — takes precedence over `titleIconSrc` / Lucide when set. */
   titleEmojiGlyph?: string;
   title: string;
   titleMenu?: TabTitleMenuItem[];
@@ -73,6 +77,11 @@ type AppTabHeaderProps = {
   centerStats: TabHeaderStatItem[];
   /** Custom center rail (live tickers, tool-specific KPI). Takes precedence over `centerStats`. */
   centerContent?: ReactNode;
+  /**
+   * Sparse status before center stats (e.g. vault Syncing… / N pending).
+   * Idle tools pass null — no layout tax when hidden.
+   */
+  statusSlot?: ReactNode;
   pinSticky?: boolean;
   dividerBelow?: boolean;
   embedded?: boolean;
@@ -84,6 +93,7 @@ function TitleWithMenu({
   titleIcon,
   titleIconClass,
   titleBrandIcon,
+  titleIconSrc,
   titleEmojiGlyph,
   titleMenu,
   activeTitleMenuId,
@@ -93,6 +103,7 @@ function TitleWithMenu({
   titleIcon: HubGlyphComponent;
   titleIconClass: string;
   titleBrandIcon?: HubBrandIconId;
+  titleIconSrc?: string;
   titleEmojiGlyph?: string;
   titleMenu: TabTitleMenuItem[];
   activeTitleMenuId?: string;
@@ -124,6 +135,7 @@ function TitleWithMenu({
           titleIcon={titleIcon}
           titleIconClass={titleIconClass}
           titleBrandIcon={titleBrandIcon}
+          titleIconSrc={titleIconSrc}
           titleEmojiGlyph={titleEmojiGlyph}
         />
         <span className="flex min-w-0 flex-col leading-tight">
@@ -238,16 +250,19 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
 
 function headerStatLabelGlyph({
   emojiGlyph,
+  iconSrc,
   icon: Icon,
   brandIcon,
   toneClass,
 }: {
   emojiGlyph?: string;
+  iconSrc?: string;
   icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   toneClass: string;
 }): HubDirectoryColumnHintGlyph | undefined {
   if (emojiGlyph) return { emoji: emojiGlyph };
+  if (iconSrc) return { imageSrc: iconSrc };
   if (Icon) return { icon: Icon, toneClass };
   if (brandIcon) return { brandIcon, toneClass };
   return undefined;
@@ -274,6 +289,7 @@ function StatLabel({
 function StatLine({
   icon: Icon,
   emojiGlyph,
+  iconSrc,
   brandIcon,
   dotClass,
   value,
@@ -299,6 +315,16 @@ function StatLine({
         <span className="app-tab-header-stat-emoji shrink-0" aria-hidden>
           {emojiGlyph}
         </span>
+      ) : iconSrc ? (
+        <img
+          src={iconSrc}
+          alt=""
+          width={13}
+          height={13}
+          className={`shrink-0 ${toneClass}`}
+          draggable={false}
+          aria-hidden
+        />
       ) : Icon || brandIcon ? (
         <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={13} className={`shrink-0 ${toneClass}`} />
       ) : null}
@@ -306,7 +332,7 @@ function StatLine({
       <StatLabel
         label={label}
         labelHint={labelHint}
-        titleGlyph={headerStatLabelGlyph({ emojiGlyph, icon: Icon, brandIcon, toneClass })}
+        titleGlyph={headerStatLabelGlyph({ emojiGlyph, iconSrc, icon: Icon, brandIcon, toneClass })}
       />
     </>
   );
@@ -338,7 +364,10 @@ function StatLine({
 
 function SessionLine({ sessionMmSs }: { sessionMmSs: string }) {
   return (
-    <div className="app-tab-header__chrome-text inline-flex items-center gap-1.5 text-[var(--muted)]">
+    <div
+      className="app-tab-header__chrome-text inline-flex items-center gap-1.5 text-[var(--muted)]"
+      title={`Page session timer — ${sessionMmSs} since this tab opened`}
+    >
       <Clock size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
       <span className="hidden xl:inline">Session</span>
       <span className="tabular-nums text-[var(--text)]/90">{sessionMmSs}</span>
@@ -351,6 +380,7 @@ export function AppTabHeader({
   titleIcon: TitleIcon,
   titleIconClass = "text-indigo-400",
   titleBrandIcon,
+  titleIconSrc,
   titleEmojiGlyph,
   title,
   titleMenu,
@@ -359,6 +389,7 @@ export function AppTabHeader({
   metaItems,
   centerStats,
   centerContent,
+  statusSlot = null,
   pinSticky = true,
   dividerBelow = true,
   embedded = false,
@@ -371,6 +402,7 @@ export function AppTabHeader({
     : `app-tab-header ${positionClass} -mx-6 mb-2 box-border grid items-center gap-x-3 bg-[var(--bg)] px-6${
         dividerBelow ? " border-b border-white/5" : ""
       }`;
+  const hasCenterStats = Boolean(centerContent) || centerStats.length > 0;
 
   return (
     <header className={chromeClass} aria-label={ariaLabel}>
@@ -381,6 +413,7 @@ export function AppTabHeader({
             titleIcon={TitleIcon}
             titleIconClass={titleIconClass}
             titleBrandIcon={titleBrandIcon}
+            titleIconSrc={titleIconSrc}
             titleEmojiGlyph={titleEmojiGlyph}
             titleMenu={titleMenu}
             activeTitleMenuId={activeTitleMenuId}
@@ -392,9 +425,13 @@ export function AppTabHeader({
               titleIcon={TitleIcon}
               titleIconClass={titleIconClass}
               titleBrandIcon={titleBrandIcon}
+              titleIconSrc={titleIconSrc}
               titleEmojiGlyph={titleEmojiGlyph}
             />
-            <h1 className="app-tab-header__chrome-text min-w-0 truncate tracking-tight text-[var(--text)]">
+            <h1
+              className="app-tab-header__chrome-text min-w-0 truncate tracking-tight text-[var(--text)]"
+              title={`${title} — ${ariaLabel}`}
+            >
               {title}
             </h1>
           </>
@@ -419,6 +456,8 @@ export function AppTabHeader({
         role="status"
         aria-label={`${title} summary`}
       >
+        {statusSlot ? <span className="inline-flex shrink-0 items-center">{statusSlot}</span> : null}
+        {statusSlot && hasCenterStats ? <Rule /> : null}
         {centerContent ??
           centerStats.map((stat, index) => {
             const { key, ...statProps } = stat;

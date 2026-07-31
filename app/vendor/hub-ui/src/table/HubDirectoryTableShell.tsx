@@ -1,4 +1,12 @@
-import type { ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+} from "react";
 import { resolveHubTableColumnMeta } from "./hub-table-column-meta";
 import { HubPaginatedTableShell } from "../content/HubPaginatedTableShell";
 import { HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS } from "./directory-table-scroll";
@@ -25,6 +33,7 @@ export type HubDirectoryTableColumn<TKey extends string> = {
   headerIconClassName?: string;
   headerBrandIcon?: HubTableColumnHeaderProps["brandIcon"];
   headerEmoji?: string;
+  headerImageSrc?: string;
   /** Native title fallback when rich hint is absent. */
   headerTooltip?: string;
   /** Rich multi-line popover with icon rows. */
@@ -107,6 +116,94 @@ function buildDirectoryPadBodyRows<TSortKey extends string>(
   ));
 }
 
+/** Row event callbacks live in a ref so they never bust DirectoryBodyRow memo. */
+type DirectoryRowCallbacks<TItem> = {
+  onRowClick?: (item: TItem) => void;
+  onRowDoubleClick?: (item: TItem) => void;
+  onRowMouseEnter?: (item: TItem) => void;
+};
+
+type DirectoryBodyRowProps<TItem> = {
+  item: TItem;
+  rowKey: string;
+  selected: boolean;
+  rowCanSelect: boolean;
+  showSelect: boolean;
+  /** Pre-computed class string (getRowClassName result) so memo compares a primitive. */
+  extraClassName: string;
+  renderRowCells: (item: TItem) => ReactNode;
+  renderStaticCells?: (item: TItem) => ReactNode;
+  onToggleSelect?: (id: string) => void;
+  beginDragSelect: (id: string, selected: boolean) => void;
+  extendDragSelect: (id: string, canSelect: boolean) => void;
+  callbacksRef: MutableRefObject<DirectoryRowCallbacks<TItem>>;
+};
+
+/**
+ * Memoized body row — only re-renders when its own item/selected/class change.
+ * Keeps a checkbox toggle (or drag-sweep) from re-rendering every other row's
+ * (expensive) cells, so click + multi-select feel instant. Row event callbacks
+ * are read through `callbacksRef` so unstable parent closures don't bust memo;
+ * `renderRowCells` must stay referentially stable across selection changes
+ * (wrap it in useCallback keyed to columns/search — not selection).
+ */
+function DirectoryBodyRowInner<TItem>({
+  item,
+  rowKey,
+  selected,
+  rowCanSelect,
+  showSelect,
+  extraClassName,
+  renderRowCells,
+  renderStaticCells,
+  onToggleSelect,
+  beginDragSelect,
+  extendDragSelect,
+  callbacksRef,
+}: DirectoryBodyRowProps<TItem>) {
+  return (
+    <tr
+      className={`hub-users-row${selected ? " is-selected" : ""}${extraClassName}`}
+      onClick={() => callbacksRef.current.onRowClick?.(item)}
+      onDoubleClick={() => callbacksRef.current.onRowDoubleClick?.(item)}
+      onMouseEnter={() => {
+        if (showSelect) extendDragSelect(rowKey, rowCanSelect);
+        callbacksRef.current.onRowMouseEnter?.(item);
+      }}
+    >
+      {showSelect ? (
+        <td
+          className="hub-users-col--select"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={
+            rowCanSelect
+              ? (e) => {
+                  if (e.button === 0) beginDragSelect(rowKey, selected);
+                }
+              : undefined
+          }
+        >
+          {rowCanSelect ? (
+            <label className="hub-users-select-row">
+              <input
+                type="checkbox"
+                className="hub-checkbox"
+                checked={selected}
+                onChange={() => onToggleSelect?.(rowKey)}
+                aria-label={`Select row ${rowKey}`}
+              />
+            </label>
+          ) : null}
+        </td>
+      ) : null}
+      {renderRowCells(item)}
+      {renderStaticCells?.(item)}
+    </tr>
+  );
+}
+
+const DirectoryBodyRow = memo(DirectoryBodyRowInner) as typeof DirectoryBodyRowInner;
+
 /**
  * Golden directory table chrome — select column, sortable headers, pager shell.
  * Golden: P0004 HubToolsDirectoryTable · UserDirectoryTable · DashboardScreensTable.
@@ -148,17 +245,97 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
   const splitScroll = useSplitDirectoryScroll(wrapClassName);
   const resolvedPageSize = useHubTablePageSize(pageSize);
 
+  // Drag-to-select — hold left button on a row's checkbox and sweep over adjacent
+  // rows to toggle them all to one target state (P0004 directory parity, shared SSOT).
+  const dragRef = useRef<{
+    active: boolean;
+    target: boolean;
+    startId: string;
+    startSelected: boolean;
+    processed: Set<string>;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const onToggleSelectRef = useRef(onToggleSelect);
+  onToggleSelectRef.current = onToggleSelect;
+
+  // Row event handlers live in a ref → stable identity keeps DirectoryBodyRow memo
+  // intact even when a parent recreates these closures on every selection toggle.
+  const rowCallbacksRef = useRef<DirectoryRowCallbacks<TItem>>({});
+  rowCallbacksRef.current = { onRowClick, onRowDoubleClick, onRowMouseEnter };
+
+  const endDragSelect = useCallback(() => {
+    if (dragRef.current) dragRef.current = null;
+    setDragging(false);
+  }, []);
+
+  const applyDragToRow = useCallback((id: string) => {
+    const state = dragRef.current;
+    if (!state || state.processed.has(id)) return;
+    state.processed.add(id);
+    const isSelected = selectedIdsRef.current?.has(id) ?? false;
+    if (isSelected !== state.target) onToggleSelectRef.current?.(id);
+  }, []);
+
+  const beginDragSelect = useCallback((id: string, selected: boolean) => {
+    dragRef.current = {
+      active: false,
+      target: !selected,
+      startId: id,
+      startSelected: selected,
+      processed: new Set(),
+    };
+  }, []);
+
+  const extendDragSelect = useCallback(
+    (id: string, canSelect: boolean) => {
+      const state = dragRef.current;
+      if (!state) return;
+      if (!state.active) {
+        // Second row entered while button held → this is a sweep, not a plain click.
+        state.active = true;
+        setDragging(true);
+        applyDragToRow(state.startId);
+      }
+      if (canSelect) applyDragToRow(id);
+    },
+    [applyDragToRow],
+  );
+
+  useEffect(() => {
+    if (!showSelect) return;
+    const onUp = () => endDragSelect();
+    window.addEventListener("mouseup", onUp);
+    return () => window.removeEventListener("mouseup", onUp);
+  }, [showSelect, endDragSelect]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (dragging) {
+      const prev = document.body.style.userSelect;
+      document.body.style.userSelect = "none";
+      window.getSelection?.()?.removeAllRanges();
+      return () => {
+        document.body.style.userSelect = prev;
+      };
+    }
+    return undefined;
+  }, [dragging]);
+
   const columnHeaderProps = (col: (typeof columns)[number]) =>
     col.headerEmoji
       ? { label: col.label, headerEmoji: col.headerEmoji }
-      : col.headerIcon || col.headerBrandIcon
-        ? {
-            label: col.label,
-            icon: col.headerIcon,
-            iconClassName: col.headerIconClassName,
-            brandIcon: col.headerBrandIcon,
-          }
-        : { label: col.label, role: col.role };
+      : col.headerImageSrc
+        ? { label: col.label, headerImageSrc: col.headerImageSrc }
+        : col.headerIcon || col.headerBrandIcon
+          ? {
+              label: col.label,
+              icon: col.headerIcon,
+              iconClassName: col.headerIconClassName,
+              brandIcon: col.headerBrandIcon,
+            }
+          : { label: col.label, role: col.role };
 
   const renderThLabel = (
     col: (typeof columns)[number],
@@ -179,11 +356,13 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
           titleGlyph={
             col.headerEmoji
               ? { emoji: col.headerEmoji }
-              : {
-                  icon: col.headerIcon ?? roleMeta?.icon,
-                  brandIcon: col.headerBrandIcon,
-                  toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
-                }
+              : col.headerImageSrc
+                ? { brandIcon: col.headerBrandIcon }
+                : {
+                    icon: col.headerIcon ?? roleMeta?.icon,
+                    brandIcon: col.headerBrandIcon,
+                    toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
+                  }
           }
         >
           {label}
@@ -193,7 +372,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
     return label;
   };
 
-  const headerTitleAttr = (_col: (typeof columns)[number]) => undefined;
+  const headerTitleAttr = (col: (typeof columns)[number]) => col.headerTooltip ?? col.label;
 
   const wrapBorder = flushWrap ? "" : " rounded-2xl border border-white/5";
   const resolvedWrapClass = `hub-users-table-wrap${splitScroll ? " hub-directory-table-split" : ""} ${wrapClassName}${wrapBorder}`;
@@ -268,43 +447,30 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
         const bodyRows = pageItems.map((item) => {
           const rowKey = getRowKey(item);
           const selected = selectedIds?.has(rowKey) ?? false;
+          const rowCanSelect = canSelectRow?.(item) !== false;
           return (
-            <tr
+            <DirectoryBodyRow
               key={rowKey}
-              className={`hub-users-row${selected ? " is-selected" : ""}${getRowClassName?.(item) ?? ""}`}
-              onClick={onRowClick ? () => onRowClick(item) : undefined}
-              onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(item) : undefined}
-              onMouseEnter={onRowMouseEnter ? () => onRowMouseEnter(item) : undefined}
-            >
-              {showSelect ? (
-                <td className="hub-users-col--select" onClick={(e) => e.stopPropagation()}>
-                  {canSelectRow?.(item) !== false ? (
-                    <label className="hub-users-select-row">
-                      <input
-                        type="checkbox"
-                        className="hub-checkbox"
-                        checked={selected}
-                        onChange={() => onToggleSelect?.(rowKey)}
-                        aria-label={`Select row ${rowKey}`}
-                      />
-                    </label>
-                  ) : null}
-                </td>
-              ) : null}
-              {renderRowCells(item)}
-              {renderStaticCells?.(item)}
-            </tr>
+              item={item}
+              rowKey={rowKey}
+              selected={selected}
+              rowCanSelect={rowCanSelect}
+              showSelect={showSelect}
+              extraClassName={getRowClassName?.(item) ?? ""}
+              renderRowCells={renderRowCells}
+              renderStaticCells={renderStaticCells}
+              onToggleSelect={onToggleSelect}
+              beginDragSelect={beginDragSelect}
+              extendDragSelect={extendDragSelect}
+              callbacksRef={rowCallbacksRef}
+            />
           );
         });
 
+        const padCount = padBodyRowsToPageSize ? Math.max(0, resolvedPageSize - pageItems.length) : 0;
         const padRows =
-          padBodyRowsToPageSize && pageItems.length > 0
-            ? buildDirectoryPadBodyRows(
-                Math.max(0, resolvedPageSize - pageItems.length),
-                columns,
-                staticColumns,
-                showSelect,
-              )
+          padCount > 0
+            ? buildDirectoryPadBodyRows(padCount, columns, staticColumns, showSelect)
             : [];
 
         const allBodyRows = (
@@ -313,6 +479,8 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
             {padRows}
           </>
         );
+
+        const tableHasRows = pageItems.length > 0 || padRows.length > 0;
 
         if (splitScroll) {
           return (
@@ -324,7 +492,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
               headRow={headRow}
               bodyRows={allBodyRows}
               emptyMessage={emptyMessage}
-              hasRows={pageItems.length > 0}
+              hasRows={tableHasRows}
               scrollResetKey={resetKey}
             />
           );
@@ -339,7 +507,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
             headRow={headRow}
             bodyRows={allBodyRows}
             emptyMessage={emptyMessage}
-            hasRows={pageItems.length > 0}
+            hasRows={tableHasRows}
           />
         );
       }}

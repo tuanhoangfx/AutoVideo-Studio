@@ -3,13 +3,18 @@ import { HubAdmNoteEditorField } from "./HubAdmNoteEditorField";
 import { HubAdmNoteReadonlyBody } from "./HubAdmNoteReadonlyBody";
 import { hubAccountDetailSectionIcon, hubAccountDetailSectionIconClass } from "./hubAccountDetailSectionIcons";
 import { HubToolDetailRail } from "./HubToolDetailSplitLayout";
+import { resolveHubToolDetailRailHead } from "./hubToolDetailTitleWithEmoji";
 
 type HubAdmNoteRailBaseProps = {
   title?: ReactNode;
+  /** Sheet sticker — replaces Lucide note icon when set (📜 Order Details parity). */
+  titleEmoji?: string;
   className?: string;
   id?: string;
   ariaLabel?: string;
   searchLabel?: string;
+  /** When false (default), search lives in modal header — note rail is plain. */
+  searchInRail?: boolean;
 };
 
 export type HubAdmNoteRailReadonlyProps = HubAdmNoteRailBaseProps & {
@@ -30,6 +35,7 @@ export type HubAdmNoteRailEditorProps = HubAdmNoteRailBaseProps & {
   rows?: number;
   searchPlaceholder?: string;
   scroll?: boolean;
+  searchInRail?: boolean;
 };
 
 export type HubAdmNoteRailProps = HubAdmNoteRailReadonlyProps | HubAdmNoteRailEditorProps;
@@ -37,16 +43,22 @@ export type HubAdmNoteRailProps = HubAdmNoteRailReadonlyProps | HubAdmNoteRailEd
 /** Golden note rail — HubToolDetailRail + Search note SSOT (P0020 Mail). */
 export function HubAdmNoteRail(props: HubAdmNoteRailProps) {
   const title = props.title ?? "Note";
+  const head = resolveHubToolDetailRailHead({
+    title,
+    titleEmoji: props.titleEmoji,
+    icon: hubAccountDetailSectionIcon("note"),
+    iconClassName: hubAccountDetailSectionIconClass("note"),
+  });
   const isEditor = props.mode === "editor";
-  const scroll = props.scroll ?? !isEditor;
+  const scroll = props.scroll ?? false;
 
   return (
     <HubToolDetailRail
       id={props.id}
-      title={title}
-      icon={hubAccountDetailSectionIcon("note")}
-      iconClassName={hubAccountDetailSectionIconClass("note")}
-      className={props.className}
+      title={head.titleNode}
+      icon={head.icon}
+      iconClassName={head.iconClassName}
+      className={["hub-adm-rail--note", props.className].filter(Boolean).join(" ")}
       scroll={scroll}
       bodyClassName="hub-adm-note-rail__body"
       ariaLabel={props.ariaLabel ?? (typeof title === "string" ? title : "Note")}
@@ -58,9 +70,10 @@ export function HubAdmNoteRail(props: HubAdmNoteRailProps) {
           name={props.name}
           placeholder={props.placeholder}
           controlClassName={props.controlClassName}
-          rows={props.rows}
           searchLabel={props.searchLabel}
           searchPlaceholder={props.searchPlaceholder}
+          searchInRail={props.searchInRail}
+          fillHeight
         />
       ) : (
         <HubAdmNoteReadonlyBody
@@ -68,6 +81,7 @@ export function HubAdmNoteRail(props: HubAdmNoteRailProps) {
           emptyMessage={props.emptyMessage}
           searchLabel={props.searchLabel}
           placeholder={props.placeholder}
+          searchInRail={props.searchInRail}
         />
       )}
     </HubToolDetailRail>

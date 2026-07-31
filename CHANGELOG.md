@@ -1,5 +1,49 @@
+## 2026-07-31 - Release 2.1.1 - Desktop worker noconsole hardening
+
+- Version: `2.1.1`
+- Timestamp: 2026-07-31
+- Type: Major
+- Status: Committed
+
+### Changes
+
+- **Release:** Major release bundling the worker noconsole stdout guard (`1.2.12`) and restored `app/build/icon.ico`; worker exe rebuilt.
+
+### Verification
+
+- `build-worker-exe.ps1` OK � `autovideo-worker.exe` rebuilt with icon.
+## 2026-07-31 - Fix packaged worker crash (noconsole stdout)
+
+- Version: `1.2.12`
+- Timestamp: 2026-07-31
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Worker:** `desktop_worker.py` guards `sys.stdout/stderr = None` (PyInstaller `--noconsole` + no stdio redirect) � uvicorn formatter crashed with `AttributeError: 'NoneType' object has no attribute 'isatty'`.
+
+### Verification
+
+- Same SSOT fix as P0010 2.1.30; exe rebuild deferred to next Release.
 # Changelog
 
+## 2026-07-30 - preShip SSOT: verify-untracked + verify-no-sibling-tool-imports
+
+- Version: `1.2.11`
+- Timestamp: 2026-07-30 17:46 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0021).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-24 - preShip SSOT: verify-untracked + verify-no-sibling-tool-imports
 
 - Version: `1.2.10`

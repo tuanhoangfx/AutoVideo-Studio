@@ -61,16 +61,31 @@ export function getDirectorySearchHighlight(
 
   const digits = trimmed.replace(/\D/g, "");
   const letters = trimmed.replace(/[\d#]/g, "").trim().toLowerCase();
+  const lower = trimmed.toLowerCase();
 
   if (digits && letters && (!mixedRequiresWhitespace || /\s/.test(trimmed))) {
-    return { idTerms: [digits], textTerms: [letters] };
+    // Spaced mixed ("00 alpha") → id digits + letter words.
+    // Contiguous mixed (emails, SKUs: bland…961998@gmail.com) → keep full query so mark is contiguous.
+    if (/\s/.test(trimmed)) {
+      return { idTerms: [digits], textTerms: [letters] };
+    }
+    return { idTerms: [digits], textTerms: [lower] };
   }
 
-  const lower = trimmed.toLowerCase();
   return {
     idTerms: digits.length > 0 ? [digits] : [],
     textTerms: lower ? [lower] : [],
   };
+}
+
+/** Flat terms for `HubDirectorySearchHighlightText` — bind to live `queryInput`, not debounced `query`. */
+export function directorySearchHighlightTerms(
+  searchTerm: string,
+  options: DirectoryIdSearchOptions = {},
+): readonly string[] {
+  const highlight = getDirectorySearchHighlight(searchTerm, options);
+  if (!highlight) return [];
+  return [...highlight.idTerms, ...highlight.textTerms];
 }
 
 export type HighlightSegment = { text: string; highlight: boolean };

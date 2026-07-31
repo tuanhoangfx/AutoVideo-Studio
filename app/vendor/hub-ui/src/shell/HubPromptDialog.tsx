@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
-import { LayoutTemplate, type LucideIcon } from "lucide-react";
+import { LayoutTemplate, Save, X, type LucideIcon } from "lucide-react";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
@@ -59,8 +60,13 @@ export function HubPromptDialog({
       ariaLabelledBy="hub-prompt-title"
       footer={
         <>
-          <HubToolDetailModalSecondaryAction label={cancelLabel} onClick={onClose} />
-          <HubToolDetailModalPrimaryAction label={confirmLabel} onClick={submit} disabled={!value.trim()} />
+          <HubToolDetailModalSecondaryAction label={cancelLabel} onClick={onClose} icon={X} />
+          <HubToolDetailModalPrimaryAction
+            label={confirmLabel}
+            onClick={submit}
+            disabled={!value.trim()}
+            icon={Save}
+          />
         </>
       }
     >
@@ -76,6 +82,7 @@ export function HubPromptDialog({
           placeholder={placeholder}
           className="field h-[var(--hub-control-h)] w-full min-w-0 text-sm"
           autoFocus
+          {...HUB_NO_SPELLCHECK_PROPS}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

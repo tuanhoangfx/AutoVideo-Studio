@@ -32,8 +32,12 @@ export const HUB_DIRECTORY_TABLE_BASE_CLASS = "hub-users-table hub-users-table--
 /** Fixed checkbox column — 36px (16px hub-checkbox + 4px cell pad ×2). Use px not rem (root font-size varies). */
 export const HUB_DIRECTORY_SELECT_COL_WIDTH = "36px";
 
-/** Colgroup track under table-layout:fixed — 3% + data % must stay ≤100%; th/td locked to 36px in CSS. */
-export const HUB_DIRECTORY_SELECT_COLGROUP_WIDTH = "3%";
+/**
+ * Colgroup track for the select column — same px as th/td (never %).
+ * `%` under `table-layout:fixed` reserves ~3% of table width (~40–60px on wide panes)
+ * and creates a visual gap before the first data column even when th/td CSS locks to 36px.
+ */
+export const HUB_DIRECTORY_SELECT_COLGROUP_WIDTH = HUB_DIRECTORY_SELECT_COL_WIDTH;
 
 /** Modal directory tables — golden wrap chrome + horizontal scroll inside section. */
 export const HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS =
@@ -43,8 +47,12 @@ export const HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS =
 export const HUB_DIRECTORY_USER_TABLE_WRAP_CLASS = `hub-users-table-wrap ${HUB_DIRECTORY_TABLE_SCROLL_CLASS}`;
 export const HUB_DIRECTORY_TABLE_WRAP_CLASS = HUB_DIRECTORY_USER_TABLE_WRAP_CLASS;
 
-/** Predictable directory cell shapes — auto left-align header when columnKind is code/date. */
-export type HubDirectoryColumnKind = "code" | "date";
+/**
+ * Predictable directory cell shapes — SSOT header align: code→left, date/compact→center.
+ * `compact` = fixed-width, center-aligned label chip (durations, enum labels, short IDs) with no
+ * copy-text/timestamp inner (no tabular-nums). Override align via headerAlign.
+ */
+export type HubDirectoryColumnKind = "code" | "date" | "compact";
 
 /** Column meta input — width is SSOT for colgroup (`table-layout: fixed`). % values are relative weights per visible set (scaled to 100% in buildDirectoryColumns). */
 export type HubDirectoryColumnMetaInput = {
@@ -56,6 +64,8 @@ export type HubDirectoryColumnMetaInput = {
   headerIconClassName?: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
+  /** Extension manifest PNG or brand asset — takes precedence over Lucide/brand when set. */
+  headerImageSrc?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
   columnKind?: HubDirectoryColumnKind;
@@ -74,6 +84,8 @@ export type HubDirectoryColumnDef<TKey extends string = string> = {
   headerIconClassName?: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
+  /** Extension manifest PNG or brand asset — takes precedence over Lucide/brand when set. */
+  headerImageSrc?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
 };
@@ -161,11 +173,16 @@ export function buildDirectoryColumns<TKey extends string>(
       sortable: options?.sortable ?? true,
       headerAlign:
         def.headerAlign ??
-        (def.columnKind === "code" || def.columnKind === "date" ? "start" : undefined),
+        (def.columnKind === "date" || def.columnKind === "compact"
+          ? "center"
+          : def.columnKind === "code"
+            ? "start"
+            : undefined),
       headerIcon: def.headerIcon,
       headerIconClassName: def.headerIconClassName,
       headerBrandIcon: def.headerBrandIcon,
       headerEmoji: def.headerEmoji,
+      headerImageSrc: def.headerImageSrc,
       headerTooltip: def.headerTooltip,
       headerHint: def.headerHint,
     };
@@ -178,9 +195,52 @@ export function buildDirectoryColumns<TKey extends string>(
 
 type ColgroupCol = { key: string; colClass: string; width?: string };
 
+/**
+ * Fixed lengths (rem/px/ch) lock width+min+max so table-layout cannot stretch
+ * short columns (Browser code, Status, …). Percent stays flexible.
+ */
+function colWidthStyle(width: string | undefined): { width: string; minWidth?: string; maxWidth?: string } | undefined {
+  if (!width) return undefined;
+  const trimmed = width.trim();
+  if (trimmed.endsWith("%")) return { width: trimmed };
+  return { width: trimmed, minWidth: trimmed, maxWidth: trimmed };
+}
+
 /** Bulk select tables: omit inline col widths — CSS colClass SSOT (2FA parity; inline % expands 36px select). */
 function colgroupColsWithoutInlineWidth(columns: readonly ColgroupCol[]): ColgroupCol[] {
   return columns.map(({ key, colClass }) => ({ key, colClass }));
+}
+
+/**
+ * Keep rem/px locks only on chrome keys; strip % / auto / non-chrome widths.
+ * Use when many runtime columns would otherwise rem-lock every `<col>` and stretch the 36px select track.
+ */
+export function applyChromeRemDirectoryColWidths<T extends ColgroupCol>(
+  columns: readonly T[],
+  chromeKeys: ReadonlySet<string> | readonly string[],
+): T[] {
+  const chrome = chromeKeys instanceof Set ? chromeKeys : new Set(chromeKeys);
+  return columns.map((col) => {
+    if (!chrome.has(col.key)) return { ...col, width: undefined };
+    const w = col.width?.trim() ?? "";
+    if (!w || w.endsWith("%") || w === "auto") return { ...col, width: undefined };
+    return col;
+  });
+}
+
+/**
+ * Colgroup for pivot / dynamic grids — rem on chrome only + select 36px.
+ * Golden consumer: P0020 BrowserAccountTable (`browser`, `serviceCount`, `updatedAt`).
+ */
+export function buildChromeRemDirectoryColgroup(
+  columns: readonly ColgroupCol[],
+  chromeKeys: ReadonlySet<string> | readonly string[],
+  options?: DirectoryColgroupOptions,
+): ReactNode {
+  return buildDirectoryColgroup(applyChromeRemDirectoryColWidths(columns, chromeKeys), {
+    includeSelect: true,
+    ...options,
+  });
 }
 
 /** Shared colgroup builder for HubDirectoryTableShell directory tables. */
@@ -195,21 +255,25 @@ export function buildDirectoryColgroup(
     includeSelect
       ? createElement("col", {
           className: "hub-users-col--select",
-          style: { width: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH },
+          style: {
+            width: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH,
+            minWidth: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH,
+            maxWidth: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH,
+          },
         })
       : null,
     ...columns.map((col) =>
       createElement("col", {
         key: col.key,
         className: col.colClass,
-        style: col.width ? { width: col.width } : undefined,
+        style: colWidthStyle(col.width),
       }),
     ),
     ...(options?.trailingCols?.map((col) =>
       createElement("col", {
         key: col.colClass,
         className: col.colClass,
-        style: col.width ? { width: col.width } : undefined,
+        style: colWidthStyle(col.width),
       }),
     ) ?? []),
   );
@@ -280,7 +344,19 @@ export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "defa
   return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-${variant}`;
 }
 
-/** Panel-fill row divisor — always `pageSize` so search/filter partial pages keep compact rows under thead (not 100% stretch). */
+/** Panel-fill row divisor — always `pageSize` so partial pages keep stable frame height (pad rows fill remainder). */
 export function resolveDirectoryPanelFillRows(pageSize: number, _visibleRowCount = 0): number {
   return Math.max(1, pageSize);
+}
+
+export type HubDirectoryPartialPagePad = "invisible" | "visible";
+
+/** Panel-fill — pad when page has data but fewer than `pageSize` rows (search/filter). */
+export function shouldPadDirectoryBodyToPageSize(visibleCount: number, pageSize: number): boolean {
+  return visibleCount > 0 && visibleCount < pageSize;
+}
+
+/** fixedRows rail — pad to N rows whenever the page is partial (including search). */
+export function shouldPadDirectoryBodyToFixedRows(visibleCount: number, fixedRows: number): boolean {
+  return visibleCount > 0 && visibleCount < fixedRows;
 }

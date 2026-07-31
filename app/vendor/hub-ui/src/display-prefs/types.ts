@@ -1,18 +1,34 @@
 import type { ReactNode } from "react";
 import type { DirectoryTableColumnPresetManagerProp } from "../prefs/directory-table-column-presets";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import type { TimeRange } from "./constants";
 
-export type PrefIcon = React.ComponentType<{
-  size?: number;
-  className?: string;
-  "aria-hidden"?: boolean;
-}>;
+export type HubDisplaySectionHints = {
+  kpi?: HubDirectoryColumnHintContent;
+  charts?: HubDirectoryColumnHintContent;
+  headerStats?: HubDirectoryColumnHintContent;
+  filters?: HubDirectoryColumnHintContent;
+  table?: HubDirectoryColumnHintContent;
+  pageSize?: HubDirectoryColumnHintContent;
+};
+
+export type PrefIcon = HubGlyphComponent;
 
 export type PrefItem = {
   key: string;
   label: string;
   icon?: PrefIcon;
   iconClassName?: string;
+  /** Sheet-parity emoji — takes precedence over `icon` in ToggleRow. */
+  emoji?: string;
+  /** Shared brand mark — same SSOT as directory `headerBrandIcon`. */
+  brandIcon?: HubBrandIconId;
+  /** Extension manifest PNG or brand asset — same SSOT as `headerImageSrc`. */
+  imageSrc?: string;
+  /** Rich label hint — hover label text (same SSOT as directory column headers). */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 /** Extra settings tab (e.g. Cookie bridge / vault) between General and Display. */
@@ -50,11 +66,16 @@ export type DisplayPrefsPrefs = {
 export type SystemDisplaySlice = {
   kpi: Set<string> | null;
   charts: Set<string> | null;
+  /** Optional — System → Extensions Kind facet, etc. */
+  filters?: Set<string> | null;
 };
 
 export type SystemDisplayAdapter = {
   read: (tab: string) => SystemDisplaySlice | null;
-  patch: (tab: string, patch: Partial<{ kpi: string[] | null; charts: string[] | null }>) => void;
+  patch: (
+    tab: string,
+    patch: Partial<{ kpi: string[] | null; charts: string[] | null; filters: string[] | null }>,
+  ) => void;
   reset: (tab: string) => void;
 };
 
@@ -79,6 +100,8 @@ export type HubDisplayPrefsProps = {
   showHeaderPin?: boolean;
   showRange?: boolean;
   showLimit?: boolean;
+  /** Directory/shop pager rows (`tpage`) — works in global + tab scope. */
+  showPageSize?: boolean;
   showNavToggle?: boolean;
   /** Hide “Pin search bar” on system screen (P0020 behavior). */
   hideSearchPinOnSystem?: boolean;
@@ -105,6 +128,11 @@ export type HubDisplayPrefsProps = {
   subTabDisplay?: SubTabDisplayConfig;
   /** @deprecated Prefer `displayExtras`. */
   generalExtras?: ReactNode;
+  /**
+   * Extra rows rendered inside the Header section (after Pin header / Pin search),
+   * e.g. tool-wide Price format — same ToggleRow indent / `text-xs` as pin toggles.
+   */
+  headerExtras?: ReactNode;
   /** Extra toggles rendered inside App mode (e.g. 2FA mask password). */
   displayExtras?: ReactNode;
   /** Extra footer actions before “Reset to defaults” (e.g. tab-specific Save). */
@@ -116,7 +144,11 @@ export type HubDisplayPrefsProps = {
   tableSectionLabel?: string;
   /** Actions in the Table columns section header (e.g. Reset columns). */
   tableSectionActions?: ReactNode;
+  /** When true, Table section renders before KPI / Charts (default false). */
+  tableSectionFirst?: boolean;
   tableActiveCount?: number;
+  /** Section header hints for toolbar Display dropdown panels. */
+  sectionHints?: HubDisplaySectionHints;
   headerStatLabel?: (isSystem: boolean) => string;
   onLog?: (scope: string, message: string) => void;
   mainSelector?: string;

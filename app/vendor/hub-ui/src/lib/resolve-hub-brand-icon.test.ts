@@ -18,8 +18,23 @@ describe("resolveHubBrandIcon", () => {
 });
 
 describe("resolveHubBrandIconByMatch", () => {
-  it("maps Gmail to Google icon", () => {
+  it("maps Acc Gmail to dedicated Gmail icon (not Google)", () => {
+    clearHubBrandIconMatchCache();
+    const hit = resolveHubBrandIconByMatch("Acc Gmail #1");
+    expect(hit?.label).toBe("Acc Gmail");
+    expect(hit?.id).toBe("acc-gmail");
+    expect(hit?.src).toBe("/assets/brand-icons/gmail.png");
+  });
+
+  it("maps bare Gmail to Gmail icon (not Google SVG)", () => {
     const hit = resolveHubBrandIconByMatch("Gmail");
+    expect(hit?.label).toBe("Gmail");
+    expect(hit?.id).toBe("gmail");
+    expect(hit?.src).toBe("/assets/brand-icons/gmail.png");
+  });
+
+  it("maps Google One to Google icon", () => {
+    const hit = resolveHubBrandIconByMatch("Google One");
     expect(hit?.label).toBe("Google");
     expect(hit?.src).toBe("/icons/google.svg");
   });
@@ -53,6 +68,13 @@ describe("resolveHubBrandIconByMatch", () => {
     expect(resolveHubBrandIconByMatch("Messenger")?.id).toBe("messenger");
   });
 
+  it("maps 5sim and shopvia to bare raster icons", () => {
+    expect(resolveHubBrandIconByMatch("5sim")?.id).toBe("5sim");
+    expect(resolveHubBrandIconByMatch("5sim")?.shell).toBe("bare");
+    expect(resolveHubBrandIconByMatch("shopvia.info")?.id).toBe("shopvia");
+    expect(resolveHubBrandIconByMatch("shopvia.info")?.src).toBe("/assets/brand-icons/shopvia.png");
+  });
+
   it("returns null for unknown platform", () => {
     expect(resolveHubBrandIconByMatch("UnknownPlatformXYZ")).toBeNull();
   });
@@ -60,6 +82,6 @@ describe("resolveHubBrandIconByMatch", () => {
   it("clears match cache", () => {
     resolveHubBrandIconByMatch("Gmail");
     clearHubBrandIconMatchCache();
-    expect(resolveHubBrandIconByMatch("Gmail")?.label).toBe("Google");
+    expect(resolveHubBrandIconByMatch("Gmail")?.label).toBe("Gmail");
   });
 });

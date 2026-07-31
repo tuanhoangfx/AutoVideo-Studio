@@ -11,8 +11,11 @@ export type DirectoryColumnMetaOptions = {
   headerTooltip?: string;
   /** Rich multi-line popover — icon rows for enum / source types. */
   headerHint?: HubDirectoryColumnHintContent;
-  /** Predictable cell shape — header left-align via buildDirectoryColumns. */
-  columnKind?: "code" | "date";
+  /** Sheet-parity emoji sticker — takes precedence over Lucide in table headers. */
+  headerEmoji?: string;
+  /** Predictable cell shape — header align via buildDirectoryColumns (code→left, date/compact→center). */
+  columnKind?: "code" | "date" | "compact";
+  /** Override buildDirectoryColumns default header align (code→start, date→center). */
   headerAlign?: "start" | "center";
 };
 
@@ -24,9 +27,10 @@ export type DirectoryColumnHeaderMeta = {
   headerIcon: LucideIcon;
   headerIconClassName: string;
   headerBrandIcon?: HubBrandIconId;
+  headerEmoji?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
-  columnKind?: "code" | "date";
+  columnKind?: "code" | "date" | "compact";
   headerAlign?: "start" | "center";
 };
 
@@ -49,6 +53,7 @@ export function createDirectoryColumnMetaHelpers() {
       headerIcon: icon.headerIcon as LucideIcon,
       headerIconClassName: icon.headerIconClassName,
       headerBrandIcon: icon.headerBrandIcon,
+      headerEmoji: options?.headerEmoji,
       headerTooltip: options?.headerTooltip,
       headerHint: options?.headerHint,
       columnKind: options?.columnKind,
@@ -70,6 +75,7 @@ export function createDirectoryColumnMetaHelpers() {
           headerIcon: def.headerIcon,
           headerIconClassName: def.headerIconClassName,
           headerBrandIcon: def.headerBrandIcon,
+          headerEmoji: def.headerEmoji,
           headerTooltip: def.headerTooltip,
           headerHint: def.headerHint,
           columnKind: def.columnKind,

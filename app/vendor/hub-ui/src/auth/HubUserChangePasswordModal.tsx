@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Mail, ShieldCheck, StickyNote } from "lucide-react";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
@@ -109,6 +110,7 @@ export function HubUserChangePasswordModal({
             (step === "idle" ? !canRecover || !email.trim() : !code.trim() || password.length < 6)
           }
           busy={busy}
+          icon={step === "idle" ? Mail : KeyRound}
         />
       }
     >
@@ -128,6 +130,7 @@ export function HubUserChangePasswordModal({
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={step === "sent" || !canRecover}
                 autoComplete="email"
+                {...HUB_NO_SPELLCHECK_PROPS}
               />
             </HubUserModalFieldRow>
             {!canRecover ? (
@@ -160,6 +163,7 @@ export function HubUserChangePasswordModal({
                     onChange={(e) => setCode(e.target.value)}
                     inputMode="numeric"
                     autoComplete="one-time-code"
+                    {...HUB_NO_SPELLCHECK_PROPS}
                   />
                 </HubUserModalFieldRow>
                 <HubUserModalFieldRow icon={KeyRound} iconClassName="text-amber-300" label="Password">
@@ -170,6 +174,7 @@ export function HubUserChangePasswordModal({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
+                    {...HUB_NO_SPELLCHECK_PROPS}
                   />
                 </HubUserModalFieldRow>
               </>

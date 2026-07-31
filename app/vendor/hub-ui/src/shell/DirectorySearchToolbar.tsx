@@ -5,11 +5,16 @@ import type { TimeRange } from "../display-prefs/constants";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { useDirectoryTimeRange } from "../lib/directory-time-range";
 import { HubResultCount } from "./HubResultCount";
-import { shouldShowHubDirectoryResultCount } from "./hubDirectorySelectionSlots";
+import { useHubDirectorySelectionChrome } from "./HubDirectorySelectionChromeContext";
+import {
+  resolveDirectorySearchResultCountGuard,
+  shouldShowHubDirectoryResultCount,
+} from "./hubDirectorySelectionSlots";
 import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
 import { HubTimeRangeSelect } from "./HubTimeRangeSelect";
 import { HubWorkspacePeriodSelect, type HubWorkspacePeriodSelectProps } from "./HubWorkspacePeriodSelect";
 import { ViewToggle, type HubViewMode } from "./ViewToggle";
+import { resolveDirectoryToolbarShowTablePageSize } from "./directory-search-toolbar-page-size";
 
 export type DirectorySearchToolbarProps = {
   /** Workspace period filter — P0020 vault tabs (replaces manual `leading` + `HubWorkspacePeriodSelect`). */
@@ -30,7 +35,7 @@ export type DirectorySearchToolbarProps = {
   /** Filter by `updatedAt` / activity — Hub catalog, System Overview, … */
   showTimeRange?: boolean;
   timeRange?: TimeRange;
-  /** Pager rows (`tpage`) — golden on all paginated directory tables. */
+  /** Pager rows (`tpage`). Auto-off when `displayBand` is set (page size lives in Display). */
   showTablePageSize?: boolean;
   /** Shell SSOT — when set, passed to `HubTablePageSizeSelect` (table + toolbar stay in sync). */
   tablePageSize?: number;
@@ -73,11 +78,18 @@ export function DirectorySearchToolbar({
   trailing,
 }: DirectorySearchToolbarProps) {
   const period = useDirectoryTimeRange(timeRange);
-  const resolvedShowTablePageSize = showTablePageSize ?? !displayBand;
-  const resultCountVisible = shouldShowHubDirectoryResultCount({
+  const resolvedShowTablePageSize = resolveDirectoryToolbarShowTablePageSize({
+    displayBand,
+    showTablePageSize,
+  });
+  const filterSelectionToolbarActive = useHubDirectorySelectionChrome();
+  const resultCountGuard = resolveDirectorySearchResultCountGuard({
     showResultCount,
     hasSearchSelectionChip,
+    filterSelectionToolbarActive,
+    viewMode,
   });
+  const resultCountVisible = shouldShowHubDirectoryResultCount(resultCountGuard);
   return (
     <>
       {leading}
@@ -105,6 +117,8 @@ export function DirectorySearchToolbar({
           type="button"
           onClick={onRefresh}
           disabled={disabled}
+          title={refreshing ? "Refreshing directory data…" : "Refresh directory data from cloud"}
+          aria-label={refreshing ? "Refreshing directory data" : "Refresh directory data"}
           className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />

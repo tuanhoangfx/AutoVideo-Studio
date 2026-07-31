@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { type ReactNode } from "react";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import { resolveHubBrandIcon, type HubBrandIconId } from "../lib/resolve-hub-brand-icon";
-import { hubBrandIconImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
+import { useHubBrandImageGate } from "../lib/use-hub-brand-image-gate";
+import { hubBrandIconImgClass, HUB_BRAND_ICON_BARE_CLASS, type HubBrandIconShell } from "./filter-dropdown-primitives";
 
 export type HubBrandIconProps = {
   brandId: HubBrandIconId;
@@ -10,10 +11,12 @@ export type HubBrandIconProps = {
   /** `chrome` — sidebar/tab header (14px). `filter` — dropdown rows (14px + filter classes). */
   context?: "chrome" | "filter";
   title?: string;
+  /** Rendered when the brand id is unknown or the image fails to load (e.g. cached 404). */
+  fallback?: ReactNode;
 };
 
 function chromeImgClass(shell: HubBrandIconShell): string {
-  if (shell === "bare") return "hub-chrome-brand-icon-bare";
+  if (shell === "bare") return HUB_BRAND_ICON_BARE_CLASS;
   if (shell === "darkInk") return "hub-chrome-brand-icon hub-chrome-brand-icon--dark-ink";
   return "hub-chrome-brand-icon hub-chrome-brand-icon--tile";
 }
@@ -25,19 +28,20 @@ export function HubBrandIcon({
   className = "",
   context = "chrome",
   title,
+  fallback,
 }: HubBrandIconProps) {
   const hit = resolveHubBrandIcon(brandId);
-  const [imgFailed, setImgFailed] = useState(false);
+  const { failed: imgFailed, imgSrc, onError } = useHubBrandImageGate(hit?.src);
   const px = compactIconSize(size);
 
-  if (!hit || imgFailed) return null;
+  if (!hit || imgFailed || !imgSrc) return <>{fallback ?? null}</>;
 
   const imgClass =
     context === "filter" ? hubBrandIconImgClass(hit.shell) : chromeImgClass(hit.shell);
 
   return (
     <img
-      src={hit.src}
+      src={imgSrc}
       alt=""
       width={px}
       height={px}
@@ -47,7 +51,7 @@ export function HubBrandIcon({
       decoding="async"
       draggable={false}
       referrerPolicy="no-referrer"
-      onError={() => setImgFailed(true)}
+      onError={onError}
     />
   );
 }

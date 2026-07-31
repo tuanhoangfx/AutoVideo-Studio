@@ -54,6 +54,11 @@
   box-sizing: border-box;
 }
 
+.hub-directory-frame.hub-directory-frame--panel-fill table.hub-directory-frame-table td {
+  padding: 3px 10px;
+  overflow: hidden;
+}
+
 .hub-directory-frame .hub-directory-frame-table .hub-users-th-text {
   font-size: var(--hub-table-header-size, 12px);
   font-weight: 700;
@@ -86,7 +91,7 @@
 .hub-directory-frame .hub-directory-frame-table td.hub-users-cell-num,
 .hub-directory-frame .hub-directory-frame-table .hub-users-cell-num {
   font-size: var(--hub-table-body-size, 12px);
-  font-weight: 600;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1.2;
@@ -200,8 +205,15 @@
 .hub-directory-frame.hub-directory-frame--panel-fill
   .hub-paginated-table-shell
   > .hub-users-table-wrap:not(.hub-directory-table-split)
+  thead
+  tr {
+  height: var(--hub-directory-head-row-h);
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split)
   tbody {
-  height: 100%;
   vertical-align: top;
 }
 
@@ -210,8 +222,14 @@
   > .hub-users-table-wrap:not(.hub-directory-table-split)
   tbody
   tr {
-  height: calc(100% / var(--hub-directory-page-rows, 20));
-  min-height: var(--hub-directory-row-h);
+  height: calc(
+    (100% - var(--hub-directory-head-row-h)) / var(--hub-directory-page-rows, 20)
+  );
+  min-height: 0;
+  max-height: calc(
+    (100% - var(--hub-directory-head-row-h)) / var(--hub-directory-page-rows, 20)
+  );
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -227,14 +245,22 @@
   table-layout: fixed;
 }
 
+.hub-directory-frame.hub-directory-frame--panel-fill .hub-directory-table-body-scroll thead tr {
+  height: var(--hub-directory-head-row-h);
+}
+
 .hub-directory-frame.hub-directory-frame--panel-fill .hub-directory-table-body-scroll tbody {
-  height: 100%;
   vertical-align: top;
 }
 
 .hub-directory-frame.hub-directory-frame--panel-fill .hub-directory-table-body-scroll tbody tr {
-  height: calc(100% / var(--hub-directory-page-rows, 20));
-  min-height: var(--hub-directory-row-h);
+  height: calc(
+    (100% - var(--hub-directory-head-row-h)) / var(--hub-directory-page-rows, 20)
+  );
+  min-height: 0;
+  max-height: calc(
+    (100% - var(--hub-directory-head-row-h)) / var(--hub-directory-page-rows, 20)
+  );
   box-sizing: border-box;
 }
 
@@ -244,4 +270,39 @@
   margin-top: 4px;
   position: relative;
   z-index: 2;
+}
+
+/*
+ * Panel-fill even row height on partial pages (search/filter).
+ * `table { height: 100% }` distributes surplus height by natural content height,
+ * so one data row + empty pad rows lets the data row absorb ALL surplus (giant row).
+ * Give each pad cell a full line's natural height so surplus spreads evenly.
+ */
+.hub-directory-frame.hub-directory-frame--panel-fill tbody tr.hub-users-row--pad td::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: calc(var(--hub-table-body-size, 12px) * var(--hub-table-body-line-height, 1.45));
+}
+
+/* Partial-page pad rows — SSOT for panel-fill stable frame */
+.hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad {
+  pointer-events: none;
+  user-select: none;
+}
+
+.hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad td {
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hub-directory-frame[data-partial-page-pad="visible"] tbody tr.hub-users-row--pad {
+  pointer-events: none;
+  user-select: none;
+}
+
+.hub-directory-frame[data-partial-page-pad="visible"] tbody tr.hub-users-row--pad td {
+  border-top-color: rgba(255, 255, 255, 0.02);
 }

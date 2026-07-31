@@ -1,7 +1,12 @@
-import { CopyMinus, Pencil, Plus, Trash2 } from "lucide-react";
+import { CopyMinus, Plus } from "lucide-react";
 import type { ReactNode } from "react";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import { HubBulkActionButton, type HubBulkActionTone } from "./HubBulkActionButton";
 import { HubDirectoryBulkActionRail } from "./HubDirectoryBulkActionRail";
+import { HubDirectoryDeleteBulkAction } from "./HubDirectoryDeleteBulkAction";
+import { HubDirectoryEditBulkAction } from "./HubDirectoryEditBulkAction";
+import { HubDirectoryNewBulkAction } from "./HubDirectoryNewBulkAction";
+import { HUB_DIRECTORY_NEW_ACTION_LABEL, HUB_DIRECTORY_NEW_ACTION_TONE } from "./hub-directory-new-action";
 
 export type HubDirectoryCrudBulkExtraAction = {
   label: string;
@@ -27,19 +32,26 @@ export type HubDirectoryCrudBulkActionsProps = {
   editTitleWhenNone?: string;
   deleteTitle?: string;
   deleteTitleWhenNone?: string;
+  primaryLabelHint?: HubDirectoryColumnHintContent;
+  editLabelHint?: HubDirectoryColumnHintContent;
+  deleteLabelHint?: HubDirectoryColumnHintContent;
+  /** Hide default Edit button (for tools using adaptive Detail CTA). */
+  hideEdit?: boolean;
+  /** Insert between New/Edit and Delete — e.g. `HubDirectoryAdaptiveEditAction` Detail CTA. */
+  beforeDelete?: ReactNode;
   extra?: HubDirectoryCrudBulkExtraAction;
   /** Render buttons only — compose multiple groups in one `HubDirectoryBulkActionRail`. */
   embedded?: boolean;
 };
 
-/** Golden New / Edit / Delete bulk rail — Notes folders, 2FA, Cookie access modals. */
+/** Golden New / Detail / Delete bulk rail — Notes folders, 2FA, Cookie access modals. */
 export function HubDirectoryCrudBulkActions({
   hasSelection,
   selectedCount,
   onPrimary,
   onEdit,
   onDelete,
-  primaryLabel = "New",
+  primaryLabel = HUB_DIRECTORY_NEW_ACTION_LABEL,
   primaryTitle,
   primaryDisabled = false,
   editDisabled = false,
@@ -49,6 +61,11 @@ export function HubDirectoryCrudBulkActions({
   editTitleWhenNone = "Select items to edit",
   deleteTitle = "Delete selected",
   deleteTitleWhenNone = "Select items to delete",
+  primaryLabelHint,
+  editLabelHint,
+  deleteLabelHint,
+  hideEdit = false,
+  beforeDelete,
   extra,
   embedded = false,
 }: HubDirectoryCrudBulkActionsProps) {
@@ -65,30 +82,38 @@ export function HubDirectoryCrudBulkActions({
 
   const buttons = (
     <>
-      <HubBulkActionButton
-        icon={<Plus size={14} aria-hidden />}
-        label={primaryLabel}
-        title={primaryTitle ?? primaryLabel}
-        tone="emerald"
-        disabled={primaryDisabled}
-        onClick={onPrimary}
-      />
-      <HubBulkActionButton
-        icon={<Pencil size={14} aria-hidden />}
-        label="Edit"
-        title={resolvedEditTitle}
-        tone="indigo"
-        disabled={!editEnabled}
-        selectedCount={hasSelection ? selectedCount : undefined}
-        onClick={onEdit}
-      />
-      <HubBulkActionButton
-        icon={<Trash2 size={14} aria-hidden />}
-        label="Delete"
+      {primaryLabel === HUB_DIRECTORY_NEW_ACTION_LABEL ? (
+        <HubDirectoryNewBulkAction
+          title={primaryTitle ?? primaryLabel}
+          disabled={primaryDisabled}
+          onClick={onPrimary}
+          labelHint={primaryLabelHint}
+        />
+      ) : (
+        <HubBulkActionButton
+          icon={<Plus size={14} aria-hidden />}
+          label={primaryLabel}
+          title={primaryTitle ?? primaryLabel}
+          tone={HUB_DIRECTORY_NEW_ACTION_TONE}
+          disabled={primaryDisabled}
+          onClick={onPrimary}
+        />
+      )}
+      {!hideEdit ? (
+        <HubDirectoryEditBulkAction
+          title={resolvedEditTitle}
+          disabled={!editEnabled}
+          selectedCount={hasSelection ? selectedCount : undefined}
+          onClick={onEdit}
+          labelHint={editLabelHint}
+        />
+      ) : null}
+      {beforeDelete}
+      <HubDirectoryDeleteBulkAction
         title={resolvedDeleteTitle}
-        tone="rose"
         disabled={!deleteEnabled}
         onClick={onDelete}
+        labelHint={deleteLabelHint}
       />
       {extra ? (
         <HubBulkActionButton

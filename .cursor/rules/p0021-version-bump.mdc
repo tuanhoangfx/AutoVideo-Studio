@@ -7,7 +7,7 @@ alwaysApply: false
 
 # P0021 — version bump (agent checklist)
 
-Đọc thêm: `e:\Dev\.cursor\rules\dev-workspace-compact.mdc` §2 (3 tầng patch / minor / major).
+Đọc thêm: `e:\Dev\.cursor\rules\dev-workspace-compact.mdc` → **Version tiers** (patch / minor / major).
 
 ## File phải cùng một số release
 

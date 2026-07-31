@@ -14,10 +14,7 @@ export type HubDirectoryMetricBadgeProps = {
   className?: string;
 };
 
-/**
- * Tiered numeric metric chip — P0004 `hub-users-tool-badge` + semantic fill.
- * Tiers: empty (0) · low (1–3) · normal (4–9) · high (≥10, indigo — no red cap).
- */
+/** Unified numeric metric chip — Design V1 Heat sequential palette. */
 export function HubDirectoryMetricBadge({
   count,
   icon: Icon = Layers,
@@ -35,7 +32,6 @@ export function HubDirectoryMetricBadge({
         tierClass,
         display === "card" ? "hub-users-tool-badge--card" : "",
         tier === "empty" ? "hub-users-tool-badge--empty" : "",
-        tier === "high" ? "hub-users-tool-badge--admin" : "",
         className,
       ]
         .filter(Boolean)

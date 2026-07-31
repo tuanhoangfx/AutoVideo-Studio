@@ -1,4 +1,5 @@
 /* Directory tables — select chrome + layout skin. Bulk: CSS colClass widths; read-only: buildDirectoryColgroup inline %. */
+@import "./hub-flash-border.css";
 
 /* Select column SSOT — 36px col + 16px hub-checkbox; applies when shell sets data-hub-directory-select */
 table.hub-users-table[data-hub-directory-select] col.hub-users-col--select,
@@ -57,10 +58,23 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--selec
   vertical-align: middle;
 }
 
+/*
+ * Belt: rem-pinned sibling <col>s under table-layout:fixed can still stretch the select
+ * track (~46–49px) when every content col is rem-locked (Profile pivot). Prefer
+ * chrome-only rem in product colgroups; this keeps the checkbox SSOT rigid.
+ */
+table.hub-users-table[data-hub-directory-select] col.hub-users-col--select {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+}
+
 table.hub-users-table.hub-users-table--directory {
   min-width: 48rem;
   --hub-table-body-size: 12px;
   --hub-table-body-line-height: 1.45;
+  --hub-directory-glyph-label-gap: 5px;
+  --hub-directory-header-glyph-px: 13px;
 }
 
 /* Directory body typography — status / sync / muted match 12px body (frame-table parity). */
@@ -300,16 +314,30 @@ table.hub-users-table.hub-users-table--directory .hub-users-th-btn,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-btn {
   min-height: 28px;
   padding: 2px 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-heading,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-heading {
-  gap: 5px;
+  gap: var(--hub-directory-glyph-label-gap, 5px);
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-label {
-  gap: 5px;
+  gap: var(--hub-directory-glyph-label-gap, 5px);
+  min-width: 0;
+  overflow: hidden;
+  /* Sort icon must not steal flex space from the column title. */
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+table.hub-users-table.hub-users-table--directory .hub-users-th-label > svg,
+table.hub-users-table[data-hub-directory-select] .hub-users-th-label > svg {
+  flex-shrink: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label .hub-chrome-brand-icon-bare,
@@ -317,10 +345,112 @@ table.hub-users-table[data-hub-directory-select] .hub-users-th-label .hub-chrome
   vertical-align: middle;
 }
 
+/* Directory table body — brand glyph SSOT (parity P0005 Product / P0020 Service). */
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table.hub-users-table--directory td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table.hub-users-table--twofa td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table[class*="hub-users-table--directory"] td .quota-platform-cell img.hub-brand-icon-bare,
+table.hub-users-table.hub-users-table--twofa td .quota-platform-cell img.hub-brand-icon-bare {
+  width: var(--hub-directory-table-brand-icon-px, 16px);
+  height: var(--hub-directory-table-brand-icon-px, 16px);
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* Safety — strip legacy filter/chrome tile chrome if any directory cell still emits it. */
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-name img.hub-chrome-brand-icon,
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-name img.hub-filter-brand-icon,
+table.hub-users-table.hub-users-table--twofa td .hub-users-cell-name img.hub-chrome-brand-icon,
+table.hub-users-table.hub-users-table--twofa td .hub-users-cell-name img.hub-filter-brand-icon,
+table.hub-users-table[class*="hub-users-table--directory"] td .quota-platform-cell img.hub-chrome-brand-icon,
+table.hub-users-table[class*="hub-users-table--directory"] td .quota-platform-cell img.hub-filter-brand-icon {
+  width: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  height: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  filter: none !important;
+  object-fit: contain;
+}
+
+.hub-directory-brand-glyph {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+}
+
 table.hub-users-table.hub-users-table--directory thead .hub-users-th-text,
 table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   color: var(--text);
   font-weight: 600;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  /* Never show "A…" / "Brows…" — when cramped, hide label and keep glyph (title/hint still expose name). */
+  text-overflow: clip;
+}
+
+/*
+ * Icon-only collapse is JS-only (`computeHubTableHeaderIconOnly` vs <th> width).
+ * Do NOT hide labels via @container max-width here — fixed cols (e.g. Update 6.25rem)
+ * falsely match loose thresholds and stay icon-only while the column still has room
+ * (TikTok/Mail/Services/Facebook/Partner + every Hub directory table).
+ * Never put container-type on .hub-users-th-heading (flex min-width:0 → width 0 latch).
+ */
+
+/*
+ * Glyph column headers — keep short labels sized to content so flex+ellipsis does not
+ * clip before JS measures the real <th> budget. Long text-only headers stay default flex.
+ */
+table.hub-users-table[data-hub-directory-select] thead th:has(
+  .hub-users-th-emoji,
+  .hub-users-th-icon,
+  .hub-chrome-brand-icon-bare,
+  img.hub-users-th-icon--image
+) .hub-users-th-heading,
+table.hub-users-table[data-hub-directory-select] thead th:has(
+  .hub-users-th-emoji,
+  .hub-users-th-icon,
+  .hub-chrome-brand-icon-bare,
+  img.hub-users-th-icon--image
+) .hub-users-th-label {
+  flex: 0 1 auto;
+  min-width: max-content;
+  overflow: visible;
+  width: auto;
+}
+
+table.hub-users-table[data-hub-directory-select] thead th:has(
+  .hub-users-th-emoji,
+  .hub-users-th-icon,
+  .hub-chrome-brand-icon-bare,
+  img.hub-users-th-icon--image
+) .hub-users-th-text:not(.hub-users-th-text--measure) {
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* JS fit — never clip header labels; icon-only when measured overflow. */
+.hub-users-th-heading--icon-only .hub-users-th-text:not(.hub-users-th-text--measure) {
+  display: none !important;
+}
+
+.hub-users-th-text--measure {
+  position: absolute;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  width: max-content;
+  max-width: none;
 }
 
 /* Split scroll — thead fixed outside scroll; scrollbar only on tbody pane */
@@ -418,6 +548,23 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   min-width: 0;
 }
 
+/* Expanded hit target — icon size unchanged (Profiles Run/Stop, ReUp Cancel). */
+.hub-directory-icon-cell--hit-expand {
+  position: relative;
+  min-width: 4rem;
+  padding: 2px 10px;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.hub-directory-icon-cell--hit-expand::before {
+  content: "";
+  position: absolute;
+  inset: -6px -10px;
+  border-radius: inherit;
+}
+
 .hub-directory-icon-cell__icon {
   display: inline-flex;
   flex-shrink: 0;
@@ -486,12 +633,65 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 .hub-directory-table-body-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--hub-split-scroll-thumb-hover, #3a4178);
 }
+/* Tight glyph paint only — no padding/bold/outward ring (avoids layout shift + neighbor bleed). */
 .hub-directory-search-highlight {
-  background: rgba(34, 211, 238, 0.5);
-  color: #ffffff;
-  border-radius: 3px;
-  padding: 0 2px;
-  font-weight: 700;
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45);
+  background: var(--hub-search-highlight-bg, rgba(99, 102, 241, 0.38));
+  color: var(--hub-search-highlight-fg, rgb(224, 231, 255));
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  font-weight: inherit;
+  box-shadow: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Route / extension health — icon + label, no pill badge (E0001 Status column parity). */
+.hub-route-status-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hub-inline-gap-meta, 5px);
+  max-width: 100%;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.hub-route-status-label__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.hub-route-status-label__text {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.hub-route-status-label--ready {
+  color: #38bdf8;
+}
+
+.hub-route-status-label--ok {
+  color: #34d399;
+}
+
+.hub-route-status-label--empty {
+  color: #a78bfa;
+}
+
+.hub-route-status-label--error {
+  color: #f87171;
+}
+
+.hub-route-status-label--warn {
+  color: #fcd34d;
+}
+
+.hub-route-status-label--neutral {
+  color: var(--muted);
 }
 
