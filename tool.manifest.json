@@ -74,6 +74,7 @@
     "manifestPath": "tool.manifest.json"
   },
   "deployTarget": "vercel",
+  "cssGate": { "minBytes": 60000 },
   "vercel": {
     "project": "p0021-autovideo-studio",
     "projectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ",
