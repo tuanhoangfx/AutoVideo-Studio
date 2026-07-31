@@ -8,6 +8,7 @@
 ### Changes
 
 - **Release:** Major release bundling the worker noconsole stdout guard (`1.2.12`) and restored `app/build/icon.ico`; worker exe rebuilt.
+- **Security:** Next.js `15.2.4` ? `15.2.6` — patches CVE-2025-66478 (React2Shell); unblocks Vercel deploy.
 
 ### Verification
 
