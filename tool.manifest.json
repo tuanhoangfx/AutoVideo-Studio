@@ -79,14 +79,24 @@
   },
   "vercel": {
     "project": "p0021-autovideo-studio",
-    "projectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ",
+    "projectId": "prj_D3mGWyF74tTvQEZf3eA89Vacw6yb",
     "rootDirectory": "app",
-    "productionUrl": "https://p0021-autovideo-studio.vercel.app",
+    "productionUrl": "https://p0021.infi.io.vn",
     "customDomain": "https://p0021.infi.io.vn",
     "customDomainStatus": "verified",
     "dnsRequired": "A p0021.infi.io.vn 76.76.21.21",
     "productionBranch": "main",
-    "team": "tuanhoangfxs-projects"
+    "team": "tuan-hoangs-projects-ad21fb52",
+    "previewUrl": "https://p0021.infi.io.vn",
+    "customDomains": [
+      "p0021.infi.io.vn"
+    ],
+    "teamId": "team_L9Vj1YDi9IbNjOZO5nZADaPb",
+    "deployHookUrl": "https://api.vercel.com/v1/integrations/deploy/prj_D3mGWyF74tTvQEZf3eA89Vacw6yb/LnGL0MThV6",
+    "deployHookName": "ship-production",
+    "migratedAt": "2026-08-02T20:42:47.547Z",
+    "migratedFromTeam": "tuanhoangfxs-projects",
+    "oldProjectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ"
   },
   "release": {
     "version": "2.1.2",
@@ -188,6 +198,10 @@
       "verify-no-sibling-tool-imports": "node E:\\Dev\\Tool\\scripts\\verify-no-sibling-tool-imports.mjs --product-root .",
       "verify-lockfile-importers": "node E:\\Dev\\Tool\\scripts\\verify-lockfile-importers.mjs --product-root ."
     },
-    "syncedAt": "2026-07-24T09:47:01.397Z"
+    "syncedAt": "2026-07-24T09:47:01.397Z",
+    "deployThrottle": {
+      "maxPerWindow": 2,
+      "windowHours": 24
+    }
   }
 }
