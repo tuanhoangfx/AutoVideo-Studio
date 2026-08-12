@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-12 - Hub shell SSOT (sidebar + header ops + Notify)
+
+- Version: `2.1.4`
+- Timestamp: 2026-08-12 20:54 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0021).
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-10 - Hub shell SSOT (sidebar + header ops + Notify)
 
 - Version: `2.1.3`
