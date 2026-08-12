@@ -17,6 +17,10 @@ import {
   X,
 } from 'lucide-react';
 import {
+  HubVersionUpdateStatusIcon,
+  type HubVersionUpdateState,
+} from '@/lib/hub-ui';
+import {
   readStudioExportSettings,
   writeStudioExportSettings,
   DEFAULT_STUDIO_EXPORT_SETTINGS,
@@ -65,22 +69,8 @@ export function HeaderUpdateButton() {
 
   if (!hasDesktopApi) return null;
 
-  const currentState = status?.state ?? 'idle';
+  const currentState = (status?.state ?? 'idle') as HubVersionUpdateState;
   const progress = Math.round(status?.progress?.percent ?? 0);
-  const label =
-    currentState === 'available'
-      ? 'Update'
-      : currentState === 'downloaded'
-        ? 'Install'
-        : currentState === 'downloading'
-          ? `${progress}%`
-          : currentState === 'checking'
-            ? 'Checking'
-            : currentState === 'latest'
-              ? 'Latest'
-              : currentState === 'dev'
-                ? 'Dev'
-                : 'Update';
   const title =
     status?.message ||
     (currentState === 'available'
@@ -94,9 +84,6 @@ export function HeaderUpdateButton() {
     currentState === 'downloading' ||
     currentState === 'installing' ||
     currentState === 'dev';
-  const isActive = currentState === 'available' || currentState === 'downloaded';
-  const isSuccess = currentState === 'latest';
-  const isError = currentState === 'error';
 
   const runUpdateAction = async () => {
     const desktopApi = window.autovideo;
@@ -122,42 +109,13 @@ export function HeaderUpdateButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={runUpdateAction}
-        disabled={disabled}
-        className={`relative inline-flex h-7 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-65 ${
-          isActive
-            ? 'border-amber-300/45 bg-amber-400/15 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.16)]'
-            : isSuccess
-              ? 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
-              : isError
-                ? 'border-rose-300/35 bg-rose-500/10 text-rose-100'
-                : 'border-white/10 bg-white/[.03] text-[var(--muted)] hover:bg-white/[.06] hover:text-[var(--text)]'
-        }`}
-        aria-label={title}
+      <HubVersionUpdateStatusIcon
+        state={currentState}
+        progress={progress}
         title={title}
-      >
-        {currentState === 'latest' ? (
-          <CheckCircle2 size={13} className="shrink-0 text-emerald-200" />
-        ) : currentState === 'error' ? (
-          <AlertTriangle size={13} className="shrink-0 text-rose-200" />
-        ) : currentState === 'available' || currentState === 'downloaded' ? (
-          <Download size={13} className="shrink-0 text-amber-200" />
-        ) : (
-          <RefreshCw
-            size={13}
-            className={`shrink-0 ${currentState === 'checking' || busy ? 'animate-spin text-indigo-200' : ''}`}
-          />
-        )}
-        <span className="hidden sm:inline">{label}</span>
-        {isActive ? (
-          <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5" aria-hidden>
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-70" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-300" />
-          </span>
-        ) : null}
-      </button>
+        disabled={disabled}
+        onClick={() => void runUpdateAction()}
+      />
 
       {updateToastOpen && currentState === 'available' ? (
         <div className="fixed right-4 top-14 z-[90] w-[22rem] overflow-hidden rounded-2xl border border-amber-300/25 bg-[#11142a]/95 shadow-2xl shadow-black/45 backdrop-blur">
@@ -168,10 +126,10 @@ export function HeaderUpdateButton() {
                 <Download size={17} />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-semibold text-white">Có bản cập nhật mới</div>
+                <div className="text-[13px] font-semibold text-white">Update available</div>
                 <div className="mt-1 text-[11px] leading-5 text-white/60">
                   {status?.updateVersion
-                    ? `AutoVideo Studio ${status.updateVersion} đã sẵn sàng để tải.`
+                    ? `AutoVideo Studio ${status.updateVersion} is ready to download.`
                     : status?.message}
                 </div>
               </div>

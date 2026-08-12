@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   Plus,
+  Pencil,
   Check,
   Activity,
   Clock,
@@ -70,7 +71,31 @@ export type FilterOption = {
   /** Brand img shell — bare (colored), tile (dark mark), darkInk (white mono). Default bare. */
   iconShell?: HubBrandIconShell;
   emoji?: string;
+  /**
+   * Short secondary text beside the label in the panel (e.g. `Stream copy · keep codec`).
+   * Keep brief — long copy belongs in `tip` / selected-value ColumnHint.
+   */
+  detail?: string;
+  /**
+   * Full hover tip for the selected value (HubDirectoryColumnHint description).
+   * Falls back to `detail` when omitted.
+   */
+  tip?: string;
 };
+
+/** Panel row label — `Name · detail` when detail is set (single truncate + native title). */
+export function filterOptionRowLabel(option: Pick<FilterOption, "label" | "detail" | "tip">): {
+  text: string;
+  title: string;
+} {
+  const detail = option.detail?.trim() || "";
+  const tip = option.tip?.trim() || detail;
+  if (!detail) return { text: option.label, title: tip || option.label };
+  return {
+    text: `${option.label} · ${detail}`,
+    title: tip ? `${option.label} · ${tip}` : `${option.label} · ${detail}`,
+  };
+}
 export type FilterDef = {
   key: string;
   label: string;
@@ -86,6 +111,12 @@ export type FilterDef = {
   allRowIconShell?: HubBrandIconShell;
   /** Rich label hint — hover filter facet name (directory column hint SSOT). */
   labelHint?: HubDirectoryColumnHintContent;
+  /**
+   * Multi-select top-row behavior.
+   * - `all-options` (default): toggle every option in the catalog.
+   * - `visible-options`: toggle only rows currently visible after panel search.
+   */
+  multiSelectAllMode?: "all-options" | "visible-options";
 };
 
 const FILTER_ICONS: Record<string, HubGlyphComponent> = {
@@ -110,6 +141,8 @@ const FILTER_ICONS: Record<string, HubGlyphComponent> = {
   share: Share2,
   folder: FolderOpen,
   service: KeyRound,
+  access: KeyRound,
+  grant: KeyRound,
   usage: Clock,
 };
 
@@ -124,7 +157,7 @@ export type FilterBarProps = {
   queryPending?: boolean;
   values: FilterValues;
   onValuesChange: (next: FilterValues) => void;
-  /** Row 1 — immediately after search (selection chip `x/y`). */
+  /** Row 1 — immediately after search (legacy / custom trailing; table selection chip uses toolbar leading). */
   searchTrailing?: React.ReactNode;
   /** Row 1 trailing (view toggle, counts) — used with layout="hub". */
   toolbar?: React.ReactNode;
@@ -146,6 +179,12 @@ export type FilterBarProps = {
   shortcutScope?: string;
   /** Hub dashboard-style row: filters only, no search field or F shortcut. */
   hideSearch?: boolean;
+  /**
+   * Searchbar Lite — single row when `hideSearch` (report dashboards).
+   * Left: toolbar · filters · Clear · Right: bulk actions.
+   * Default true when `hideSearch` so Staff Performance / report screens stay one line.
+   */
+  searchbarLite?: boolean;
   /** Debounce directory filter query — draft stays in HubSearchField (large vault perf). */
   searchDebounceMs?: number;
   /** Inside HubSplitDirectoryPane — parent owns border/bg; no nested panel chrome. */
@@ -172,11 +211,13 @@ export function FilterBar({
   embedded = false,
   shortcutScope = "default",
   hideSearch = false,
+  searchbarLite,
   searchDebounceMs = 0,
   frameless = false,
 }: FilterBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const clearAllRef = useRef<() => void>(() => {});
+  const lite = hideSearch && (searchbarLite ?? true);
 
   function setFilter(key: string, selected: string[]) {
     const next = { ...values };
@@ -256,39 +297,61 @@ export function FilterBar({
 
   if (layout === "hub") {
     const stickyTop = headerPinned ? "top-[var(--app-tab-header-sticky-h)]" : "top-0";
-    const panel = (
-      <div
-        className={
-          frameless
-            ? "space-y-2"
-            : "space-y-2 rounded-2xl border border-white/5 bg-[var(--panel)] p-3"
-        }
-      >
-        <div className="flex w-full min-w-0 items-center hub-inline-gap-name">
-          <div className="flex min-w-0 flex-1 items-center hub-inline-gap-name">
-            {hideSearch ? null : searchField}
-            {searchTrailing}
-          </div>
-          {toolbar ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-end hub-inline-gap-name">{toolbar}</div>
-          ) : null}
-        </div>
-        <div className="flex min-h-[var(--hub-control-h)] flex-wrap items-center hub-inline-gap-name">
+    const panelClass = frameless
+      ? `hub-filter-bar${lite ? " hub-filter-bar--lite" : " space-y-2"}`
+      : `hub-filter-bar${lite ? " hub-filter-bar--lite py-1.5 px-2" : " space-y-2 p-3"} rounded-2xl border border-white/5 bg-[var(--panel)]`;
+
+    const panel = lite ? (
+      <div className={panelClass}>
+        <div className="hub-filter-bar__lite-row flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center hub-inline-gap-name">
-            {row2Leading ? <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div> : null}
+            {toolbar}
+            {row2Leading ? (
+              <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div>
+            ) : null}
             {filterDropdowns}
             {clearFiltersBtn}
+            {searchTrailing}
           </div>
-          {row2Actions ? (
-            <div className="ml-auto flex min-w-0 shrink flex-wrap items-center justify-end hub-inline-gap-name">{row2Actions}</div>
+          {row2Actions || row2Trailing ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-end hub-inline-gap-name">
+              {row2Actions}
+              {row2Trailing}
+            </div>
           ) : null}
-          {row2Trailing ? <div className="shrink-0">{row2Trailing}</div> : null}
         </div>
+      </div>
+    ) : (
+      <div className={panelClass}>
+        {hideSearch && !searchTrailing ? null : (
+          <div className="hub-filter-bar__row-search flex w-full min-w-0 items-center hub-inline-gap-name">
+            <div className="hub-filter-bar__search-main flex min-w-0 flex-1 items-center hub-inline-gap-name">
+              {hideSearch ? null : searchField}
+              {searchTrailing}
+            </div>
+          </div>
+        )}
+        {toolbar ? (
+          <div className="hub-filter-bar__toolbar flex min-h-[var(--hub-control-h)] shrink-0 flex-wrap items-center hub-inline-gap-name">
+            {toolbar}
+          </div>
+        ) : null}
+        <div className="hub-filter-bar__row-filters flex min-h-[var(--hub-control-h)] min-w-0 flex-wrap items-center hub-inline-gap-name">
+          {row2Leading ? <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div> : null}
+          {filterDropdowns}
+          {clearFiltersBtn}
+        </div>
+        {row2Actions ? (
+          <div className="hub-filter-bar__actions flex min-h-[var(--hub-control-h)] min-w-0 flex-wrap items-center justify-end hub-inline-gap-name">
+            {row2Actions}
+          </div>
+        ) : null}
+        {row2Trailing ? <div className="hub-filter-bar__trailing shrink-0">{row2Trailing}</div> : null}
       </div>
     );
 
     if (embedded) {
-      return <div className="px-6 pb-3 pt-0">{panel}</div>;
+      return <div className={lite ? "px-6 pb-1.5 pt-0" : "px-6 pb-3 pt-0"}>{panel}</div>;
     }
 
     if (!pinSticky) return panel;
@@ -523,7 +586,7 @@ function FilterTriggerLabel({
   filter: FilterDef;
   triggerIcon: FilterIconMeta | null;
 }) {
-  const labelNode = <span className="min-w-0 truncate leading-none">{label}</span>;
+  const labelNode = <span className="hub-filter-trigger__label min-w-0 truncate leading-none">{label}</span>;
   if (!filter.labelHint) return labelNode;
   return (
     <HubDirectoryColumnHint
@@ -597,18 +660,66 @@ export function HubMultiFilterDropdown({
     return () => document.removeEventListener("mousedown", onClick);
   }, [open, usePortal]);
 
-  const filtered = filter.options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()));
-  const allValues = filter.options.map((o) => o.value);
-  const allSelected = selected.length > 0 && selected.length === allValues.length;
-  const someSelected = selected.length > 0 && !allSelected;
+  const allMode =
+    filter.multiSelectAllMode ??
+    // SSOT: the "first row" (select/unselect) should operate on what the user can see
+    // after panel search filters the option list.
+    "visible-options";
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  // Panel math is O(options) on large facets (Orders customer facet ~1.8k options) —
+  // compute only while the panel is open so closed dropdowns cost nothing per render.
+  const panel = useMemo(() => {
+    if (!open) return null;
+    const q = search.toLowerCase();
+    const filtered = q ? filter.options.filter((o) => o.label.toLowerCase().includes(q)) : filter.options;
+    const allSelected = selected.length > 0 && selected.length === filter.options.length;
+    const someSelected = selected.length > 0 && !allSelected;
+    let visibleSelectedCount = 0;
+    for (const o of filtered) if (selectedSet.has(o.value)) visibleSelectedCount += 1;
+    const allVisibleSelected = filtered.length > 0 && visibleSelectedCount === filtered.length;
+    const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+    return {
+      filtered,
+      allSelected,
+      allVisibleSelected,
+      allRowChecked: allMode === "visible-options" ? allVisibleSelected : allSelected,
+      allRowIndeterminate: allMode === "visible-options" ? someVisibleSelected : someSelected,
+      allRowLabel:
+        allMode === "visible-options"
+          ? allVisibleSelected
+            ? "Unselect shown"
+            : "Select shown"
+          : filterAllRowLabel(filter),
+      allRowCount:
+        allMode === "visible-options"
+          ? filtered.length
+          : (filter.totalCount ??
+            (filter.options.some((o) => o.count !== undefined)
+              ? filter.options.reduce((sum, o) => sum + (o.count ?? 0), 0)
+              : filter.options.length)),
+    };
+  }, [open, search, filter, selected, selectedSet, allMode]);
 
   function toggle(v: string) {
-    if (selected.includes(v)) onChange(selected.filter((x) => x !== v));
+    if (selectedSet.has(v)) onChange(selected.filter((x) => x !== v));
     else onChange([...selected, v]);
   }
   function toggleAll() {
-    if (allSelected) onChange([]);
-    else onChange(allValues);
+    if (!panel) return;
+    if (allMode === "visible-options") {
+      if (panel.filtered.length === 0) return;
+      if (panel.allVisibleSelected) {
+        const visible = new Set(panel.filtered.map((o) => o.value));
+        onChange(selected.filter((v) => !visible.has(v)));
+        return;
+      }
+      const next = new Set(selected);
+      for (const o of panel.filtered) next.add(o.value);
+      onChange([...next]);
+      return;
+    }
+    if (panel.allSelected) onChange([]);
+    else onChange(filter.options.map((o) => o.value));
   }
 
   const buttonLabel = (() => {
@@ -715,13 +826,15 @@ export function HubMultiFilterDropdown({
         })()}
         <FilterTriggerLabel label={buttonLabel} filter={filter} triggerIcon={triggerIcon} />
         {showTotalOnTrigger ? (
-          <span className="shrink-0 tabular-nums text-[10px] font-medium text-[var(--muted)]">{filter.totalCount}</span>
+          <span className="hub-filter-trigger__count ml-1 shrink-0 tabular-nums text-[10px] font-medium text-[var(--muted)]">
+            {` ${filter.totalCount}`}
+          </span>
         ) : null}
 
         <ChevronDown size={compactIconSize(glyphPx)} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open ? (
+      {panel ? (
         usePortal ? (
           createPortal(
             <div
@@ -743,22 +856,15 @@ export function HubMultiFilterDropdown({
               />
               <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
                 <button type="button" onClick={toggleAll} className={rowClass}>
-                  <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
+                  <HubFilterDropdownCircle checked={panel.allRowChecked} indeterminate={panel.allRowIndeterminate} />
                   <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                  <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
-                  <FilterOptionCount
-                    value={
-                      filter.totalCount ??
-                      (filter.options.some((o) => o.count !== undefined)
-                        ? filter.options.reduce((sum, o) => sum + (o.count ?? 0), 0)
-                        : filter.options.length)
-                    }
-                  />
+                  <span className="min-w-0 flex-1 truncate text-left">{panel.allRowLabel}</span>
+                  <FilterOptionCount value={panel.allRowCount} />
                 </button>
                 <div className="my-1 border-t border-white/5" />
-                {filtered.map((o) => (
+                {panel.filtered.map((o) => (
                   <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
-                    <HubFilterDropdownCircle checked={selected.includes(o.value)} />
+                    <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
                     <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
                     <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                       {o.label}
@@ -766,7 +872,7 @@ export function HubMultiFilterDropdown({
                     <FilterOptionCount value={o.count} />
                   </button>
                 ))}
-                {filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
+                {panel.filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
               </div>
             </div>,
             document.body,
@@ -784,22 +890,15 @@ export function HubMultiFilterDropdown({
             />
             <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
               <button type="button" onClick={toggleAll} className={rowClass}>
-                <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
+                <HubFilterDropdownCircle checked={panel.allRowChecked} indeterminate={panel.allRowIndeterminate} />
                 <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
-                <FilterOptionCount
-                  value={
-                    filter.totalCount ??
-                    (filter.options.some((o) => o.count !== undefined)
-                      ? filter.options.reduce((sum, o) => sum + (o.count ?? 0), 0)
-                      : filter.options.length)
-                  }
-                />
+                <span className="min-w-0 flex-1 truncate text-left">{panel.allRowLabel}</span>
+                <FilterOptionCount value={panel.allRowCount} />
               </button>
               <div className="my-1 border-t border-white/5" />
-              {filtered.map((o) => (
+              {panel.filtered.map((o) => (
                 <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
-                  <HubFilterDropdownCircle checked={selected.includes(o.value)} />
+                  <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
                   <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
                   <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                     {o.label}
@@ -807,7 +906,7 @@ export function HubMultiFilterDropdown({
                   <FilterOptionCount value={o.count} />
                 </button>
               ))}
-              {filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
+              {panel.filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
             </div>
           </div>
         )
@@ -850,12 +949,25 @@ export type HubSingleFilterDropdownProps = {
   allowClear?: boolean;
   clearLabel?: string;
   /**
+   * Panel header “+” — replaces Clear. Closes panel then runs (e.g. Add Material).
+   */
+  onPanelCreate?: () => void;
+  panelCreateAriaLabel?: string;
+  /**
    * Allow creating a brand-new value from the panel search text (free-text combobox).
    * When the search does not exactly match an option, a "Create …" row selects the typed text.
    */
   allowCustom?: boolean;
   /** Custom "create" row label builder — defaults to `Create “<query>”`. */
   customOptionLabel?: (query: string) => string;
+  /**
+   * When a catalog value is selected, allow renaming it to the panel search text.
+   * Shows a "Rename …" row when search differs from the current value and the target is unused.
+   */
+  allowRename?: boolean;
+  onRename?: (from: string, to: string) => void;
+  /** Custom rename row label — defaults to `Rename “<from>” to “<to>”`. */
+  renameOptionLabel?: (from: string, to: string) => string;
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -877,8 +989,13 @@ export function HubSingleFilterDropdown({
   panelSearchAsync,
   allowClear = false,
   clearLabel = "Clear",
+  onPanelCreate,
+  panelCreateAriaLabel = "Add",
   allowCustom = false,
   customOptionLabel,
+  allowRename = false,
+  onRename,
+  renameOptionLabel,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
@@ -901,12 +1018,21 @@ export function HubSingleFilterDropdown({
   useLayoutEffect(() => {
     if (!open || !usePortal || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setPanelPos({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, 288),
-    });
-  }, [open, usePortal]);
+    const hasDetail = options.some((o) => Boolean(o.detail?.trim()));
+    const width = Math.max(rect.width, hasDetail ? 360 : 288);
+    const estimatedHeight = Math.min(320, 52 + options.length * 36);
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+    const top = openUp
+      ? Math.max(8, rect.top - estimatedHeight - 4)
+      : rect.bottom + 4;
+    const left = Math.min(
+      Math.max(8, rect.left),
+      Math.max(8, window.innerWidth - width - 8),
+    );
+    setPanelPos({ top, left, width });
+  }, [open, usePortal, options]);
 
   useEffect(() => {
     if (!open) return;
@@ -922,7 +1048,15 @@ export function HubSingleFilterDropdown({
 
   const filtered = panelSearchAsync?.serverFiltered
     ? options
-    : options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()));
+    : options.filter((o) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+          o.label.toLowerCase().includes(q) ||
+          (o.detail || "").toLowerCase().includes(q) ||
+          (o.tip || "").toLowerCase().includes(q)
+        );
+      });
 
   const trimmedSearch = search.trim();
   const hasExactMatch = options.some(
@@ -930,9 +1064,23 @@ export function HubSingleFilterDropdown({
       o.label.toLowerCase() === trimmedSearch.toLowerCase() ||
       o.value.toLowerCase() === trimmedSearch.toLowerCase(),
   );
-  const showCreate = allowCustom && trimmedSearch.length > 0 && !hasExactMatch;
+  const renameFrom = value.trim();
+  const showRename =
+    allowRename &&
+    Boolean(onRename) &&
+    renameFrom.length > 0 &&
+    trimmedSearch.length > 0 &&
+    trimmedSearch.toLowerCase() !== renameFrom.toLowerCase() &&
+    !hasExactMatch;
+  const showCreate = allowCustom && trimmedSearch.length > 0 && !hasExactMatch && !showRename;
 
   const handleCreateCustom = () => {
+    onChange(trimmedSearch);
+    setOpen(false);
+  };
+
+  const handleRename = () => {
+    onRename?.(renameFrom, trimmedSearch);
     onChange(trimmedSearch);
     setOpen(false);
   };
@@ -960,29 +1108,55 @@ export function HubSingleFilterDropdown({
         value={search}
         onChange={setSearch}
         placeholder={filterDropdownPanelSearchPlaceholder(label)}
-        onClearSelection={allowClear ? handleClearSelection : undefined}
+        onClearSelection={allowClear && !onPanelCreate ? handleClearSelection : undefined}
         clearSelectionLabel={clearLabel}
-        clearSelectionEnabled={allowClear && Boolean(value.trim())}
+        clearSelectionEnabled={allowClear && !onPanelCreate && Boolean(value.trim())}
+        onCreateAction={
+          onPanelCreate
+            ? () => {
+                setOpen(false);
+                onPanelCreate();
+              }
+            : undefined
+        }
+        createActionAriaLabel={panelCreateAriaLabel}
       />
       <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-        {filtered.map((o) => (
+        {filtered.map((o) => {
+          const row = filterOptionRowLabel(o);
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+              className={HUB_FILTER_DROPDOWN_ROW_CLASS}
+            >
+              <HubFilterDropdownCircle checked={o.value === value} />
+              <FilterOptionGlyph filterKey={filterKey} option={o} />
+              <span className="min-w-0 flex-1 truncate text-left" title={row.title}>
+                {row.text}
+              </span>
+              <FilterOptionCount value={o.count} />
+            </button>
+          );
+        })}
+        {showRename ? (
           <button
-            key={o.value}
             type="button"
-            onClick={() => {
-              onChange(o.value);
-              setOpen(false);
-            }}
+            onClick={handleRename}
             className={HUB_FILTER_DROPDOWN_ROW_CLASS}
           >
-            <HubFilterDropdownCircle checked={o.value === value} />
-            <FilterOptionGlyph filterKey={filterKey} option={o} />
-            <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
-              {o.label}
+            <Pencil size={compactIconSize(12)} className="shrink-0 text-[var(--muted)]" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {renameOptionLabel
+                ? renameOptionLabel(renameFrom, trimmedSearch)
+                : `Rename “${renameFrom}” to “${trimmedSearch}”`}
             </span>
-            <FilterOptionCount value={o.count} />
           </button>
-        ))}
+        ) : null}
         {showCreate ? (
           <button
             type="button"
@@ -995,7 +1169,7 @@ export function HubSingleFilterDropdown({
             </span>
           </button>
         ) : null}
-        {filtered.length === 0 && !showCreate ? (
+        {filtered.length === 0 && !showCreate && !showRename ? (
           <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
         ) : null}
       </div>

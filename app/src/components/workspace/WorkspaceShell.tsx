@@ -1,56 +1,57 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
-import { Activity, Boxes, Code2, Cpu, GitBranch, HardDrive, RefreshCcw, Settings2 } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Activity, Boxes, Code2, Cpu, Film, GitBranch, HardDrive, RefreshCcw, Settings2 } from 'lucide-react';
 import { hubSessionLabels, isWorkspaceAnonymousAllowed } from '@tool-workspace/hub-identity';
 import {
   HubAuthBootPanel,
   HubAuthBrandIcon,
   HubWorkspaceUserShell,
   HubSidebarFooterButton,
-  navActiveBarClass,
-  navActiveBgClass,
-  navActiveTextClass,
-  navIconClass,
   type NavIconTone,
 } from '@tool-workspace/hub-ui';
+import {
+  HubAppLogProvider,
+  HubLogButton,
+  HubSidebarBrandIcon,
+  HubSidebarNavScreenButton,
+  HubSidebarShell,
+} from '@/lib/hub-ui';
 import { formatAppVersionWithUpdateDate } from '@/lib/app-release';
 import { readSystemStatsIntervalMs } from '@/lib/workspace-prefs';
 import { P0021AuthGate } from '@/features/auth/P0021AuthGate';
 import { useHubAuth } from '@/features/auth/AuthSessionProvider';
-import { isHubSupabaseConfigured } from '@/lib/hub-supabase-env';
 import { getIdentitySupabase } from '@/lib/supabase-identity';
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from './AppTabHeader';
 import type { HubGlyphComponent } from '@/lib/hub-ui';
 import { FooterSettings } from './FooterSettings';
 import { GlobalJobPoller } from './GlobalJobPoller';
 
-type IconComponent = ElementType;
-
 type WorkspaceNavItem = {
   href: string;
   match: string;
   label: string;
-  icon: IconComponent;
+  icon: typeof Film;
   iconTone: NavIconTone;
 };
 
 const APP_VERSION_LINE = formatAppVersionWithUpdateDate();
 
 const navItems: WorkspaceNavItem[] = [
-  { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: AutoVideoBrandIcon, iconTone: 'indigo' },
+  { href: '/studio', match: '/studio', label: 'AutoVideo Studio', icon: Film, iconTone: 'indigo' },
   { href: '/system', match: '/system', label: 'System', icon: Settings2, iconTone: 'amber' },
 ];
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { session, loading, authRequired, policyReady, hubConfigured, signOut } = useHubAuth();
   const labels = hubSessionLabels(session);
   const isSystem = pathname.startsWith('/system');
   const isStudio = pathname.startsWith('/studio');
+  const activeScreen = isSystem ? 'system' : 'studio';
 
   const [jobCounters, setJobCounters] = useState({ active: 0, done: 0, error: 0 });
   const [ramLabel, setRamLabel] = useState('RAM —');
@@ -178,82 +179,76 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="relative z-10 flex h-screen min-h-0 w-full overflow-hidden">
-      <GlobalJobPoller />
-      <aside className="flex h-full min-h-0 w-60 shrink-0 flex-col overflow-visible border-r border-white/5 bg-[var(--panel)] p-4">
-        <div className="mb-4 flex shrink-0 items-center gap-3">
-          <div className="brand-icon-wrap grid h-10 w-10 place-items-center rounded-xl text-white">
-            <Image src="/icons/tools/P0021.svg" alt="" width={28} height={28} className="h-7 w-7" priority />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold leading-tight">Workspace Hub</div>
-            <div className="text-[10px] text-[var(--muted)]">P0021 · {APP_VERSION_LINE}</div>
-          </div>
-        </div>
+    <HubAppLogProvider
+      activeScreen={activeScreen}
+      bootLog={{ scope: 'App', message: 'AutoVideo Studio started', screen: activeScreen }}
+    >
+      <div className="relative z-10 flex h-screen min-h-0 w-full overflow-hidden">
+        <GlobalJobPoller />
+        <HubSidebarShell
+          brandLeading={<HubSidebarBrandIcon src="/icons/tools/P0021.svg" alt="AutoVideo Studio" />}
+          brandTitle="Workspace Hub"
+          nav={
+            <>
+              {navItems.map(({ href, match, label, icon, iconTone }) => {
+                const active = pathname === match || pathname.startsWith(`${match}/`);
+                return (
+                  <HubSidebarNavScreenButton
+                    key={href}
+                    label={label}
+                    icon={icon}
+                    iconTone={iconTone}
+                    active={active}
+                    onClick={() => router.push(href)}
+                  />
+                );
+              })}
+            </>
+          }
+          footer={
+            <>
+              {hubConfigured ? (
+                <HubWorkspaceUserShell
+                  session={session}
+                  labels={labels}
+                  profileRoleClient={getIdentitySupabase() as never}
+                  profileRoleUserId={session?.user?.id}
+                  profileRoleEmail={session?.user?.email}
+                  footerTitle="Open workspace user information"
+                  emptyEmailLabel="Not signed in"
+                  onSignOut={async () => {
+                    await signOut();
+                    return true;
+                  }}
+                />
+              ) : (
+                <HubSidebarFooterButton
+                  icon={Settings2}
+                  iconClass="text-violet-400"
+                  label="User"
+                  title="Hub login not configured"
+                  disabled
+                />
+              )}
+              <HubSidebarFooterButton
+                icon={RefreshCcw}
+                iconClass="text-emerald-300"
+                label="Refresh"
+                title="Refresh workspace"
+                onClick={() => window.location.reload()}
+              />
+              <HubLogButton variant="global" />
+              <FooterSettings scope="global" />
+            </>
+          }
+        />
 
-        <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ href, match, label, icon: Icon, iconTone }) => {
-            const active = pathname === match || pathname.startsWith(`${match}/`);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all ${
-                  active
-                    ? `${navActiveBgClass(iconTone)} ${navActiveTextClass(iconTone)}`
-                    : 'text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]'
-                }`}
-              >
-                {active ? (
-                  <span className={`absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r ${navActiveBarClass(iconTone)}`} />
-                ) : null}
-                <Icon size={16} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
-                <span className="flex-1 text-left">{label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <footer className="mt-2 shrink-0 space-y-0.5 overflow-visible border-t border-white/5 pt-2.5">
-          {hubConfigured ? (
-            <HubWorkspaceUserShell
-              session={session}
-              labels={labels}
-              profileRoleClient={getIdentitySupabase() as never}
-              profileRoleUserId={session?.user?.id}
-              profileRoleEmail={session?.user?.email}
-              footerTitle="Open workspace user information"
-              emptyEmailLabel="Not signed in"
-              onSignOut={async () => {
-                await signOut();
-                return true;
-              }}
-            />
-          ) : (
-            <HubSidebarFooterButton
-              icon={Settings2}
-              iconClass="text-violet-400"
-              label="User"
-              title="Hub login not configured"
-              disabled
-            />
-          )}
-          <HubSidebarFooterButton
-            icon={RefreshCcw}
-            iconClass="text-emerald-300"
-            label="Refresh"
-            title="Refresh workspace"
-            onClick={() => window.location.reload()}
-          />
-          <FooterSettings />
-        </footer>
-      </aside>
-
-      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-5">
-        <AppTabHeader {...header} />
-        <div className="py-3">{mainBody}</div>
-      </main>
-    </div>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-5">
+          <AppTabHeader {...header} />
+          <div className="py-3">{mainBody}</div>
+        </main>
+      </div>
+    </HubAppLogProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import { HubAdmSearchHighlightText } from "./HubAdmSearchHighlightText";
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
 import { HubTableColumnHeader } from "../content/HubTableColumnHeader";
 import { resolveHubTableColumnMeta } from "../table/hub-table-column-meta";
@@ -15,6 +15,11 @@ import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { HubSingleFilterDropdown, type FilterOption, type HubSingleFilterDropdownProps } from "./FilterBar";
 import { HUB_DIRECTORY_TABLE_BRAND_ICON_PX } from "./HubDirectoryBrandNameCell";
 import { hubDirectoryTableBrandImgClass, hubFilterOptionEmojiClass } from "./filter-dropdown-primitives";
+import {
+  buildHubAdmDetailCopyTrailingAction,
+  mergeHubAdmTrailingActions,
+} from "./hub-adm-detail-copy-action";
+import "./hub-adm-detail-copy-action.css";
 
 export type HubAdmClickEditRenderCtx = {
   value: string;
@@ -47,6 +52,13 @@ export type HubAdmClickEditFieldProps = {
   readonlyHoverTitle?: boolean;
   /** Lock field — no click-to-edit (bulk apply busy, read-only preview). */
   disabled?: boolean;
+  /** Clipboard text; defaults to display value when non-empty. */
+  copyValue?: string;
+  copyToastLabel?: string;
+  /** Default false — copy icon only on ClickFilter dropdowns; opt in for special readonly edit rows. */
+  showCopyAction?: boolean;
+  /** Optional control after the value (e.g. Browse) — ClickFilter trailing SSOT. */
+  trailingAction?: ReactNode;
 };
 
 const DEFAULT_CONTROL_CLASS = "field auth-gate-field hub-adm-click-edit__input";
@@ -74,7 +86,7 @@ export function HubAdmInlineFieldLabel({
 }) {
   const label = (
     <span className="hub-adm-inline-field__label hub-users-th-label hub-users-th-label--start hub-inline-gap-name">
-      <HubTableColumnHeader {...header} />
+      <HubTableColumnHeader {...header} enableFit={false} />
     </span>
   );
   if (!labelHint) return label;
@@ -106,7 +118,7 @@ function AdmInlineFieldShell({
   );
 }
 
-/** Account-detail modal — plain label value; pencil on hover; click value to edit. */
+/** Account-detail modal — plain label value; click value to edit (no pencil affordance). */
 export function HubAdmClickEditField({
   header,
   fieldLabel,
@@ -125,6 +137,10 @@ export function HubAdmClickEditField({
   renderDisplay,
   readonlyHoverTitle = true,
   disabled = false,
+  copyValue,
+  copyToastLabel,
+  showCopyAction,
+  trailingAction,
 }: HubAdmClickEditFieldProps) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -132,7 +148,26 @@ export function HubAdmClickEditField({
   const trimmed = value.trim();
   const shown = displayValue ?? trimmed;
   const empty = !shown;
+  const resolvedCopy = (copyValue ?? shown).trim();
+  const autoCopy =
+    showCopyAction === true && resolvedCopy && !disabled && !empty
+      ? buildHubAdmDetailCopyTrailingAction({
+          copyText: resolvedCopy,
+          title: `Copy ${fieldLabel}`,
+          copyToastLabel: copyToastLabel ?? `${fieldLabel} copied`,
+        })
+      : null;
+  const mergedTrailing = mergeHubAdmTrailingActions(autoCopy, trailingAction);
   const inputClass = `${controlClassName}${inputClassName ? ` ${inputClassName}` : ""}`;
+  const valueClassEditing = `hub-adm-inline-field__value hub-adm-inline-field__value--editing${
+    mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""
+  }`;
+  const valueClassReadonly = `hub-adm-inline-field__value${
+    mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""
+  }`;
+  const trailing = mergedTrailing ? (
+    <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{mergedTrailing}</span>
+  ) : null;
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -156,18 +191,23 @@ export function HubAdmClickEditField({
   };
 
   const readonlyBody = (
-    <span
-      className={`hub-adm-click-edit__text hub-adm-detail-value-text${empty ? " hub-adm-click-edit__text--empty" : ""}`}
-      title={!readonlyHoverTitle || empty ? undefined : shown}
+    <HubDirectoryValuePopover
+      value={shown}
+      title={fieldLabel}
+      enabled={readonlyHoverTitle && !empty}
     >
-      {renderDisplay ? (
-        renderDisplay(value)
-      ) : empty ? (
-        placeholder || "—"
-      ) : (
-        <HubAdmSearchHighlightText text={shown} />
-      )}
-    </span>
+      <span
+        className={`hub-adm-click-edit__text hub-adm-detail-value-text${empty ? " hub-adm-click-edit__text--empty" : ""}`}
+      >
+        {renderDisplay ? (
+          renderDisplay(value)
+        ) : empty ? (
+          placeholder || "—"
+        ) : (
+          <HubAdmSearchHighlightText text={shown} />
+        )}
+      </span>
+    </HubDirectoryValuePopover>
   );
 
   if (editing && !disabled) {
@@ -184,7 +224,7 @@ export function HubAdmClickEditField({
         header={header}
         labelHint={labelHint}
         className={className}
-        valueClassName="hub-adm-inline-field__value hub-adm-inline-field__value--editing"
+        valueClassName={valueClassEditing}
       >
         <div
           ref={editShellRef}
@@ -212,6 +252,7 @@ export function HubAdmClickEditField({
             />
           )}
         </div>
+        {trailing}
       </AdmInlineFieldShell>
     );
   }
@@ -221,7 +262,7 @@ export function HubAdmClickEditField({
       header={header}
       labelHint={labelHint}
       className={`hub-adm-inline-field--readonly hub-adm-inline-field--click-edit${disabled ? " hub-adm-inline-field--disabled" : ""}${className ? ` ${className}` : ""}`}
-      valueClassName="hub-adm-inline-field__value"
+      valueClassName={valueClassReadonly}
     >
       {disabled ? (
         <span className="hub-adm-click-edit hub-adm-click-edit--disabled" aria-disabled="true">
@@ -236,11 +277,9 @@ export function HubAdmClickEditField({
           onClick={startEdit}
         >
           {readonlyBody}
-          <span className="hub-adm-click-edit__action" aria-hidden>
-            <Pencil size={compactIconSize(10)} />
-          </span>
         </button>
       )}
+      {trailing}
     </AdmInlineFieldShell>
   );
 }
@@ -251,7 +290,7 @@ export type HubAdmClickMultilineEditFieldProps = HubAdmClickEditFieldProps & {
   showHoverPopover?: boolean;
 };
 
-/** Account-detail modal — multiline click-edit; Shift+Enter newline, Enter commits. */
+/** Account-detail modal — multiline click-edit; Enter newline · blur/Escape exits (Note rail parity). */
 export function HubAdmClickMultilineEditField({
   lines = 3,
   showHoverPopover = true,
@@ -291,10 +330,6 @@ export function HubAdmClickMultilineEditField({
           onChange={(e) => onEditChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") onDone();
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onDone();
-            }
           }}
         />
       )}
@@ -335,13 +370,25 @@ export type HubAdmClickFilterFieldProps = {
   /** Reset selection to empty — Clear beside panel search (no fake “None” option). */
   allowClear?: boolean;
   clearLabel?: string;
+  /** Panel header “+” — replaces Clear (e.g. Plan Package → Add Material). */
+  onPanelCreate?: () => void;
+  panelCreateAriaLabel?: string;
   /** Allow creating a brand-new value from the panel search (free-text combobox). */
   allowCustom?: boolean;
   customOptionLabel?: (query: string) => string;
+  /** Rename the selected catalog value to the panel search text. */
+  allowRename?: boolean;
+  onRename?: (from: string, to: string) => void;
+  renameOptionLabel?: (from: string, to: string) => string;
   /** Optional control rendered after the value (e.g. copy icon). Does not shrink. */
   trailingAction?: ReactNode;
   /** Custom value body (e.g. On/Off status dot). Chevron still appended. */
   renderValue?: (value: string, displayLabel: string) => ReactNode;
+  /** Clipboard text; defaults to option label when value set. */
+  copyValue?: string;
+  copyToastLabel?: string;
+  /** Default true — append copy icon when resolved copy value is non-empty (dropdown SSOT). */
+  showCopyAction?: boolean;
 };
 
 /** Account-detail modal — plain label + emoji/value; chevron always visible; opens filter panel. */
@@ -358,23 +405,51 @@ export function HubAdmClickFilterField({
   panelSearchAsync,
   allowClear = false,
   clearLabel,
+  onPanelCreate,
+  panelCreateAriaLabel,
   allowCustom = false,
   customOptionLabel,
+  allowRename = false,
+  onRename,
+  renameOptionLabel,
   trailingAction,
   renderValue,
+  copyValue,
+  copyToastLabel,
+  showCopyAction,
 }: HubAdmClickFilterFieldProps) {
   const opt = options.find((o) => o.value === value);
   /** Parity with directory table brand glyphs (`HubDirectoryBrandNameCell` 16px). */
   const glyphPx = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
   const slotStyle = { width: glyphPx, height: glyphPx };
   const displayLabel = opt?.label ?? (value.trim() || fieldLabel);
+  const tipText = (opt?.tip || opt?.detail || "").trim();
+  const valueHint: HubDirectoryColumnHintContent | undefined = tipText
+    ? {
+        title: displayLabel,
+        titleGlyph: opt?.emoji ? { emoji: opt.emoji } : undefined,
+        description: tipText,
+        lines: [],
+      }
+    : undefined;
+
+  const resolvedCopy = (copyValue ?? (value.trim() ? displayLabel : "")).trim();
+  const autoCopy =
+    showCopyAction !== false && resolvedCopy && !disabled
+      ? buildHubAdmDetailCopyTrailingAction({
+          copyText: resolvedCopy,
+          title: `Copy ${fieldLabel}`,
+          copyToastLabel: copyToastLabel ?? `${fieldLabel} copied`,
+        })
+      : null;
+  const mergedTrailing = mergeHubAdmTrailingActions(autoCopy, trailingAction);
 
   return (
     <AdmInlineFieldShell
       header={header}
       labelHint={labelHint}
       className={`hub-adm-inline-field--readonly hub-adm-inline-field--click-filter${className ? ` ${className}` : ""}`}
-      valueClassName={`hub-adm-inline-field__value${trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""}`}
+      valueClassName={`hub-adm-inline-field__value${mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""}`}
     >
       <HubSingleFilterDropdown
         filterKey={filterKey}
@@ -392,43 +467,88 @@ export function HubAdmClickFilterField({
         panelSearchAsync={panelSearchAsync}
         allowClear={allowClear}
         clearLabel={clearLabel}
+        onPanelCreate={onPanelCreate}
+        panelCreateAriaLabel={panelCreateAriaLabel}
         allowCustom={allowCustom}
         customOptionLabel={customOptionLabel}
+        allowRename={allowRename}
+        onRename={onRename}
+        renameOptionLabel={renameOptionLabel}
         triggerContent={
           <>
-            <span className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate" title={displayLabel}>
-              {renderValue ? (
-                renderValue(value, displayLabel)
-              ) : (
-                <>
-                  {opt?.iconSrc ? (
-                    <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
-                      <img
-                        src={opt.iconSrc}
-                        alt=""
-                        width={glyphPx}
-                        height={glyphPx}
-                        className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
-                        decoding="async"
-                        draggable={false}
-                      />
-                    </span>
-                  ) : opt?.emoji ? (
-                    <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
-                      <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
-                    </span>
-                  ) : null}
-                  <HubAdmSearchHighlightText text={displayLabel} />
-                </>
-              )}
-            </span>
+            {valueHint ? (
+              <HubDirectoryColumnHint
+                content={valueHint}
+                titleGlyph={valueHint.titleGlyph}
+              >
+                <span
+                  className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
+                  data-testid="hub-adm-filter-value-tip"
+                >
+                  {renderValue ? (
+                    renderValue(value, displayLabel)
+                  ) : (
+                    <>
+                      {opt?.iconSrc ? (
+                        <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
+                          <img
+                            src={opt.iconSrc}
+                            alt=""
+                            width={glyphPx}
+                            height={glyphPx}
+                            className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
+                            decoding="async"
+                            draggable={false}
+                          />
+                        </span>
+                      ) : opt?.emoji ? (
+                        <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+                          <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
+                        </span>
+                      ) : null}
+                      <HubAdmSearchHighlightText text={displayLabel} />
+                    </>
+                  )}
+                </span>
+              </HubDirectoryColumnHint>
+            ) : (
+              <span
+                className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
+                title={displayLabel}
+              >
+                {renderValue ? (
+                  renderValue(value, displayLabel)
+                ) : (
+                  <>
+                    {opt?.iconSrc ? (
+                      <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
+                        <img
+                          src={opt.iconSrc}
+                          alt=""
+                          width={glyphPx}
+                          height={glyphPx}
+                          className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
+                          decoding="async"
+                          draggable={false}
+                        />
+                      </span>
+                    ) : opt?.emoji ? (
+                      <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+                        <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
+                      </span>
+                    ) : null}
+                    <HubAdmSearchHighlightText text={displayLabel} />
+                  </>
+                )}
+              </span>
+            )}
             <ChevronDown size={compactIconSize(10)} className="hub-adm-click-filter__chevron shrink-0" aria-hidden />
           </>
         }
         triggerHideChevron
       />
-      {trailingAction ? (
-        <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+      {mergedTrailing ? (
+        <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{mergedTrailing}</span>
       ) : null}
     </AdmInlineFieldShell>
   );
@@ -442,6 +562,8 @@ export type HubAdmReadonlyFieldProps = {
   empty?: boolean;
   /** `inline` — badges, toggles, copy chips (full value width, centered row). */
   valueLayout?: "text" | "inline";
+  /** Optional control after the value (e.g. copy icon). Does not shrink. */
+  trailingAction?: ReactNode;
 };
 
 /** Account-detail modal — label + read-only value (no edit affordance). */
@@ -452,16 +574,17 @@ export function HubAdmReadonlyField({
   className = "",
   empty = false,
   valueLayout = "text",
+  trailingAction,
 }: HubAdmReadonlyFieldProps) {
   return (
     <AdmInlineFieldShell
       header={header}
       labelHint={labelHint}
       className={`hub-adm-inline-field--readonly${className ? ` ${className}` : ""}`}
-      valueClassName="hub-adm-inline-field__value"
+      valueClassName={`hub-adm-inline-field__value${trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""}`}
     >
       <span
-        className={`hub-adm-readonly-value${
+        className={`hub-adm-readonly-value min-w-0 flex-1${
           empty ? " hub-adm-readonly-value--empty" : ""
         }${
           valueLayout === "inline"
@@ -471,6 +594,9 @@ export function HubAdmReadonlyField({
       >
         {children}
       </span>
+      {trailingAction ? (
+        <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+      ) : null}
     </AdmInlineFieldShell>
   );
 }

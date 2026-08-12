@@ -16,6 +16,8 @@ export type HubDirectoryBulkMoreAction = {
   title?: string;
   tone?: HubBulkActionTone;
   selectedCount?: number;
+  /** Spin the Lucide icon (Sync / Save busy). */
+  iconSpinning?: boolean;
   onClick: () => void;
 };
 
@@ -47,6 +49,8 @@ export function HubDirectoryBulkMoreMenu({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  if (!actions.length) return null;
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -56,10 +60,11 @@ export function HubDirectoryBulkMoreMenu({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         title={title}
+        aria-label="More"
         className={`${HUB_BULK_ACTION_BTN_CLASS} border border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5`}
       >
         <Ellipsis size={14} aria-hidden />
-        More
+        <span className="hub-bulk-action-btn__label">More</span>
         {selectedCount > 0 ? <HubBulkActionCountBadge count={selectedCount} tone="indigo" /> : null}
       </button>
       {open ? (
@@ -79,7 +84,11 @@ export function HubDirectoryBulkMoreMenu({
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--text)] transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Icon size={14} className="shrink-0 opacity-80" aria-hidden />
+                <Icon
+                  size={14}
+                  className={`shrink-0 opacity-80${action.iconSpinning ? " animate-spin" : ""}`}
+                  aria-hidden
+                />
                 <span className="min-w-0 flex-1">{action.label}</span>
                 {action.selectedCount != null && action.selectedCount > 0 ? (
                   <HubBulkActionCountBadge count={action.selectedCount} tone={action.tone ?? "indigo"} />

@@ -99,7 +99,7 @@
     "oldProjectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ"
   },
   "release": {
-    "version": "2.1.2",
+    "version": "2.1.3",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
@@ -119,7 +119,7 @@
     "custom": "https://p0021.infi.io.vn",
     "customStatus": "verified",
     "workerLocal": "http://127.0.0.1:8021",
-    "localSetupAt": "2026-07-29T08:40:59.970Z",
+    "localSetupAt": "2026-08-10T21:54:10.361Z",
     "appSetupAt": "2026-05-26T15:12:00.000+07:00"
   },
   "designDecision": {
@@ -178,7 +178,7 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-07-31T08:14:19.045Z",
+  "manifestUpdatedAt": "2026-08-10T21:54:10.361Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Deploy",

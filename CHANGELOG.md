@@ -1,19 +1,24 @@
 # Changelog
 
-## 2026-07-31 - Release 2.1.1 - Desktop worker noconsole hardening
+## 2026-08-10 - Hub shell SSOT (sidebar + header ops + Notify)
 
-- Version: `2.1.2`
-- Timestamp: 2026-07-31 15:14 (UTC+7)
+- Version: `2.1.3`
+- Timestamp: 2026-08-10
 - Type: Patch
 - Status: Draft
 
 ### Changes
 
-- Patch bump for uncommitted code changes (P0021).
+- Sidebar uses `HubSidebarShell` + `HubSidebarNavScreenButton` (no custom aside / brandTagline).
+- Header actions use `HubHeaderOpsPanels` (Notify · Log) with Output settings trailing; `HubAppLogProvider` + footer global Log.
+- Notify live feed: worker offline, failed jobs, download failures, desktop update available.
+- Version update icon stays beside version meta (`HubVersionUpdateStatusIcon`).
+- Unfrozen from workspace scan (`WORKSPACE_FROZEN_CODES`).
 
 ### Verification
 
-- pending
+- `node Tool/scripts/hub-version-meta-gate.mjs --code P0021`
+- `node Tool/scripts/audit-hub-header-ops-panels.mjs --strict`
 
 ---
 ## 2026-07-31 - Release 2.1.1 - Desktop worker noconsole hardening

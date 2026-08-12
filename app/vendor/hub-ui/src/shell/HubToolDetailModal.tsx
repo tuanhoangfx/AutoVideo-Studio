@@ -63,6 +63,7 @@ export function HubToolDetailModalPrimaryAction({
         danger ? "hub-tool-detail-modal__confirm--danger" : "",
         variant === "create" ? "hub-tool-detail-modal__confirm--create" : "",
         busy ? "hub-tool-detail-modal__confirm--busy" : "",
+        disabled && !busy ? "hub-tool-detail-modal__confirm--disabled" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -146,6 +147,8 @@ export type HubToolDetailModalProps = {
   bodyClassName?: string;
   size?: HubDetailModalSize;
   ariaLabelledBy?: string;
+  /** When no visible title — accessibility name for the dialog. */
+  ariaLabel?: string;
   children: ReactNode;
   /** Inline tab/page — same chrome as modal, no overlay (P0004 System Overview). */
   embedded?: boolean;
@@ -183,6 +186,7 @@ export function HubToolDetailModal({
   bodyClassName = "",
   size = "detail",
   ariaLabelledBy,
+  ariaLabel,
   children,
   embedded = false,
   busy = false,
@@ -190,32 +194,36 @@ export function HubToolDetailModal({
 }: HubToolDetailModalProps) {
   const resolvedHeader =
     header ??
-    (title ? (
+    (title || headerTrailing || headerCenter ? (
       <header className="user-access-modal__header">
         <div className="user-access-modal__header-main min-w-0 flex-1">
-          {headerLeading ??
-            (headerImageUrl ? (
-              <img
-                src={headerImageUrl}
-                alt=""
-                width={32}
-                height={32}
-                className="user-access-modal__avatar h-8 w-8 shrink-0 rounded-lg object-cover"
-              />
-            ) : HeaderIcon ? (
-              <span
-                className="user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-500/20"
-                aria-hidden
+          {title ? (
+            <>
+              {headerLeading ??
+                (headerImageUrl ? (
+                  <img
+                    src={headerImageUrl}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="user-access-modal__avatar h-8 w-8 shrink-0 rounded-lg object-cover"
+                  />
+                ) : HeaderIcon ? (
+                  <span
+                    className="user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-500/20"
+                    aria-hidden
+                  >
+                    <HeaderIcon size={18} className={headerIconClassName} />
+                  </span>
+                ) : null)}
+              <h2
+                id={titleId}
+                className="user-access-modal__header-name min-w-0 truncate text-sm font-semibold text-[var(--text)]"
               >
-                <HeaderIcon size={18} className={headerIconClassName} />
-              </span>
-            ) : null)}
-          <h2
-            id={titleId}
-            className="user-access-modal__header-name min-w-0 truncate text-sm font-semibold text-[var(--text)]"
-          >
-            {title}
-          </h2>
+                {title}
+              </h2>
+            </>
+          ) : null}
           {headerTrailing}
         </div>
         {headerCenter ? (
@@ -250,6 +258,7 @@ export function HubToolDetailModal({
       open={open}
       onClose={onClose}
       embedded={embedded}
+      ariaLabel={ariaLabel}
       ariaLabelledBy={ariaLabelledBy ?? (title ? titleId : undefined)}
       size={size}
       shellClassName={`hub-tool-detail-modal${busy ? " hub-tool-detail-modal--busy" : ""}${shellClassName ? ` ${shellClassName}` : ""}`}

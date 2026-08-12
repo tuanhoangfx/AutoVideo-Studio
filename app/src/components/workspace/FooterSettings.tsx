@@ -12,7 +12,11 @@ import {
   writeSystemStatsIntervalMs,
 } from '@/lib/workspace-prefs';
 
-export function FooterSettings() {
+type FooterSettingsProps = {
+  scope?: 'global' | 'tab';
+};
+
+export function FooterSettings({ scope = 'global' }: FooterSettingsProps) {
   const [open, setOpen] = useState(false);
   const [statsMs, setStatsMs] = useState(DEFAULT_SYSTEM_STATS_INTERVAL_MS);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
@@ -109,6 +113,7 @@ export function FooterSettings() {
   return (
     <div ref={ref} className="relative w-full">
       <button type="button" onClick={() => setOpen((o) => !o)} className={HUB_SIDEBAR_FOOTER_BTN_CLASS} title="Workspace settings">
+        <span className="hidden" data-scope={scope} aria-hidden />
         <Settings size={15} className="shrink-0 text-amber-300" />
         <span className="flex-1 text-left">Setting</span>
       </button>

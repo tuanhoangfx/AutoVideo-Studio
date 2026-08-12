@@ -39,7 +39,7 @@ export const HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY: Partial<
   code: { kind: "fixed", token: "4.5rem" },
   browser: { kind: "fixed", token: "4.5rem" },
   /** Directory audit log — one-line summary + ellipsis (P0020 Log column). */
-  log: { kind: "fixed", token: "9rem" },
+  log: { kind: "fixed", token: "15rem" },
   bots: { kind: "fixed", token: "3.75rem" },
   members: { kind: "fixed", token: "5rem" },
   active: { kind: "fixed", token: "5rem" },
@@ -49,6 +49,20 @@ export const HUB_DIRECTORY_SELECT_WIDTH_SPEC: HubDirectoryColumnWidthSpec = {
   kind: "fixed",
   token: "36px",
 };
+
+/**
+ * Freeform directory **Note** column width SSOT (P0020 Services/Mail/Teams, P0005 Orders,
+ * P0013 Movies, P0003 Profiles, …). Prefer rem lock + generated/theme CSS that beats
+ * hub-directory-table neutralize (`th/td max-width:none`). Not for fluid % “Notes” chrome
+ * on system panels (P0004 server/supabase summaries).
+ */
+export const HUB_DIRECTORY_NOTE_COL_WIDTH = "20rem";
+
+/**
+ * Directory **Log** column width SSOT (P0020 Services/Mail audit log cell).
+ * Prefer this alias over `HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY.log!.token`.
+ */
+export const HUB_DIRECTORY_LOG_COL_WIDTH = resolveDirectoryColumnWidthSpec("log").token;
 
 /** Playwright / visual regression bands (px) for fixed chrome columns. */
 export const HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS = {
@@ -76,6 +90,20 @@ export function isFixedDirectoryColumnWidth(width: string): boolean {
   return /^\d+(\.\d+)?(px|rem)$/.test(trimmed);
 }
 
+/**
+ * Dev/test: throw (fail fast — parity gates + vitest catch violations).
+ * Production: console.error + degrade gracefully — bad column meta must not
+ * white-screen the tab at runtime (a module-scope throw kills the whole chunk import).
+ */
+const DIRECTORY_META_STRICT: boolean =
+  typeof import.meta !== "undefined" &&
+  Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+
+export function failDirectoryColumnMeta(message: string): void {
+  if (DIRECTORY_META_STRICT) throw new Error(message);
+  console.error(`[hub-directory] ${message}`);
+}
+
 /** Fail when meta assigns % to a fixed-tier role (bulk CSS should use registry token). */
 export function validateDirectoryColumnWidthMeta(
   columns: readonly { role: HubTableColumnRole; width: string; key?: string }[],
@@ -85,7 +113,7 @@ export function validateDirectoryColumnWidthMeta(
     if (spec.kind !== "fixed") continue;
     if (isFluidDirectoryColumnWidth(col.width)) {
       const label = col.key ? `"${col.key}" (${col.role})` : col.role;
-      throw new Error(
+      failDirectoryColumnMeta(
         `Directory column ${label}: role "${col.role}" is fixed-width SSOT (${spec.token}) — meta width must not be %`,
       );
     }
