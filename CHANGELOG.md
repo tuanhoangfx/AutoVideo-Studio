@@ -2,8 +2,8 @@
 
 ## 2026-08-12 - Hub shell SSOT (sidebar + header ops + Notify)
 
-- Version: `2.1.4`
-- Timestamp: 2026-08-12 20:54 (UTC+7)
+- Version: `2.1.5`
+- Timestamp: 2026-08-12 21:24 (UTC+7)
 - Type: Patch
 - Status: Draft
 
