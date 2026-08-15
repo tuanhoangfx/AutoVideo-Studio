@@ -24,6 +24,8 @@ export type HubBlackboxEntry = {
   /** epoch ms */
   t: number;
   kind: string;
+  /** App version of the tab that wrote this — a session can mix builds after a deploy. */
+  v?: string;
   [key: string]: unknown;
 };
 
@@ -32,6 +34,8 @@ export type HubBlackboxOptions = {
   code: string;
   maxEntries?: number;
   longtaskMinMs?: number;
+  /** Report interactions slower than this (pointerdown -> next paint). Default 200ms. */
+  interactionMinMs?: number;
   heartbeatMs?: number;
 };
 
@@ -93,8 +97,23 @@ function flush(): void {
   }
 }
 
+/**
+ * The build this tab is running, read once from the meta tag the deploy stamps.
+ *
+ * Every record needs it. Tabs keep the bundle they loaded with, so after a deploy a session mixes
+ * several builds — and a record from a stale tab is indistinguishable from a record proving the
+ * fix did not work. That cost a full day of P0020 diagnosis: 34-minute vault pulls kept being
+ * recorded after the fix shipped, with no way to tell which build produced them.
+ */
+const appVersion = (() => {
+  if (typeof document === "undefined") return undefined;
+  const meta = document.querySelector('meta[name="app-version"]');
+  return meta?.getAttribute("content") ?? undefined;
+})();
+
 function push(entry: HubBlackboxEntry): void {
   if (!installed) return;
+  if (appVersion && entry.v === undefined) entry.v = appVersion;
   buf.push(entry);
   if (buf.length > maxEntries + 50) buf = buf.slice(-maxEntries);
   if (flushTimer == null && typeof window !== "undefined") {
@@ -129,6 +148,8 @@ export function installHubPerfBlackbox(opts: HubBlackboxOptions): void {
   storageKey = `${prefix}:perf-blackbox`;
   maxEntries = opts.maxEntries ?? 400;
   const longtaskMinMs = opts.longtaskMinMs ?? 200;
+  // 200ms: past this an interaction stops feeling instant.
+  const interactionMinMs = opts.interactionMinMs ?? 200;
   const heartbeatMs = opts.heartbeatMs ?? 20_000;
   const aliveKey = `${prefix}:perf-blackbox-alive`;
   const byeKey = `${prefix}:perf-blackbox-bye`;
@@ -171,6 +192,39 @@ export function installHubPerfBlackbox(opts: HubBlackboxOptions): void {
     po.observe({ type: "longtask", buffered: true });
   } catch {
     /* longtask unsupported */
+  }
+
+  /**
+   * Interaction latency — what the user actually feels.
+   *
+   * `longtask` alone is not enough and repeatedly said "0ms" while a P0020 user sat waiting:
+   * it only sees a single JS task ≥50ms, so it is blind to a lazy chunk being fetched on the
+   * click (7.5s, measured), and to work spread over many sub-50ms frames (a 900ms modal close
+   * that registered nothing). The Event Timing API measures pointerdown → next paint, which
+   * is the number that matches the complaint.
+   */
+  try {
+    const ep = new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) {
+        const entry = e as PerformanceEntry & { processingStart?: number; processingEnd?: number };
+        if (e.duration < interactionMinMs) continue;
+        push({
+          t: Date.now(),
+          kind: "interaction",
+          name: e.name,
+          ms: Math.round(e.duration),
+          handlerMs:
+            entry.processingEnd != null && entry.processingStart != null
+              ? Math.round(entry.processingEnd - entry.processingStart)
+              : undefined,
+          screen: screenLabel(),
+          mb: heapMB(),
+        });
+      }
+    });
+    ep.observe({ type: "event", durationThreshold: interactionMinMs, buffered: true } as PerformanceObserverInit);
+  } catch {
+    /* event timing unsupported */
   }
 
   const beat = () => {

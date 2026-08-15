@@ -6,6 +6,21 @@ import { subscribeHubIdentity } from "./hub-identity-cache";
 /** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
 export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
 
+/** Dual sign-in (Hub + data plane) — User ID may resolve + try several auth emails sequentially. */
+export const WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS = 30_000;
+
+/** Refresh margin — a token this close to expiry is treated as stale. */
+export const WORKSPACE_SESSION_FRESH_BUFFER_MS = 60_000;
+
+/** `expires_at` (seconds, GoTrue) still valid past the refresh margin. */
+export function isWorkspaceSessionExpiryFresh(
+  expiresAt: number | null | undefined,
+  bufferMs = WORKSPACE_SESSION_FRESH_BUFFER_MS,
+): boolean {
+  if (!expiresAt) return false;
+  return expiresAt * 1000 > Date.now() + bufferMs;
+}
+
 export function sessionsEqual(a: Session | null | undefined, b: Session | null | undefined): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
@@ -67,7 +82,7 @@ export type SupabaseAuthListenerConfig = {
   onAfterSession?: (session: Session) => void;
 };
 
-/** Bind Supabase auth listener — returns unsubscribe. */
+/** Bind Hub identity (GoTrue) auth listener — returns unsubscribe. */
 export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): () => void {
   if (!config.isConfigured() || !config.client) return () => {};
   const {
@@ -76,6 +91,29 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
     if (!session) {
       // Supabase may emit INITIAL_SESSION null before hub-cache setSession finishes.
       if (event === "INITIAL_SESSION") return;
+      // Only an explicit sign-out ends the session.
+      //
+      // Supabase also emits null-session events when a token REFRESH fails — a network blip is
+      // enough — and treating those as a sign-out dropped the user to the login screen while
+      // their refresh token was still perfectly valid. P0020 hit this repeatedly: its vault pull
+      // issues dozens of requests over minutes, and a refresh racing that traffic fails often.
+      // For anything that is not a real sign-out, ask the client before giving up.
+      if (event !== "SIGNED_OUT") {
+        void config.client?.auth
+          .getSession()
+          .then(({ data }) => {
+            if (!data.session) {
+              config.onSession(null);
+              return;
+            }
+            config.cacheSession?.(data.session);
+            config.onSession(data.session);
+          })
+          .catch(() => {
+            /* transient — keep the session and let the next event decide */
+          });
+        return;
+      }
       config.onSession(null);
       return;
     }

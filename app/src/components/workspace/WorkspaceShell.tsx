@@ -178,8 +178,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     );
   }
 
+  const logPersistKey = session?.user?.id ? `P0021:${session.user.id}` : "P0021:anon";
+
   return (
     <HubAppLogProvider
+      persistKey={logPersistKey}
       activeScreen={activeScreen}
       bootLog={{ scope: 'App', message: 'AutoVideo Studio started', screen: activeScreen }}
     >
@@ -211,6 +214,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 <HubWorkspaceUserShell
                   session={session}
                   labels={labels}
+                  getHubClient={() => getIdentitySupabase() as never}
                   profileRoleClient={getIdentitySupabase() as never}
                   profileRoleUserId={session?.user?.id}
                   profileRoleEmail={session?.user?.email}

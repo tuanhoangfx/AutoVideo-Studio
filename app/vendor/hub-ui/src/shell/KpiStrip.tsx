@@ -59,6 +59,10 @@ export type KpiTileData = {
   prefKey?: string;
   /** Popover hint for KPI caption label. */
   labelHint?: HubDirectoryColumnHintContent;
+  /** When set, tile is a button — directory FilterBar / drill-down. */
+  onClick?: () => void;
+  /** Marks the tile as an active filter (aria-pressed). */
+  active?: boolean;
 };
 
 export function KpiStrip({ items, className = "" }: { items: KpiTileData[]; className?: string }) {
@@ -137,6 +141,8 @@ function KpiTile({
   tone = "indigo",
   valueKind = "number",
   labelHint,
+  onClick,
+  active,
 }: KpiTileData) {
   const t = tones[tone];
   const valueClassName = [
@@ -145,11 +151,18 @@ function KpiTile({
   ]
     .filter(Boolean)
     .join(" ");
-  return (
-    <div
-      className={`hub-kpi-tile anim-slide relative z-0 min-w-0 overflow-visible rounded-2xl border border-white/5 bg-[var(--panel)] transition-[box-shadow,border-color] hover:z-[1] hover:ring-2 ${t.ring}`}
-      title={typeof label === "string" ? label : undefined}
-    >
+  const interactive = typeof onClick === "function";
+  const shellClass = [
+    "hub-kpi-tile anim-slide relative z-0 min-w-0 overflow-visible rounded-2xl bg-[var(--panel)] transition-[box-shadow,background-color,ring-width,ring-color] hover:z-[1]",
+    interactive
+      ? `hub-kpi-tile--interactive cursor-pointer text-left outline-none hover:ring-2 focus-visible:ring-2 ${t.ring}`
+      : "",
+    active ? "hub-kpi-tile--active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const body = (
+    <>
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden>
         <div className={`absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br ${t.bg} blur-2xl`} />
       </div>
@@ -174,6 +187,24 @@ function KpiTile({
           {hint ? <div className="hub-kpi-tile__hint truncate text-[var(--muted)]">{hint}</div> : null}
         </div>
       </div>
+    </>
+  );
+  if (interactive) {
+    return (
+      <button
+        type="button"
+        className={shellClass}
+        title={typeof label === "string" ? label : undefined}
+        onClick={onClick}
+        aria-pressed={active ? true : undefined}
+      >
+        {body}
+      </button>
+    );
+  }
+  return (
+    <div className={shellClass} title={typeof label === "string" ? label : undefined}>
+      {body}
     </div>
   );
 }

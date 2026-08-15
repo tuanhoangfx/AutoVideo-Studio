@@ -1,18 +1,25 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { WorkspaceAuthGate, createWorkspaceAuthGate, HubAuthBrandIcon } from '@tool-workspace/hub-ui';
-import { devHubAutoSignIn, isDevAutoLoginEnabled } from '@tool-workspace/hub-identity';
-import { isHubSupabaseConfigured } from '@/lib/hub-supabase-env';
+import {
+  createWorkspaceAuthGateHubEnvPartial,
+  createWorkspaceAuthGateHubForgotPasswordFromEnv,
+  devHubAutoSignIn,
+  isDevAutoLoginEnabled,
+} from '@tool-workspace/hub-identity';
+import {
+  HUB_SUPABASE_ANON_KEY,
+  HUB_SUPABASE_URL,
+  isHubSupabaseConfigured,
+} from '@/lib/hub-supabase-env';
 import { applyHubIdentitySession, getIdentitySupabase } from '@/lib/supabase-identity';
 import { useHubAuth } from './AuthSessionProvider';
 
+const hubEnv = { HUB_SUPABASE_URL, HUB_SUPABASE_ANON_KEY, isHubSupabaseConfigured };
+
 export function P0021AuthGate() {
   const { signIn, refreshSession } = useHubAuth();
-  const profileRoleClient = useMemo(
-    () => (isHubSupabaseConfigured ? getIdentitySupabase() : undefined),
-    [],
-  );
 
   useEffect(() => {
     if (!isDevAutoLoginEnabled()) return;
@@ -38,10 +45,11 @@ export function P0021AuthGate() {
       {...createWorkspaceAuthGate({
         code: 'P0021',
         headerLeading: <HubAuthBrandIcon src="/icons/tools/P0021.svg" />,
-        profileRoleClient: getIdentitySupabase() as never,
-        onPrepareProfileRoleClient: async () => {
-          await applyHubIdentitySession();
-        },
+        ...createWorkspaceAuthGateHubEnvPartial({
+          env: hubEnv,
+          getHubClient: getIdentitySupabase,
+          prepareHubIdentitySession: applyHubIdentitySession,
+        }),
         onSubmit: async (login, password, mode) => {
           try {
             await signIn(login, password, mode);
@@ -49,14 +57,7 @@ export function P0021AuthGate() {
             return { error: err instanceof Error ? err.message : String(err) };
           }
         },
-        forgotPassword: {
-          isHubConfigured: () => isHubSupabaseConfigured,
-          resetPasswordForEmail: async (authEmail, redirectTo) => {
-            const hub = getIdentitySupabase();
-            if (!hub) throw new Error('Tool Hub Supabase is not configured.');
-            return hub.auth.resetPasswordForEmail(authEmail, { redirectTo });
-          },
-        },
+        forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubEnv }),
       })}
     />
   );

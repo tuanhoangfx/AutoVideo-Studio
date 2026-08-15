@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-15 - Hub shell SSOT (sidebar + header ops + Notify) (git)
+
+- Version: `2.2.1`
+- Timestamp: 2026-08-15 21:55 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Git/Commit Minor bump (P0021): 2.1.5 → 2.2.1 (MINOR+1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-12 - Hub shell SSOT (sidebar + header ops + Notify)
 
 - Version: `2.1.5`
