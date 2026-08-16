@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 import {
   isRealHubWorkspaceSession,
   isWorkspaceAnonymousAllowed,
+  performWorkspaceSignOut,
   resolveWithBootTimeout,
   sessionsEqual,
   useDevHubAutoSignInBoot,
@@ -82,11 +83,14 @@ export function useHubAuthState(): HubAuthState {
   }, []);
 
   const signOut = useCallback(async () => {
-    clearHubIdentity();
     const client = getIdentitySupabase();
-    if (client) await client.auth.signOut();
-    setSession(null);
-    setLoading(false);
+    await performWorkspaceSignOut({
+      planes: [{ getClient: () => client, clearCache: clearHubIdentity }],
+      onAfterSignOut: () => {
+        setSession(null);
+        setLoading(false);
+      },
+    });
   }, []);
 
   useDevHubAutoSignInBoot({
