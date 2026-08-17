@@ -8,15 +8,11 @@ import {
   devHubAutoSignIn,
   isDevAutoLoginEnabled,
 } from '@tool-workspace/hub-identity';
-import {
-  HUB_SUPABASE_ANON_KEY,
-  HUB_SUPABASE_URL,
-  isHubSupabaseConfigured,
-} from '@/lib/hub-supabase-env';
+import { hubAuthEnv } from '@/lib/hub-supabase-env';
 import { applyHubIdentitySession, getIdentitySupabase } from '@/lib/supabase-identity';
 import { useHubAuth } from './AuthSessionProvider';
 
-const hubEnv = { HUB_SUPABASE_URL, HUB_SUPABASE_ANON_KEY, isHubSupabaseConfigured };
+const hubEnv = hubAuthEnv;
 
 export function P0021AuthGate() {
   const { signIn, refreshSession } = useHubAuth();

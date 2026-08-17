@@ -1,0 +1,123 @@
+{
+  "name": "autovideo-studio",
+  "version": "2.2.2",
+  "private": true,
+  "description": "AutoVideo Studio desktop app with local render worker.",
+  "author": "TuanHoangFX",
+  "main": "electron/main.cjs",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev --port 3021",
+    "dev:turbo": "next dev --turbo --port 3021",
+    "build": "next build",
+    "desktop": "electron electron/main.cjs",
+    "desktop:dev": "powershell -ExecutionPolicy Bypass -File ../scripts/start-desktop-dev.ps1",
+    "desktop:worker": "powershell -ExecutionPolicy Bypass -File ../scripts/build-worker-exe.ps1",
+    "desktop:prepare": "powershell -ExecutionPolicy Bypass -File ../scripts/prepare-desktop-build.ps1",
+    "desktop:dist": "node ../../scripts/run-script-chain.cjs -- pnpm desktop:worker -- pnpm desktop:prepare -- electron-builder --win nsis --x64 --publish never",
+    "desktop:release": "powershell -ExecutionPolicy Bypass -File ../scripts/release-desktop.ps1",
+    "desktop:release:patch": "pnpm desktop:release -- -Bump patch -Publish",
+    "desktop:release:minor": "pnpm desktop:release -- -Bump minor -Publish",
+    "desktop:release:major": "pnpm desktop:release -- -Bump major -Publish",
+    "start": "next start --port 3021",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:worker": "powershell -ExecutionPolicy Bypass -File ../scripts/test-worker-smoke.ps1",
+    "predev": "node ../../scripts/gate.mjs --code P0021 --stage sync"
+  },
+  "dependencies": {
+    "@tool-workspace/hub-ui": "file:./vendor/hub-ui",
+    "@tool-workspace/hub-identity": "file:./vendor/hub-identity",
+    "@supabase/auth-js": "2.106.1",
+    "@supabase/functions-js": "2.106.1",
+    "@supabase/postgrest-js": "2.106.1",
+    "@supabase/realtime-js": "2.106.1",
+    "@supabase/storage-js": "2.106.1",
+    "@supabase/supabase-js": "^2.106.1",
+    "electron-updater": "^6.8.3",
+    "lucide-react": "^0.451.0",
+    "next": "15.2.6",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.2.6",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
+  },
+  "build": {
+    "appId": "vn.infix1.autovideo-studio",
+    "productName": "AutoVideo Studio",
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "electron/**/*",
+      "build/icon.ico",
+      "package.json"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "next",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": ".next/static",
+        "to": "next/.next/static",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../worker/dist/autovideo-worker",
+        "to": "worker-dist",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tuanhoangfx",
+        "repo": "AutoVideo-Studio",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
