@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-18 - Username Sign Up provisional Hub email
+
+- Version: `2.2.3`
+- Timestamp: 2026-08-18
+- Type: Patch
+- Status: Pending
+
+### Changes
+
+- Username Sign Up provisional Hub email
+
+### Verification
+
+- ship-pipeline slice → commit scoped paths only
+
+---
+## 2026-08-18 - Patch bump for completed agent task
+
+- Version: `2.2.2`
+- Timestamp: 2026-08-18 02:37 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0021 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-15 - Hub shell SSOT (sidebar + header ops + Notify) (git)
 
 - Version: `2.2.1`

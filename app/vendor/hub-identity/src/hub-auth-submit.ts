@@ -1,5 +1,6 @@
 import {
   classifyHubLoginIdentifier,
+  hubAuthEmailFromLoginOrEmail,
   hubAuthEmailsForSignIn,
   sanitizeHubLoginInput,
 } from "./hub-login";
@@ -36,6 +37,20 @@ export const HUB_USERNAME_WRONG_PASSWORD_MESSAGE =
 export const HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE =
   "Sign-in service unavailable. Try again in a moment or sign in with your email.";
 
+export const HUB_INVALID_USERNAME_MESSAGE =
+  "Invalid username (use 3–32 letters, numbers, . _ -)";
+
+/** GoTrue needs an email for username Sign Up; rebound to `u_<uuid>@auth.infi.internal` after create. */
+function signupAuthEmails(login: string, loginId: string | null, kind: string): string[] {
+  if (kind === "email") return hubAuthEmailsForSignIn(login);
+  if (kind === "username" && loginId) {
+    const resolved = hubAuthEmailFromLoginOrEmail({ loginId });
+    if ("error" in resolved) return [];
+    return [resolved.authEmail];
+  }
+  return [];
+}
+
 export type HubPasswordAuthResult<T> = {
   data: T | null;
   error: Error | null;
@@ -50,7 +65,7 @@ function authErrorMessage(error: unknown): string {
 }
 
 export type SignInWithHubPasswordOptions = {
-  /** Real auth emails from profiles.login_id lookup — tried before synthetic @infix1.io.vn. */
+  /** Real auth emails from resolve-login — required for username/phone (no @infix1 invent). */
   extraAuthEmails?: string[];
   /** Same-origin resolve-login API when extraAuthEmails omitted for User ID sign-in. */
   resolveLoginApiUrl?: string;
@@ -69,6 +84,13 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
     return {
       data: null,
       error: new Error("Enter your username, email, or phone"),
+      authEmail: null,
+    };
+  }
+  if (classified.kind === "invalid") {
+    return {
+      data: null,
+      error: new Error(HUB_INVALID_USERNAME_MESSAGE),
       authEmail: null,
     };
   }
@@ -101,11 +123,13 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
   // Do not also hammer synthetic @infix1 / legacy fallbacks — each GoTrue attempt
   // costs ~5–8s and turns a wrong password into a long "Please wait…" hang.
   const baseEmails =
-    resolveLookup === "ok" && extraEmails.length > 0
+    extraEmails.length > 0
       ? []
       : classified.kind === "phone"
         ? []
-        : hubAuthEmailsForSignIn(login);
+        : mode === "signup"
+          ? signupAuthEmails(login, classified.loginId, classified.kind)
+          : hubAuthEmailsForSignIn(login);
   const authEmails = [...new Set([...extraEmails, ...baseEmails])];
   if (!authEmails.length) {
     if (classified.kind === "phone") {
@@ -117,6 +141,16 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
         };
       }
       return { data: null, error: new Error(HUB_UNKNOWN_PHONE_MESSAGE), authEmail: null };
+    }
+    if (classified.kind === "username" && resolveLookupUsed) {
+      if (resolveLookup === "unavailable") {
+        return {
+          data: null,
+          error: new Error(HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE),
+          authEmail: null,
+        };
+      }
+      return { data: null, error: new Error(HUB_UNKNOWN_USER_ID_MESSAGE), authEmail: null };
     }
     return {
       data: null,

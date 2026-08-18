@@ -90,6 +90,22 @@ describe("signInWithHubPassword", () => {
     expect(attempt).toHaveBeenCalledWith("czpgo@outlook.com");
   });
 
+  it("skips synthetic fallbacks when caller already provided extraAuthEmails", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: null },
+      error: new Error("Invalid login credentials"),
+    });
+
+    const result = await signInWithHubPassword("duyceo01", attempt, "signin", {
+      extraAuthEmails: ["u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal"],
+    });
+    expect(result.error?.message).toMatch(/invalid login credentials/i);
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(attempt).toHaveBeenCalledWith(
+      "u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal",
+    );
+  });
+
   it("skips synthetic fallbacks once resolve-login returns opaque auth email", async () => {
     vi.stubGlobal(
       "fetch",
@@ -153,5 +169,28 @@ describe("signInWithHubPassword", () => {
     expect(result.error?.message).toBe(HUB_PHONE_WRONG_PASSWORD_MESSAGE);
     expect(result.authEmail).toBe("008@inp");
     expect(attempt).toHaveBeenCalledWith("008@inp");
+  });
+
+  it("uses a provisional opaque email for username Sign Up (no resolve-login)", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: { access_token: "t" } },
+      error: null,
+    });
+
+    const result = await signInWithHubPassword("CS01333", attempt, "signup");
+    expect(result.error).toBeNull();
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(attempt.mock.calls[0][0]).toMatch(/^pending_cs01333_[a-z0-9]+@auth\.infi\.internal$/);
+  });
+
+  it("does not treat a filled username Sign Up as an empty login", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: { access_token: "t" } },
+      error: null,
+    });
+
+    const result = await signInWithHubPassword("CS01333", attempt, "signup");
+    expect(result.error?.message ?? "").not.toMatch(/Enter your username, email, or phone/i);
+    expect(attempt).toHaveBeenCalled();
   });
 });
