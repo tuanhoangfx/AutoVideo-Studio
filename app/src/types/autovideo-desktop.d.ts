@@ -77,7 +77,7 @@ declare global {
         filename: string
       ) => Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
       getUpdateStatus: () => Promise<AutoVideoUpdateStatus>;
-      checkForUpdates: () => Promise<AutoVideoUpdateStatus>;
+      checkForUpdates: (opts?: { userInitiated?: boolean }) => Promise<AutoVideoUpdateStatus>;
       downloadUpdate: () => Promise<AutoVideoUpdateStatus>;
       installUpdate: () => Promise<AutoVideoUpdateStatus>;
       onUpdateStatus: (callback: (status: AutoVideoUpdateStatus) => void) => () => void;

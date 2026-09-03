@@ -10,8 +10,8 @@ AutoVideo Studio will keep the current web interface as the single shared UI. Th
 
 ## Runtime Model
 
-- Web shell: Vercel-hosted Next.js UI.
-- Desktop shell: packaged app loads the same Studio UI.
+- Web shell: Vercel-hosted Vite SPA (`app/dist`).
+- Desktop shell: packaged Electron loads the same Studio UI from `dist/` (no embedded Next server).
 - Render adapter: switches between worker modes without changing the visible UI.
 - Local render: desktop agent runs the existing Python/FastAPI/FFmpeg worker on the user's machine.
 - Cloud sync: Supabase remains optional for project metadata, assets, and output storage.

@@ -1,4 +1,4 @@
-export type ExportDurationMode = 'image' | 'script';
+export type ExportDurationMode = 'image' | 'script' | 'script-fit';
 
 export type VideoNameTemplate =
   | 'time-date-yy-images'
@@ -30,7 +30,7 @@ export const DEFAULT_STUDIO_EXPORT_SETTINGS: StudioExportSettings = {
   outputFormat: 'mp4',
   autoDownload: true,
   exportDurationMode: 'image',
-  videoNameTemplate: 'time-date-yy',
+  videoNameTemplate: 'date-yy-time',
 };
 
 export function readStudioExportSettings(): StudioExportSettings {
@@ -39,7 +39,15 @@ export function readStudioExportSettings(): StudioExportSettings {
     const raw = window.localStorage.getItem(STUDIO_EXPORT_SETTINGS_KEY);
     if (!raw) return DEFAULT_STUDIO_EXPORT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<StudioExportSettings>;
-    return {
+    let videoNameTemplate = isVideoNameTemplate(parsed.videoNameTemplate)
+      ? parsed.videoNameTemplate
+      : DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate;
+    let migrated = false;
+    if (parsed.videoNameTemplate === 'time-date-yy') {
+      videoNameTemplate = 'date-yy-time';
+      migrated = true;
+    }
+    const settings: StudioExportSettings = {
       aspect: isAspect(parsed.aspect) ? parsed.aspect : DEFAULT_STUDIO_EXPORT_SETTINGS.aspect,
       fps: isFps(parsed.fps) ? parsed.fps : DEFAULT_STUDIO_EXPORT_SETTINGS.fps,
       resolution: isResolution(parsed.resolution) ? parsed.resolution : DEFAULT_STUDIO_EXPORT_SETTINGS.resolution,
@@ -50,10 +58,12 @@ export function readStudioExportSettings(): StudioExportSettings {
         ? parsed.exportDurationMode
         : DEFAULT_STUDIO_EXPORT_SETTINGS.exportDurationMode,
       downloadDirectoryName: typeof parsed.downloadDirectoryName === 'string' ? parsed.downloadDirectoryName : undefined,
-      videoNameTemplate: isVideoNameTemplate(parsed.videoNameTemplate)
-        ? parsed.videoNameTemplate
-        : DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate,
+      videoNameTemplate,
     };
+    if (migrated) {
+      window.localStorage.setItem(STUDIO_EXPORT_SETTINGS_KEY, JSON.stringify(settings));
+    }
+    return settings;
   } catch {
     return DEFAULT_STUDIO_EXPORT_SETTINGS;
   }
@@ -86,7 +96,7 @@ function isOutputFormat(value: unknown): value is StudioExportSettings['outputFo
 }
 
 function isExportDurationMode(value: unknown): value is ExportDurationMode {
-  return value === 'image' || value === 'script';
+  return value === 'image' || value === 'script' || value === 'script-fit';
 }
 
 function isVideoNameTemplate(value: unknown): value is VideoNameTemplate {

@@ -69,6 +69,7 @@ describe("createHubFullAccountAuthHandlers own profile", () => {
       telegram: "@tele",
       meta: "fb-1",
       notes: "hello",
+      avatarUrl: "",
     });
   });
 
@@ -188,7 +189,7 @@ describe("createHubFullAccountAuthHandlers own profile", () => {
   it("rejects synthetic/opaque addresses for link email", async () => {
     const { client, update } = makeClient();
     const handlers = createHubFullAccountAuthHandlers({ getClient: () => client });
-    await expect(handlers.onLinkEmail("alice@infix1.io.vn")).resolves.toMatchObject({ ok: false });
+    await expect(handlers.onLinkEmail("retired@infix1.io.vn")).resolves.toMatchObject({ ok: false });
     await expect(
       handlers.onLinkEmail("u_273527e9-0185-4bc0-9abc-def012345678@auth.infi.internal"),
     ).resolves.toMatchObject({ ok: false });

@@ -13,9 +13,9 @@
   "owner": "Tool",
   "status": "Ready",
   "icon": "app/public/icons/tools/P0021.svg",
-  "summary": "Auto-gen video: LLM script → ảnh (gen SD/DALL-E hoặc upload) → TTS (edge-tts VN) → subtitle (whisper) → Ken Burns + transition → MP4. Next.js UI + Python FastAPI worker.",
+  "summary": "Auto-gen video: LLM script → ảnh (gen SD/DALL-E hoặc upload) → TTS (edge-tts VN) → subtitle (whisper) → Ken Burns + transition → MP4. Vite UI + Python FastAPI worker.",
   "stack": [
-    "Next.js 15",
+    "Vite 7",
     "React 19",
     "TypeScript",
     "Tailwind",
@@ -41,14 +41,33 @@
   "uiShell": {
     "golden": "P0020",
     "mainMode": "directory",
+    "splitScreens": [
+      "studio"
+    ],
     "userFooter": "workspace",
     "family": "video",
     "familyDoc": "Tool/docs/ssot/hub-video-family-ssot.md"
   },
+  "uiScreens": [
+    {
+      "screen": "studio",
+      "template": "split-workspace",
+      "layout": "split-workspace",
+      "golden": "P0003/profiles",
+      "notes": "HubSplitWorkspaceScreen + stealth frame gutter (P0010 Video Lab parity)"
+    },
+    {
+      "screen": "system",
+      "template": "document-toc",
+      "layout": "directory",
+      "golden": "P0004/overview",
+      "notes": "Deployment / worker diagnostics"
+    }
+  ],
   "commands": {
     "dev": "cd app && pnpm dev",
     "build": "cd app && pnpm build",
-    "start": "cd app && pnpm start",
+    "build:vercel": "cd app && pnpm build:vercel",
     "lint": "cd app && pnpm lint",
     "typecheck": "cd app && pnpm typecheck",
     "worker:install": "cd worker && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt",
@@ -76,6 +95,13 @@
     "manifestPath": "tool.manifest.json"
   },
   "deployTarget": "vercel",
+  "desktopRelease": {
+    "deployTarget": "github-release",
+    "nestedPackage": "app/package.json",
+    "distDir": "app/dist-desktop",
+    "releaseScript": "scripts/release-desktop.ps1",
+    "smokeScript": "verify-desktop-auto-update.mjs"
+  },
   "cssGate": {
     "minBytes": 60000
   },
@@ -101,14 +127,14 @@
     "oldProjectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ"
   },
   "release": {
-    "version": "2.2.3",
+    "version": "2.2.130",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
     "latestPublished": {
-      "tag": "v2.1.1",
-      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.1.1",
-      "publishedAt": "2026-07-31T08:03:11.352Z"
+      "tag": "v2.2.37",
+      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.37",
+      "publishedAt": "2026-09-02T21:22:01.010Z"
     }
   },
   "health": {
@@ -121,7 +147,7 @@
     "custom": "https://p0021.infi.io.vn",
     "customStatus": "verified",
     "workerLocal": "http://127.0.0.1:8021",
-    "localSetupAt": "2026-08-10T21:54:10.361Z",
+    "localSetupAt": "2026-08-26T22:09:56.475Z",
     "appSetupAt": "2026-05-26T15:12:00.000+07:00"
   },
   "designDecision": {
@@ -180,30 +206,32 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-08-17T19:37:59.353Z",
+  "manifestUpdatedAt": "2026-09-03T15:17:30.756Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Deploy",
     "releasePath": "Release",
     "deployTarget": "vercel",
+    "desktopReleaseDeployTarget": "github-release",
+    "desktopReleaseEntry": "powershell -File E:\\Dev\\Tool\\scripts\\ship-desktop.ps1",
     "playbook": "Tool/docs/playbooks/release-fast-path.md",
     "script": "powershell -File E:\\Dev\\Tool\\scripts\\ship-product.ps1",
     "preShip": [
       "check-version-sync",
+      "verify-nested-package-version",
       "verify-untracked-imports",
       "verify-no-sibling-tool-imports",
-      "verify-lockfile-importers"
+      "verify-lockfile-importers",
+      "hub-workspace-chrome-ssot"
     ],
     "preShipCommands": {
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
+      "verify-nested-package-version": "node E:\\Dev\\Tool\\scripts\\verify-nested-package-version.mjs --code P0021",
       "verify-untracked-imports": "node E:\\Dev\\Tool\\scripts\\verify-untracked-imports.mjs --product-root .",
       "verify-no-sibling-tool-imports": "node E:\\Dev\\Tool\\scripts\\verify-no-sibling-tool-imports.mjs --product-root .",
-      "verify-lockfile-importers": "node E:\\Dev\\Tool\\scripts\\verify-lockfile-importers.mjs --product-root ."
+      "verify-lockfile-importers": "node E:\\Dev\\Tool\\scripts\\verify-lockfile-importers.mjs --product-root .",
+      "hub-workspace-chrome-ssot": "node E:\\Dev\\Tool\\scripts\\audit-hub-workspace-chrome-ssot.mjs --json"
     },
-    "syncedAt": "2026-07-24T09:47:01.397Z",
-    "deployThrottle": {
-      "maxPerWindow": 2,
-      "windowHours": 24
-    }
+    "syncedAt": "2026-08-19T22:47:58.021Z"
   }
 }

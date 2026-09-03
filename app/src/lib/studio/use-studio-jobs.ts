@@ -12,6 +12,7 @@ import {
   exportSlotsFull,
   fetchWorkerConcurrentLimit,
   WORKER_INFO_EVENT,
+  type WorkerComposeInfo,
   type WorkerInfoDetail,
 } from '@/lib/worker-capacity';
 import { bindJobToSlot } from '@/lib/job-project-slot';
@@ -24,14 +25,21 @@ export function useStudioJobs(showToast: (text: string) => void) {
   const [newJobId, setNewJobId] = useState<string | null>(null);
   const [serverOk, setServerOk] = useState<boolean | null>(null);
   const [concurrentLimit, setConcurrentLimit] = useState(1);
+  const [workerCompose, setWorkerCompose] = useState<WorkerComposeInfo | null>(null);
   const [probingOutput, setProbingOutput] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         await api.initializeDesktopWorkerUrl();
-        await api.getRoot();
+        const root = await api.getRoot();
         setServerOk(true);
+        if (root.compose) {
+          setWorkerCompose({
+            xfadeAvailable: Boolean(root.compose.xfade_available),
+            transitionS: root.compose.transition_s,
+          });
+        }
         const list = await api.listJobs();
         setJobs((prev) => mergeDraftJobsWithServerList(prev, list));
         for (const job of list) {
@@ -70,8 +78,10 @@ export function useStudioJobs(showToast: (text: string) => void) {
   useEffect(() => {
     void fetchWorkerConcurrentLimit();
     const onInfo = (event: Event) => {
-      const limit = (event as CustomEvent<WorkerInfoDetail>).detail?.concurrentLimit;
+      const detail = (event as CustomEvent<WorkerInfoDetail>).detail;
+      const limit = detail?.concurrentLimit;
       if (typeof limit === 'number' && limit >= 1) setConcurrentLimit(limit);
+      if (detail?.compose) setWorkerCompose(detail.compose);
     };
     window.addEventListener(WORKER_INFO_EVENT, onInfo);
     return () => window.removeEventListener(WORKER_INFO_EVENT, onInfo);
@@ -161,6 +171,7 @@ export function useStudioJobs(showToast: (text: string) => void) {
     setNewJobId,
     serverOk,
     concurrentLimit,
+    workerCompose,
     probingOutput,
     currentJob,
     runningExportCount,

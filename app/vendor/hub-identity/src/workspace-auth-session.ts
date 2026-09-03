@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { promiseWithTimeout } from "./promise-timeout";
 import { subscribeHubIdentity } from "./hub-identity-cache";
+import { shouldAcceptHubIdentityRelay } from "./workspace-sign-out";
 
 /** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
 export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
@@ -20,6 +21,64 @@ export function isWorkspaceSessionExpiryFresh(
 ): boolean {
   if (!expiresAt) return false;
   return expiresAt * 1000 > Date.now() + bufferMs;
+}
+
+export type SessionExpiryFields = {
+  expires_at?: number | null;
+  access_token?: string | null;
+};
+
+/** Browser `atob`, else Node `globalThis.Buffer` — no `Buffer` global (Vite `types: vite/client`). */
+function decodeJwtPayloadBase64(padded: string): string {
+  if (typeof atob === "function") return atob(padded);
+  const nodeBuffer = (globalThis as { Buffer?: { from(data: string, enc: string): { toString(enc: string): string } } })
+    .Buffer;
+  if (!nodeBuffer) throw new Error("no-base64-decoder");
+  return nodeBuffer.from(padded, "base64").toString("utf8");
+}
+
+/** Decode JWT `exp` (seconds). Missing/malformed token → null. */
+export function readJwtExpSeconds(accessToken: string | null | undefined): number | null {
+  const token = String(accessToken ?? "").trim();
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  try {
+    const padded = payload.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (payload.length % 4)) % 4);
+    const json = decodeJwtPayloadBase64(padded);
+    const exp = (JSON.parse(json) as { exp?: unknown }).exp;
+    return typeof exp === "number" && exp > 0 ? exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/** GoTrue `expires_at`, else JWT `exp`. Do not invent a clock. */
+export function resolveSessionExpiresAtSeconds(session: SessionExpiryFields | null | undefined): number | null {
+  const stamped = session?.expires_at;
+  if (typeof stamped === "number" && stamped > 0) return stamped;
+  return readJwtExpSeconds(session?.access_token);
+}
+
+/**
+ * Proactive refresh window. **Missing exp is not near-expiry** — forcing
+ * `refreshSession()` on every CRM/Todo Save is what turns a Home Server
+ * GoTrue blip into `TypeError: Failed to fetch` on an otherwise valid JWT.
+ */
+export function isSessionNearExpiry(
+  session: SessionExpiryFields | null | undefined,
+  nearExpiryMs: number,
+): boolean {
+  const exp = resolveSessionExpiresAtSeconds(session);
+  if (exp == null) return false;
+  return exp * 1000 < Date.now() + Math.max(0, nearExpiryMs);
+}
+
+/** Token can still be sent (not hard-expired). Missing exp stays writeable. */
+export function isSessionStillWriteable(session: SessionExpiryFields | null | undefined): boolean {
+  if (!session?.access_token?.trim()) return false;
+  const exp = resolveSessionExpiresAtSeconds(session);
+  if (exp == null) return true;
+  return exp * 1000 > Date.now();
 }
 
 export function sessionsEqual(a: Session | null | undefined, b: Session | null | undefined): boolean {
@@ -79,6 +138,8 @@ export type SupabaseAuthListenerConfig = {
   client: SupabaseClient | null;
   isConfigured: () => boolean;
   cacheSession?: (session: Session) => void;
+  /** Disk/JWT snapshot — keep the shell when getSession() is null after a refresh blip. */
+  readCachedSession?: () => Session | null;
   onSession: (session: Session | null) => void;
   onAfterSession?: (session: Session) => void;
 };
@@ -89,6 +150,14 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
   const {
     data: { subscription },
   } = config.client.auth.onAuthStateChange((event, session) => {
+    // Explicit Sign Out opts out of auto-login + relay. GoTrue may still emit
+    // TOKEN_REFRESHED / SIGNED_IN with an in-memory JWT until local signOut finishes —
+    // adopting that looked like Sign Out hung, then bounced back.
+    if (!shouldAcceptHubIdentityRelay()) {
+      if (event === "INITIAL_SESSION" && !session) return;
+      config.onSession(null);
+      return;
+    }
     if (!session) {
       // Supabase may emit INITIAL_SESSION null before hub-cache setSession finishes.
       if (event === "INITIAL_SESSION") return;
@@ -103,7 +172,16 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
         void config.client?.auth
           .getSession()
           .then(({ data }) => {
+            if (!shouldAcceptHubIdentityRelay()) {
+              config.onSession(null);
+              return;
+            }
             if (!data.session) {
+              const cached = config.readCachedSession?.() ?? null;
+              if (cached) {
+                config.onSession(cached);
+                return;
+              }
               config.onSession(null);
               return;
             }
@@ -113,6 +191,15 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
           .catch(() => {
             /* transient — keep the session and let the next event decide */
           });
+        return;
+      }
+      // supabase-js also emits SIGNED_OUT when a sibling GoTrue client rotates the
+      // refresh token (P0020 vault + Data Box used the same sb-api storage key) or
+      // when setSession's /user hydrate fails. Explicit Sign Out already cleared
+      // the tool snapshot — keep a still-writeable cache so the gate does not blink.
+      const cached = config.readCachedSession?.() ?? null;
+      if (cached && isSessionStillWriteable(cached)) {
+        config.onSession(cached);
         return;
       }
       config.onSession(null);

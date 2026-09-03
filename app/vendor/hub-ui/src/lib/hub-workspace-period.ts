@@ -11,13 +11,14 @@ export type WorkspacePeriodKey =
   | "thisWeek"
   | "thisMonth"
   | "thisYear"
+  | "last90"
   | "lastWeek"
   | "lastMonth"
   | "lastYear"
   | "customMonth"
   | "customRange";
 
-export type WorkspacePeriodScope =
+export type WorkspacePeriodKnownScope =
   | "notes"
   | "todo"
   | "twofa"
@@ -35,10 +36,17 @@ export type WorkspacePeriodScope =
   | "users"
   | "hub"
   | "dashboard"
+  | "index"
+  | "posts"
+  | "documents"
+  | "bulletin"
   | "bots"
   | "groups"
   | "teams"
   | "places";
+
+/** Catalog scopes + any new directory tab slug (URL keys derived from the slug). */
+export type WorkspacePeriodScope = WorkspacePeriodKnownScope | (string & {});
 
 export type WorkspacePeriodPrefs = {
   range: WorkspacePeriodKey;
@@ -53,6 +61,7 @@ export const WORKSPACE_PERIOD_LABELS: Record<WorkspacePeriodKey, string> = {
   thisWeek: "This Week",
   thisMonth: "This Month",
   thisYear: "This Year",
+  last90: "Last 90 Days",
   lastWeek: "Last Week",
   lastMonth: "Last Month",
   lastYear: "Last Year",
@@ -67,6 +76,7 @@ export const WORKSPACE_PERIOD_ORDER: readonly WorkspacePeriodKey[] = [
   "thisWeek",
   "thisMonth",
   "thisYear",
+  "last90",
   "lastWeek",
   "lastMonth",
   "lastYear",
@@ -76,11 +86,10 @@ export const WORKSPACE_PERIOD_ORDER: readonly WorkspacePeriodKey[] = [
 
 const VALID_KEYS = new Set<string>(Object.keys(WORKSPACE_PERIOD_LABELS));
 
+export type WorkspacePeriodUrlKeys = { range: string; month: string; from: string; to: string };
+
 /** Per-tab URL keys — each screen keeps its own period when switching tabs. */
-const SCOPE_URL_KEYS: Record<
-  WorkspacePeriodScope,
-  { range: string; month: string; from: string; to: string }
-> = {
+const SCOPE_URL_KEYS: Record<WorkspacePeriodKnownScope, WorkspacePeriodUrlKeys> = {
   notes: { range: "nrange", month: "nperiodMonth", from: "nperiodFrom", to: "nperiodTo" },
   todo: { range: "trange", month: "tperiodMonth", from: "tperiodFrom", to: "tperiodTo" },
   twofa: { range: "frange", month: "fperiodMonth", from: "fperiodFrom", to: "fperiodTo" },
@@ -98,13 +107,17 @@ const SCOPE_URL_KEYS: Record<
   users: { range: "usrange", month: "usperiodMonth", from: "usperiodFrom", to: "usperiodTo" },
   hub: { range: "hbrange", month: "hbperiodMonth", from: "hbperiodFrom", to: "hbperiodTo" },
   dashboard: { range: "dbrange", month: "dbperiodMonth", from: "dbperiodFrom", to: "dbperiodTo" },
+  index: { range: "ixrange", month: "ixperiodMonth", from: "ixperiodFrom", to: "ixperiodTo" },
+  posts: { range: "psrange", month: "psperiodMonth", from: "psperiodFrom", to: "psperiodTo" },
+  documents: { range: "docrange", month: "docperiodMonth", from: "docperiodFrom", to: "docperiodTo" },
+  bulletin: { range: "blrange", month: "blperiodMonth", from: "blperiodFrom", to: "blperiodTo" },
   bots: { range: "botrange", month: "botperiodMonth", from: "botperiodFrom", to: "botperiodTo" },
   groups: { range: "grprange", month: "grpperiodMonth", from: "grpperiodFrom", to: "grpperiodTo" },
   teams: { range: "teamrange", month: "teamperiodMonth", from: "teamperiodFrom", to: "teamperiodTo" },
   places: { range: "plcrange", month: "plcperiodMonth", from: "plcperiodFrom", to: "plcperiodTo" },
 };
 
-const TWOFA_VAULT_PERIOD_SCOPES = new Set<WorkspacePeriodScope>([
+const TWOFA_VAULT_PERIOD_SCOPES = new Set<string>([
   "twofa.mail",
   "twofa.services",
   "twofa.facebook",
@@ -125,6 +138,15 @@ const LEGACY_RANGE_MAP: Record<string, WorkspacePeriodKey> = {
   "1y": "lastYear",
   last30Days: "lastMonth",
 };
+
+export function isWorkspacePeriodKey(raw: string | null | undefined): raw is WorkspacePeriodKey {
+  return Boolean(raw && VALID_KEYS.has(raw));
+}
+
+/** Query key for this tab’s period (`ixrange`, `dbrange`, `trange`, …). */
+export function workspacePeriodRangeParam(scope: WorkspacePeriodScope): string {
+  return scopeUrlKeys(scope).range;
+}
 
 export function normalizeWorkspacePeriodKey(
   raw: string | null | undefined,
@@ -149,8 +171,22 @@ function defaultPrefs(defaultRange: WorkspacePeriodKey): WorkspacePeriodPrefs {
   };
 }
 
-function scopeUrlKeys(scope: WorkspacePeriodScope) {
-  return SCOPE_URL_KEYS[scope] ?? SCOPE_URL_KEYS.twofa;
+export function slugWorkspacePeriodUrlKeys(scope: string): WorkspacePeriodUrlKeys {
+  const slug = scope.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10) || "ws";
+  return {
+    range: `${slug}range`,
+    month: `${slug}periodMonth`,
+    from: `${slug}periodFrom`,
+    to: `${slug}periodTo`,
+  };
+}
+
+function isKnownPeriodScope(scope: string): scope is WorkspacePeriodKnownScope {
+  return Object.prototype.hasOwnProperty.call(SCOPE_URL_KEYS, scope);
+}
+
+function scopeUrlKeys(scope: WorkspacePeriodScope): WorkspacePeriodUrlKeys {
+  return isKnownPeriodScope(scope) ? SCOPE_URL_KEYS[scope] : slugWorkspacePeriodUrlKeys(scope);
 }
 
 function readRawRange(sp: URLSearchParams, scope: WorkspacePeriodScope, defaultKey: WorkspacePeriodKey) {
@@ -238,10 +274,17 @@ export function workspacePeriodOptions(): HubPeriodOption[] {
   }));
 }
 
+/** JS `Date#getDay()` Sunday=0 → days since Monday (Mon=0 … Sun=6). */
+export function hubMondayWeekOffset(sundayDow: number): number {
+  const dow = ((Math.trunc(sundayDow) % 7) + 7) % 7;
+  return dow === 0 ? 6 : dow - 1;
+}
+
 /** Filter rows by creation ISO timestamp (SSOT: created_at / createdAt — not updated_at). */
 export function matchesWorkspacePeriod(
   isoDate: string | undefined,
   period: WorkspacePeriodPrefs | WorkspacePeriodKey | null | undefined,
+  now = new Date(),
 ): boolean {
   if (period == null) return true;
   const prefs = typeof period === "string" ? { ...defaultPrefs(period), range: period } : period;
@@ -253,14 +296,14 @@ export function matchesWorkspacePeriod(
   const taskDate = new Date(isoDate);
   if (Number.isNaN(taskDate.getTime())) return false;
 
-  const now = new Date();
   let startDate: Date;
   let endDate: Date;
 
-  const todayStart = new Date();
+  const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
+  const todayEnd = new Date(now);
   todayEnd.setHours(23, 59, 59, 999);
+  const mondayOffset = hubMondayWeekOffset(todayStart.getDay());
 
   switch (prefs.range) {
     case "today":
@@ -269,13 +312,15 @@ export function matchesWorkspacePeriod(
       break;
     case "thisWeek": {
       startDate = new Date(todayStart);
-      startDate.setDate(todayStart.getDate() - todayStart.getDay());
-      endDate = todayEnd;
+      startDate.setDate(todayStart.getDate() - mondayOffset);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
       break;
     }
     case "lastWeek": {
       startDate = new Date(todayStart);
-      startDate.setDate(todayStart.getDate() - todayStart.getDay() - 7);
+      startDate.setDate(todayStart.getDate() - mondayOffset - 7);
       endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 6);
       endDate.setHours(23, 59, 59, 999);
@@ -289,6 +334,12 @@ export function matchesWorkspacePeriod(
       startDate = new Date(now.getFullYear(), 0, 1);
       endDate = todayEnd;
       break;
+    case "last90": {
+      startDate = new Date(todayStart);
+      startDate.setDate(todayStart.getDate() - 89);
+      endDate = todayEnd;
+      break;
+    }
     case "lastMonth": {
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       endDate = new Date(now.getFullYear(), now.getMonth(), 0);

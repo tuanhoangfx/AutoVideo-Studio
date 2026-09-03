@@ -1,21 +1,24 @@
 'use client';
 
 import { useEffect } from 'react';
-import { WorkspaceAuthGate, createWorkspaceAuthGate, HubAuthBrandIcon } from '@tool-workspace/hub-ui';
+import { HubAuthBrandIcon } from '@tool-workspace/hub-ui/auth/HubAuthBrandIcon';
+import { WorkspaceAuthGate, createWorkspaceAuthGate } from '@tool-workspace/hub-ui/auth/WorkspaceAuthGate';
 import {
+  createHubOnlyAuthGateSubmit,
   createWorkspaceAuthGateHubEnvPartial,
   createWorkspaceAuthGateHubForgotPasswordFromEnv,
   devHubAutoSignIn,
   isDevAutoLoginEnabled,
 } from '@tool-workspace/hub-identity';
 import { hubAuthEnv } from '@/lib/hub-supabase-env';
-import { applyHubIdentitySession, getIdentitySupabase } from '@/lib/supabase-identity';
+import { applyHubIdentitySession, getIdentitySupabase, persistHubSession } from '@/lib/supabase-identity';
+import { P0021_BRAND_ICON } from '@/lib/p0021-brand-icon';
 import { useHubAuth } from './AuthSessionProvider';
 
 const hubEnv = hubAuthEnv;
 
 export function P0021AuthGate() {
-  const { signIn, refreshSession } = useHubAuth();
+  const { refreshSession } = useHubAuth();
 
   useEffect(() => {
     if (!isDevAutoLoginEnabled()) return;
@@ -40,19 +43,26 @@ export function P0021AuthGate() {
     <WorkspaceAuthGate
       {...createWorkspaceAuthGate({
         code: 'P0021',
-        headerLeading: <HubAuthBrandIcon src="/icons/tools/P0021.svg" />,
+        headerLeading: <HubAuthBrandIcon src={P0021_BRAND_ICON} />,
+        onAuthed: () => {
+          void refreshSession();
+        },
         ...createWorkspaceAuthGateHubEnvPartial({
           env: hubEnv,
           getHubClient: getIdentitySupabase,
           prepareHubIdentitySession: applyHubIdentitySession,
         }),
-        onSubmit: async (login, password, mode) => {
-          try {
-            await signIn(login, password, mode);
-          } catch (err) {
-            return { error: err instanceof Error ? err.message : String(err) };
-          }
-        },
+        onSubmit: createHubOnlyAuthGateSubmit({
+          getHubClient: getIdentitySupabase,
+          persistSession: persistHubSession,
+          afterSignup: async ({ hub, resolved, userId }) => {
+            if (!resolved.loginId) return;
+            await hub
+              .from('profiles')
+              .update({ login_id: resolved.loginId, updated_at: new Date().toISOString() })
+              .eq('id', userId);
+          },
+        }),
         forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubEnv }),
       })}
     />

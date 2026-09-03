@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
 
-from .compose import SceneInput, compose_video, refresh_encoder_for_job
+from .compose import SceneInput, compose_video, expected_output_duration_ms, refresh_encoder_for_job
 from .duration_text import trim_text_for_duration
 from .ffmpeg_util import probe_duration_ms, run_ffmpeg
 from .paths import worker_storage_root
@@ -56,6 +56,8 @@ class JobSpec:
     bgm_volume: float = 0.18           # 0.0 - 1.0 (default ~ -15dB)
     subtitle_style: SubtitleStyle = "off"
     narration_text: str = ""
+    export_duration_ms: int | None = None
+    hold_tail_ms: int | None = None
 
 
 @dataclass
@@ -84,7 +86,6 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
     cb(JobProgress("tts", 5, f"Chuẩn bị timeline ({len(spec.scenes)} ảnh)..."))
     scene_inputs: list[SceneInput] = []
     captions: list[SceneCaption] = []
-    total_ms = 0
 
     for i, sc in enumerate(spec.scenes):
         target_ms = max(500, sc.duration_ms or 5000)
@@ -97,7 +98,11 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
                 transition=normalize_transition(sc.transition),
             )
         )
-        total_ms += target_ms
+
+    visual_ms = expected_output_duration_ms(scene_inputs)
+    export_ms = max(visual_ms, int(spec.export_duration_ms or 0))
+    hold_tail_ms = max(0, export_ms - visual_ms)
+    timeline_ms = export_ms if export_ms > 0 else visual_ms
 
     narration = (spec.narration_text or "").strip()
     if not narration:
@@ -106,28 +111,28 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
     cb(JobProgress("tts", 15, "Đọc narration (một track)..."))
     full_audio = audio_dir / "full.mp3"
     if narration:
-        tts_text = trim_text_for_duration(narration, total_ms, spec.rate)
+        tts_text = trim_text_for_duration(narration, timeline_ms, spec.rate)
         tts_prefer = "edge" if spec.tts_provider in ("edge", "elevenlabs", "omnivoice-local") else spec.tts_provider
         result = await synthesize(
             tts_text, full_audio, voice=spec.voice, rate=spec.rate, prefer=tts_prefer
         )
         if full_audio.exists():
-            _fit_audio_to_duration(full_audio, total_ms)
-            _pad_audio_to_duration(full_audio, total_ms)
+            _fit_audio_to_duration(full_audio, timeline_ms)
+            _pad_audio_to_duration(full_audio, timeline_ms)
             captions.append(
                 SceneCaption(
                     text=tts_text,
                     start_ms=0,
-                    duration_ms=total_ms,
+                    duration_ms=timeline_ms,
                     words=result.words if result else [],
                 )
             )
         else:
-            _make_silent_audio(total_ms, full_audio)
+            _make_silent_audio(timeline_ms, full_audio)
     else:
-        _make_silent_audio(total_ms, full_audio)
+        _make_silent_audio(timeline_ms, full_audio)
 
-    cb(JobProgress("tts", 40, f"Narration · {total_ms / 1000:g}s timeline"))
+    cb(JobProgress("tts", 40, f"Narration · {timeline_ms / 1000:g}s timeline"))
     phase_timing_ms["tts_ms"] = int((time.perf_counter() - tts_started) * 1000)
 
     # ── Step 2: optional BGM mix ───────────────────────────────────────
@@ -175,11 +180,14 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
         resolution=spec.resolution,
         video_quality=spec.video_quality,
         subtitle_path=subtitle_file,
+        hold_tail_ms=hold_tail_ms,
+        target_duration_ms=timeline_ms,
     )
     actual_ms = probe_duration_ms(out_path)
     if actual_ms is not None:
         (job_dir / "output_duration_ms.txt").write_text(str(actual_ms), encoding="utf-8")
     phase_timing_ms["compose_ms"] = int((time.perf_counter() - compose_started) * 1000)
+    phase_timing_ms["timeline_ms"] = timeline_ms
     phase_timing_ms["total_ms"] = int((time.perf_counter() - run_started) * 1000)
     (job_dir / "phase_timing_ms.json").write_text(
         json.dumps(phase_timing_ms, ensure_ascii=False, indent=2),
@@ -213,7 +221,7 @@ async def _run_async(spec: JobSpec, cb: ProgressCB) -> tuple[Path, dict[str, int
                     for c in captions
                 ],
                 "output": str(out_path),
-                "expected_duration_ms": sum(si.duration_ms for si in scene_inputs),
+                "expected_duration_ms": timeline_ms,
                 "output_duration_ms": actual_ms,
                 "phase_timing_ms": phase_timing_ms,
             },

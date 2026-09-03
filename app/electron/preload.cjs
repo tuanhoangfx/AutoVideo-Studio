@@ -13,8 +13,9 @@ contextBridge.exposeInMainWorld('autovideo', {
   saveOutputFile: (filename, bytes) => ipcRenderer.invoke('autovideo:save-output-file', { filename, bytes }),
   openOutputDirectory: () => ipcRenderer.invoke('autovideo:open-output-directory'),
   openOutputFile: (filename) => ipcRenderer.invoke('autovideo:open-output-file', filename),
+  openDevTools: () => ipcRenderer.invoke('autovideo:open-devtools'),
   getUpdateStatus: () => ipcRenderer.invoke('autovideo:get-update-status'),
-  checkForUpdates: () => ipcRenderer.invoke('autovideo:check-for-updates'),
+  checkForUpdates: (opts) => ipcRenderer.invoke('autovideo:check-for-updates', opts),
   downloadUpdate: () => ipcRenderer.invoke('autovideo:download-update'),
   installUpdate: () => ipcRenderer.invoke('autovideo:install-update'),
   onUpdateStatus: (callback) => {

@@ -16,6 +16,14 @@ export function formatJobDateTimeLabel(iso?: string | null): string {
   return `${hh}:${mm} ${dd}/${mo}/${yy}`;
 }
 
+/** Narrow project tab — time only; full stamp in `title`. */
+export function formatJobTabCompactLabel(iso?: string | null): string {
+  const d = parseJobDate(iso);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 /** Output filename stem with seconds: `20-45-30 30-05-26` (hh:mm:ss dd/mm/yy). */
 export function formatJobDateTimeFilePartWithSeconds(iso?: string | null): string {
   const d = parseJobDate(iso);

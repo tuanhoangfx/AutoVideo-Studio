@@ -4,22 +4,32 @@ import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem, hubMetaAc
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
 import { applyHubListVersionReleaseNotesMeta } from "./hub-list-chrome-version-meta";
 import { useHubChromePrefs } from "./HubTabChrome";
+import type { HubVersionDesktopUpdate } from "./HubVersionUpdateStatusIcon";
 
 export type HubListChromeHeaderProps = {
   ariaLabel: string;
   title: string;
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
+  /** Sheet-parity emoji — overrides Lucide when set (HubTabTitleIcon SSOT). */
+  titleEmojiGlyph?: string;
   metaItems?: TabHeaderMetaItem[];
   /** Tool code — release-notes badge beside the first (version) meta item (WorkspaceTabHeader parity). */
   versionReleaseNotesCode?: string;
   versionReleaseNotesBundleStale?: boolean;
   versionReleaseNotesOnBundleReload?: () => void;
+  /** Desktop electron-updater — folded into the single release-notes trigger. */
+  versionReleaseNotesDesktopUpdate?: HubVersionDesktopUpdate | null;
   centerStats?: TabHeaderStatItem[];
   centerContent?: ReactNode;
   /** Sparse status before center stats (e.g. Start Shift toolbar). */
   statusSlot?: ReactNode;
   actions?: ReactNode;
+  /**
+   * Override stackChrome embedded mode. Full-bleed mains (no hub-main 1.5rem pad)
+   * must pass `embedded` so header does not apply `-1.5rem` bleed against zero pad.
+   */
+  embedded?: boolean;
 };
 
 /** Directory tab header — pin/embedded prefs wired from `configureHubChromePrefs`. */
@@ -28,16 +38,20 @@ export function HubListChromeHeader({
   title,
   titleIcon,
   titleIconClass,
+  titleEmojiGlyph,
   metaItems = [],
   versionReleaseNotesCode,
   versionReleaseNotesBundleStale = false,
   versionReleaseNotesOnBundleReload,
+  versionReleaseNotesDesktopUpdate = null,
   centerStats = [],
   centerContent,
   statusSlot,
   actions,
+  embedded: embeddedProp,
 }: HubListChromeHeaderProps) {
   const { searchPin, headerPin, stackChrome } = useHubChromePrefs();
+  const embedded = embeddedProp ?? stackChrome;
 
   const resolvedMetaItems = useMemo(() => {
     if (!versionReleaseNotesCode || !metaItems[0]) return metaItems;
@@ -48,6 +62,7 @@ export function HubListChromeHeader({
         publishedAt={hubMetaActivityAtString(metaItems[0].activityAt)}
         bundleStale={versionReleaseNotesBundleStale}
         onBundleReload={versionReleaseNotesOnBundleReload}
+        desktopUpdate={versionReleaseNotesDesktopUpdate}
       />
     );
     return applyHubListVersionReleaseNotesMeta(metaItems, badge);
@@ -56,6 +71,7 @@ export function HubListChromeHeader({
     versionReleaseNotesBundleStale,
     versionReleaseNotesCode,
     versionReleaseNotesOnBundleReload,
+    versionReleaseNotesDesktopUpdate,
   ]);
 
   return (
@@ -63,6 +79,7 @@ export function HubListChromeHeader({
       ariaLabel={ariaLabel}
       titleIcon={titleIcon}
       titleIconClass={titleIconClass}
+      titleEmojiGlyph={titleEmojiGlyph}
       title={title}
       metaItems={resolvedMetaItems}
       centerStats={centerStats}
@@ -70,7 +87,7 @@ export function HubListChromeHeader({
       statusSlot={statusSlot}
       pinSticky={stackChrome ? false : headerPin}
       dividerBelow={stackChrome ? false : !searchPin}
-      embedded={stackChrome}
+      embedded={embedded}
       actions={actions}
     />
   );

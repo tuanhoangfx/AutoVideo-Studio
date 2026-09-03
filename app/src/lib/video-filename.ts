@@ -15,7 +15,7 @@ export function buildVideoFilename({
   job,
   topic = '',
   imagesCount,
-  template = DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate ?? 'time-date-yy',
+  template = DEFAULT_STUDIO_EXPORT_SETTINGS.videoNameTemplate ?? 'date-yy-time',
   exportIndex = 1,
 }: {
   job: Job;
@@ -32,10 +32,11 @@ export function buildVideoFilename({
     if (Number.isNaN(d.getTime())) return timeDate;
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const mo = String(d.getMonth() + 1).padStart(2, '0');
     const yy = String(d.getFullYear()).slice(-2);
-    return `${dd}-${mo}-${yy} ${hh}-${mm}`;
+    return `${dd}-${mo}-${yy} ${hh}-${mm}-${ss}`;
   })();
   const imagesPart = `${Math.max(0, imagesCount)}img`;
   const topicPart = safeFilePart(topic || 'video');

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "code": "P0021",
+  "id": "autovideo-studio",
+  "name": "AutoVideo Studio",
+  "deployTarget": "vercel",
+  "release": {
+    "version": "2.2.130",
+    "updatedAt": "2026-06-03",
+    "readiness": [],
+    "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
+    "latestPublished": {
+      "tag": "v2.2.37",
+      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.37",
+      "publishedAt": "2026-09-02T21:22:01.010Z"
+    }
+  },
+  "urls": {
+    "local": "http://127.0.0.1:3021",
+    "app": "https://p0021.infi.io.vn",
+    "custom": "https://p0021.infi.io.vn",
+    "customStatus": "verified",
+    "workerLocal": "http://127.0.0.1:8021",
+    "localSetupAt": "2026-08-26T22:09:56.475Z",
+    "appSetupAt": "2026-05-26T15:12:00.000+07:00"
+  },
+  "manifestUpdatedAt": "2026-09-03T15:17:30.758Z"
+}

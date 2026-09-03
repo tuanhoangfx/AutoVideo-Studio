@@ -1,4 +1,14 @@
 {
-  "framework": "nextjs",
-  "installCommand": "npx pnpm@9.15.9 install --no-frozen-lockfile"
+  "buildCommand": "pnpm run build",
+  "installCommand": "npx pnpm@9.15.9 install --no-frozen-lockfile",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/google-drive-public.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/google-drive/public", "destination": "/api/google-drive-public" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }

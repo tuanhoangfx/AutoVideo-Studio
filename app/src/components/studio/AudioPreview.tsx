@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 
 function mediaErrorLabel(audio: HTMLAudioElement | null): string {
@@ -20,21 +20,26 @@ export function AudioPreview({
   label,
   className = '',
   compact = false,
+  autoPlayKey,
 }: {
   src: string | null;
   label?: string;
   className?: string;
   compact?: boolean;
+  /** Increment to request play (keyboard Enter on active row). */
+  autoPlayKey?: number;
 }) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setPlaying(false);
     setError(null);
+    setWarning(null);
     if (ref.current) {
       ref.current.pause();
       ref.current.removeAttribute('src');
@@ -55,7 +60,7 @@ export function AudioPreview({
     };
   }, []);
 
-  const toggle = async () => {
+  const toggle = useCallback(async () => {
     if (!src?.trim() || !ref.current) {
       setError('Worker URL not configured');
       return;
@@ -69,10 +74,15 @@ export function AudioPreview({
       }
       setLoading(true);
       setError(null);
+      setWarning(null);
 
       const resp = await fetch(src);
       if (!resp.ok) {
         throw new Error(`Preview failed (${resp.status})`);
+      }
+      const provider = resp.headers.get('X-TTS-Provider');
+      if (provider === 'gtts') {
+        setWarning('Generic fallback — edge voice unavailable');
       }
       const blob = await resp.blob();
       if (blob.size < 64) {
@@ -116,7 +126,12 @@ export function AudioPreview({
     } finally {
       setLoading(false);
     }
-  };
+  }, [playing, src]);
+
+  useEffect(() => {
+    if (!autoPlayKey || autoPlayKey <= 0 || !src?.trim()) return;
+    void toggle();
+  }, [autoPlayKey, src, toggle]);
 
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
@@ -142,6 +157,11 @@ export function AudioPreview({
       {error && (
         <span className="max-w-[9rem] truncate text-[10px] text-[var(--danger)]" title={error}>
           {error}
+        </span>
+      )}
+      {!error && warning && (
+        <span className="max-w-[9rem] truncate text-[10px] text-amber-300/90" title={warning}>
+          {warning}
         </span>
       )}
       <audio

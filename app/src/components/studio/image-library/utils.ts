@@ -1,4 +1,5 @@
 import type { LibraryImage } from '@/types/studio';
+import { isRasterImageFile } from '@/lib/studio/raster-image';
 import type { FileWithRelativePath, FolderBucket, FolderImage, WorkspaceTreeNodeData } from './types';
 
 export function attachRelativePath(file: File, relativePath: string): FileWithRelativePath {
@@ -145,7 +146,7 @@ export async function readImageFilesFromDirectory(directoryHandle: {
     for await (const entry of handle.values()) {
       if (entry.kind === 'file') {
         const file = await entry.getFile();
-        if (file.type.startsWith('image/')) {
+        if (isRasterImageFile(file)) {
           files.push(attachRelativePath(file, [...parts, file.name].join('/')));
         }
       } else if (entry.kind === 'directory') {

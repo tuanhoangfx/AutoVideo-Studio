@@ -1,0 +1,113 @@
+/* P0021 — copied from P0003 stealth-hub-sidebar.css (P0016 golden sidebar/footer). */
+
+.hub-app.stealth-hub-app > aside {
+  overflow: visible;
+}
+
+.hub-app.stealth-hub-app > aside > div:first-child {
+  min-width: 0;
+  align-items: center;
+}
+
+.hub-app.stealth-hub-app > aside > div:first-child > div:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hub-app.stealth-hub-app > aside .tool-avatar {
+  align-self: center;
+}
+
+.hub-app.stealth-hub-app > aside .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-app.stealth-hub-app > aside > div:first-child .text-\[10px\] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  max-height: 2.7em;
+}
+
+.hub-app.stealth-hub-app > aside nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+}
+
+.hub-sidebar-subnav-button {
+  display: grid !important;
+  width: 100%;
+  height: 2rem;
+  min-height: 2rem;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+.hub-app.stealth-hub-app > aside nav button:not(.hub-sidebar-subnav-button) {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: var(--hub-control-h, 31px);
+  place-items: unset;
+  justify-content: flex-start;
+  align-items: center;
+  border: 0;
+  box-shadow: none;
+}
+
+.hub-app.stealth-hub-app > aside nav button:not(.hub-sidebar-subnav-button):focus {
+  outline: none;
+}
+
+.hub-app.stealth-hub-app > aside nav button:not(.hub-sidebar-subnav-button):focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 2px;
+}
+
+.hub-app.stealth-hub-app > aside nav .hub-sidebar-subnav-button:focus {
+  outline: none;
+}
+
+.hub-app.stealth-hub-app > aside nav .hub-sidebar-subnav-button:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 2px;
+}
+
+.hub-app.stealth-hub-app > aside footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: auto;
+}
+
+.hub-app.stealth-hub-app > aside footer button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: var(--hub-control-h, 31px);
+  place-items: unset;
+  align-items: center;
+  border: 0;
+  box-shadow: none;
+}
+
+.hub-app.stealth-hub-app > aside footer button:focus {
+  outline: none;
+}
+
+.hub-app.stealth-hub-app > aside footer button:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 2px;
+}

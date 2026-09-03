@@ -39,6 +39,11 @@ export function supportsStudioDownloadDirectory(): boolean {
   return typeof window !== 'undefined' && (Boolean(window.autovideo?.chooseOutputDirectory) || typeof (window as any).showDirectoryPicker === 'function');
 }
 
+/** Packaged Electron can save silently via IPC — no browser Save As. */
+export function supportsDesktopSilentSave(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.autovideo?.saveOutputFile);
+}
+
 export async function saveBlobToStudioDirectory(
   filename: string,
   blob: Blob

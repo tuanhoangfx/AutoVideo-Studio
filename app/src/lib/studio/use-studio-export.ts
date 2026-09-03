@@ -31,6 +31,7 @@ import {
   DEFAULT_EXPORT_TIME_MODEL,
   estimateExportDurationMs,
   estimateExportRemainingMs,
+  exportTimeModelsEqual,
   formatEstimateLabel,
   learnExportTimeModel,
   loadExportTimeModel,
@@ -66,6 +67,7 @@ export type UseStudioExportParams = {
   imageDurationSec: number;
   narrationScript: string;
   totalVideoSec: number;
+  holdTailSec: number;
   totalExportTextChars: number;
   aspect: StudioAspect;
   voice: string;
@@ -99,8 +101,11 @@ export function useStudioExport(p: UseStudioExportParams) {
     if (!p.hydrated) return;
     const learned = learnExportTimeModel(p.jobs);
     const merged = mergeExportTimeModel(loadExportTimeModel(), learned);
-    setExportTimeModel(merged);
-    saveExportTimeModel(merged);
+    setExportTimeModel((prev) => {
+      if (exportTimeModelsEqual(prev, merged)) return prev;
+      saveExportTimeModel(merged);
+      return merged;
+    });
   }, [p.jobs, p.hydrated]);
 
   const exportEstimateMs = useMemo(
@@ -210,12 +215,14 @@ export function useStudioExport(p: UseStudioExportParams) {
   );
 
   useEffect(() => {
-    if (!p.currentJob || p.currentJob.status !== 'done') return;
+    const job = p.currentJob;
+    if (!job || job.status !== 'done') return;
     setSavedOutputFilenames((prev) => {
-      if (prev[p.currentJob!.id]) return prev;
-      return { ...prev, [p.currentJob!.id]: resolveJobOutputFilename(p.currentJob!) };
+      if (prev[job.id]) return prev;
+      const filename = resolveJobOutputFilename(job);
+      return { ...prev, [job.id]: filename };
     });
-  }, [p.currentJob, resolveJobOutputFilename]);
+  }, [p.currentJob?.id, p.currentJob?.status, resolveJobOutputFilename]);
 
   const openJobOutput = useCallback(
     (job: Job, filename?: string) => {
@@ -260,19 +267,6 @@ export function useStudioExport(p: UseStudioExportParams) {
   );
 
   useEffect(() => {
-    const onPolled = (event: Event) => {
-      const updates = (event as CustomEvent<{ jobs?: Job[] }>).detail?.jobs ?? [];
-      if (!updates.length) return;
-      p.setJobs((prev) => {
-        const map = new Map(updates.map((j) => [j.id, j]));
-        return prev.map((j) => map.get(j.id) ?? j);
-      });
-    };
-    window.addEventListener(JOB_POLLED_EVENT, onPolled);
-    return () => window.removeEventListener(JOB_POLLED_EVENT, onPolled);
-  }, [p]);
-
-  useEffect(() => {
     const onTerminal = (event: Event) => {
       const job = (event as CustomEvent<{ job?: Job }>).detail?.job;
       if (!job) return;
@@ -291,9 +285,17 @@ export function useStudioExport(p: UseStudioExportParams) {
     const onFailed = (event: Event) => {
       const { jobId, reason } = (event as CustomEvent<{ jobId?: string; reason?: string }>).detail ?? {};
       if (jobId !== p.activeJobId) return;
+      const message = reason || 'Download failed.';
       p.setDownloadState('error');
-      p.setDownloadMessage(reason || 'Download failed.');
+      p.setDownloadMessage(message);
       forceExportDownloadRef.current = false;
+      const openSettings =
+        message.toLowerCase().includes('output folder') || message.toLowerCase().includes('download folder');
+      p.showToast(
+        message,
+        openSettings ? 'Open Settings' : undefined,
+        openSettings ? () => window.dispatchEvent(new Event('studio-output-settings-open')) : undefined
+      );
     };
     const onReady = (event: Event) => {
       const job = (event as CustomEvent<{ job?: Job }>).detail?.job;
@@ -334,13 +336,21 @@ export function useStudioExport(p: UseStudioExportParams) {
           : resolveJobSlotId(priorId)
         : `slot-${Date.now()}`;
 
+      const exportScenes = p.renderLines
+        .map((line, order) => ({
+          line,
+          order,
+          durationSec: p.sceneDurationsSec[order] ?? p.imageDurationSec,
+        }))
+        .filter((scene) => scene.durationSec > 0);
+
       const job = await api.createJob({
-        scenes: p.renderLines.map((l, order) => ({
+        scenes: exportScenes.map((scene, imageIndex) => ({
           text: '',
-          image_index: order,
-          duration_ms: Math.round(Math.max(1, p.sceneDurationsSec[order] ?? p.imageDurationSec) * 1000),
-          transition: normalizeTransitionForWorker(l.transition),
-          effect: !l.effect || l.effect === 'auto' ? null : l.effect,
+          image_index: imageIndex,
+          duration_ms: Math.round(Math.max(1, scene.durationSec) * 1000),
+          transition: normalizeTransitionForWorker(scene.line.transition),
+          effect: !scene.line.effect || scene.line.effect === 'auto' ? null : scene.line.effect,
         })),
         config: {
           aspect: p.aspect,
@@ -354,8 +364,10 @@ export function useStudioExport(p: UseStudioExportParams) {
           subtitle_style: p.subtitleStyle,
           bgm_volume: p.bgmVolume,
           narration_script: p.narrationScript,
+          export_duration_ms: Math.round(Math.max(1, p.totalVideoSec) * 1000),
+          hold_tail_ms: Math.round(Math.max(0, p.holdTailSec) * 1000),
         },
-        files: p.renderLines.map((line) => p.images[line.image_index].file),
+        files: exportScenes.map((scene) => p.images[scene.line.image_index].file),
         bgm: p.bgm,
       });
 
@@ -393,12 +405,13 @@ export function useStudioExport(p: UseStudioExportParams) {
     }
   }, [exportEstimateLabel, p]);
 
+  const anyExportRunning = p.anyExportRunning;
+
   useEffect(() => {
-    if (!p.anyExportRunning) return;
-    setRenderNowMs(Date.now());
+    if (!anyExportRunning) return;
     const id = window.setInterval(() => setRenderNowMs(Date.now()), 500);
     return () => window.clearInterval(id);
-  }, [p.anyExportRunning]);
+  }, [anyExportRunning]);
 
   const currentJobRunning = Boolean(p.currentJob && isRunningJob(p.currentJob));
 

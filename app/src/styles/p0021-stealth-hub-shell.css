@@ -1,0 +1,64 @@
+/* P0021 — copied from P0003 stealth-hub-shell.css (video-family / P0010 golden). */
+
+.hub-app.stealth-hub-app {
+  min-height: 100vh;
+  min-width: 1180px;
+}
+
+.stealth-hub-app {
+  --stealth-chrome-bleed: var(--app-tab-header-px, 1.5rem);
+  --stealth-frame-gutter: var(--stealth-frame-px, 0.75rem);
+}
+
+.stealth-hub-app .app-tab-header {
+  margin-left: calc(-1 * var(--stealth-chrome-bleed));
+  margin-right: calc(-1 * var(--stealth-chrome-bleed));
+  padding-left: var(--stealth-chrome-bleed);
+  padding-right: var(--stealth-chrome-bleed);
+}
+
+.stealth-hub-app .stealth-host-ram-stat .app-tab-header-stat-value {
+  max-width: 16rem;
+}
+
+.stealth-hub-app .hub-chrome-sticky {
+  margin-left: calc(-1 * var(--stealth-chrome-bleed));
+  margin-right: calc(-1 * var(--stealth-chrome-bleed));
+}
+
+.stealth-hub-app .hub-filter-sticky {
+  margin-left: calc(-1 * var(--stealth-chrome-bleed));
+  margin-right: calc(-1 * var(--stealth-chrome-bleed));
+  padding-left: var(--stealth-chrome-bleed);
+  padding-right: var(--stealth-chrome-bleed);
+}
+
+.stealth-hub-app .hub-chrome-sticky > .px-6 {
+  padding-left: var(--stealth-chrome-bleed);
+  padding-right: var(--stealth-chrome-bleed);
+}
+
+.hub-app.stealth-hub-app > main.stealth-hub-main {
+  padding: 0 var(--stealth-frame-gutter) var(--stealth-frame-gutter);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--studio,
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--system {
+  padding-bottom: 0;
+  scroll-padding-top: 0;
+}
+
+.stealth-hub-main .hub-tab-chrome,
+.stealth-hub-main .hub-directory-screen {
+  min-height: 0;
+}
+
+.stealth-hub-app .app-tab-header__start {
+  align-items: center;
+}
+
+.stealth-hub-app .app-tab-header__start > h1 {
+  line-height: 1.25;
+}

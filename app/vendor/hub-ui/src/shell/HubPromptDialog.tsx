@@ -1,11 +1,11 @@
 import { useEffect, useId, useState } from "react";
 import { LayoutTemplate, Save, X, type LucideIcon } from "lucide-react";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
+import { HubToolDetailModal } from "./HubToolDetailModal";
 import {
-  HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-} from "./HubToolDetailModal";
+} from "./HubToolDetailModalActions";
 
 export type HubPromptDialogProps = {
   open: boolean;
@@ -56,7 +56,7 @@ export function HubPromptDialog({
       titleId="hub-prompt-title"
       headerIcon={HeaderIcon}
       headerIconClassName={headerIconClassName}
-      shellClassName="hub-tool-detail-modal--fit"
+      size="compact"
       ariaLabelledBy="hub-prompt-title"
       footer={
         <>

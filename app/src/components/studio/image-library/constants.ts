@@ -8,3 +8,8 @@ export const LIBRARY_SOURCE_FILTERS = [
   { id: 'drive' as const, label: 'Drive', icon: Cloud, iconClass: 'text-cyan-300/90' },
 ];
 
+/** Image library grid — 6 columns × 6 rows per pager page (Hub pager SSOT). */
+export const LIBRARY_GRID_COLS = 6;
+export const LIBRARY_GRID_ROWS = 6;
+export const LIBRARY_PAGE_SIZE = LIBRARY_GRID_COLS * LIBRARY_GRID_ROWS;
+

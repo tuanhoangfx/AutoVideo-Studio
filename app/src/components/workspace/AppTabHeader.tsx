@@ -1,43 +1,38 @@
-'use client';
-
-import { useMemo } from 'react';
-import { GitBranch } from 'lucide-react';
 import type { HubGlyphComponent } from '@/lib/hub-ui';
+import { useLocation } from 'react-router-dom';
 import {
   HubHeaderOpsPanels,
   HubListChromeHeader,
-  type TabHeaderMetaItem,
   type TabHeaderStatItem,
 } from '@/lib/hub-ui';
+import { useHostHeaderStats } from '@/hooks/use-host-header-stats';
+import { useP0021VersionMetaItems } from '@/hooks/use-p0021-version-meta-items';
 import { useP0021StudioNotify } from '@/lib/use-p0021-studio-notify';
-import { HeaderOutputSettings } from './AppTabHeaderActions';
+import { p0021ScreenFromPath } from '@/lib/p0021-nav-structure';
+import { StudioDisplayPrefs } from './StudioDisplayPrefs';
 
-export type { TabHeaderMetaItem, TabHeaderStatItem };
+export type { TabHeaderMetaItem, TabHeaderStatItem } from '@/lib/hub-ui';
 
 type AppTabHeaderProps = {
   ariaLabel: string;
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   title: string;
-  metaItems: TabHeaderMetaItem[];
-  centerStats: TabHeaderStatItem[];
+  /** Optional domain stats (e.g. System tab). When omitted, center = CPU/RAM host stats. */
+  centerStats?: TabHeaderStatItem[];
 };
 
-/** Studio tab header — release notes + Notify · Log · Output settings. */
+/**
+ * Hub tab header — P0003 Profiles parity:
+ * Title · Session · version meta (left) · CPU/RAM (center) · Notify · Log · Settings (right).
+ */
 export function AppTabHeader(props: AppTabHeaderProps) {
+  const { pathname } = useLocation();
+  const activeScreen = p0021ScreenFromPath(pathname);
   const notify = useP0021StudioNotify();
-
-  const metaItems = useMemo(() => {
-    const items = props.metaItems.map((item) => ({ ...item }));
-    const versionIdx = items.findIndex(
-      (item) => item.icon === GitBranch || /^v?\d+\.\d+/i.test(String(item.value)),
-    );
-    const idx = versionIdx >= 0 ? versionIdx : -1;
-    if (idx >= 0 && items[idx]) {
-      items[idx] = { ...items[idx] };
-    }
-    return items;
-  }, [props.metaItems]);
+  const { metaItems, desktopUpdate } = useP0021VersionMetaItems();
+  const hostCenterStats = useHostHeaderStats();
+  const centerStats = props.centerStats ?? hostCenterStats;
 
   return (
     <HubListChromeHeader
@@ -47,13 +42,16 @@ export function AppTabHeader(props: AppTabHeaderProps) {
       title={props.title}
       metaItems={metaItems}
       versionReleaseNotesCode="P0021"
-      centerStats={props.centerStats}
+      versionReleaseNotesDesktopUpdate={desktopUpdate}
+      centerStats={centerStats}
       actions={
-        <HubHeaderOpsPanels
-          log={{ variant: 'tab' }}
-          notify={notify}
-          trailing={<HeaderOutputSettings />}
-        />
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <HubHeaderOpsPanels
+            log={{ variant: 'tab' }}
+            notify={notify}
+            trailing={<StudioDisplayPrefs screen={activeScreen} />}
+          />
+        </span>
       }
     />
   );

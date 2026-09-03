@@ -7,6 +7,18 @@
   --hub-directory-pane-surface: var(--panel);
   --hub-directory-thead-surface: color-mix(in srgb, var(--panel) 92%, white 8%);
   --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
+  /* Shared Profile / Usage / Day Left — hub-directory-column-width-registry.ts */
+  --hub-dir-col-profile: 7.5rem;
+  --hub-dir-col-usage: 8.75rem;
+  --hub-dir-col-usage-expired: 12rem;
+  --hub-dir-col-plan-left: 5rem;
+  --hub-dir-col-own: 5.5rem;
+  --hub-dir-col-status: 8.75rem;
+  --hub-dir-col-date: 6.25rem;
+  --hub-dir-col-password: 8rem;
+  --hub-dir-col-recover: 12.5rem;
+  --hub-dir-col-full-info: 7rem;
+  --hub-dir-col-plan-package: 26rem;
   --hub-modal-panel-surface: var(--hub-directory-pane-surface);
   --hub-activity-age-fresh: #ef4444;
   --hub-activity-age-recent: #ef4444;
@@ -19,10 +31,13 @@
 .hub-users-table-wrap {
   background: var(--hub-directory-pane-surface, var(--panel));
   margin-bottom: 10px;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 table.hub-users-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   table-layout: fixed;
@@ -92,6 +107,23 @@ table.hub-users-table {
   flex-shrink: 0;
   font-size: 13px;
   line-height: 1;
+  margin-right: 0.2em;
+}
+
+.hub-users-th-heading > .hub-users-th-emoji + .hub-users-th-text,
+.hub-users-th-heading > .inline-flex + .hub-users-th-text {
+  padding-left: 0.15em;
+}
+
+.twofa-directory-label-row {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.twofa-directory-emoji {
+  margin-right: 0.2em;
 }
 
 .hub-users-th-label {
@@ -161,6 +193,7 @@ table.hub-users-table {
 .hub-users-col--tools { text-align: center; }
 .hub-users-col--created { text-align: center; }
 .hub-users-col--activity { text-align: center; }
+.hub-users-col--last-active { text-align: center; }
 .hub-users-col--actions { text-align: center; }
 
 /* Hub tools table (same skin as Users) */
@@ -170,8 +203,8 @@ table.hub-users-table {
   text-align: center;
 }
 .hub-users-col--hub-project {
-  width: 26%;
-  min-width: 11rem;
+  width: 16rem;
+  min-width: 16rem;
   text-align: left;
 }
 .hub-users-col--hub-enterprise {
@@ -370,6 +403,14 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tools
   text-align: center;
 }
 
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--request,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--request,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--request {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  text-align: center;
+}
+
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--created,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--created,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--created {
@@ -387,72 +428,79 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--activ
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--last-active,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--last-active,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--last-active {
-  width: 10.5rem;
-  min-width: 10.5rem;
+  width: 10rem;
+  min-width: 10rem;
+  text-align: center;
 }
 
 .hub-users-col--agent-kind {
-  width: 6%;
+  width: 4.5rem;
+  min-width: 4.5rem;
   text-align: center;
 }
 
 .hub-users-col--agent-layer {
-  width: 5%;
+  width: 5rem;
   min-width: 5rem;
   text-align: center;
   vertical-align: middle;
 }
 
 .hub-users-col--agent-name {
-  width: 12%;
+  width: 12rem;
+  min-width: 12rem;
   text-align: left;
 }
 
 .hub-users-col--agent-kw {
-  width: 7%;
+  width: 5rem;
+  min-width: 5rem;
   text-align: center;
 }
 
 .hub-users-col--agent-golden {
-  width: 8%;
+  width: 6.5rem;
   min-width: 6.5rem;
   text-align: left;
   vertical-align: top;
 }
 
 .hub-users-col--agent-clone {
-  width: 8%;
+  width: 7.5rem;
   min-width: 7.5rem;
   text-align: left;
   vertical-align: top;
 }
 
 .hub-users-col--agent-path {
-  width: 11%;
+  width: 11rem;
   min-width: 11rem;
   text-align: left;
   vertical-align: top;
 }
 
 .hub-users-col--agent-scope {
-  width: 6%;
+  width: 4.5rem;
+  min-width: 4.5rem;
   text-align: center;
 }
 
 .hub-users-col--agent-lines {
-  width: 5%;
+  width: 3.25rem;
   min-width: 3.25rem;
   text-align: center;
   vertical-align: middle;
 }
 
 .hub-users-col--agent-mode {
-  width: 7%;
+  width: 5rem;
+  min-width: 5rem;
   text-align: center;
 }
 
 .hub-users-col--agent-updated {
-  width: 8%;
+  width: 6.25rem;
+  min-width: 6.25rem;
   text-align: center;
 }
 .hub-users-col--hub-version {
@@ -500,7 +548,7 @@ table.hub-users-table--hub-tools .hub-users-col--hub-links .link-row--inline {
   flex-wrap: nowrap;
 }
 
-/* Hub tools directory — colgroup + % widths (Agent tab spacing model) */
+/* Hub tools directory — rem tracks + wrap overflow-x (no % squeeze) */
 table.hub-users-table.hub-users-table--hub-tools {
   min-width: 74rem;
 }
@@ -510,7 +558,7 @@ table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-code {
 }
 
 table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-project {
-  width: 28%;
+  width: 16rem;
 }
 
 table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-version {
@@ -530,7 +578,7 @@ table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-updated 
 }
 
 table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-manifest {
-  width: 18%;
+  width: 14rem;
 }
 
 table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--hub-links {
@@ -546,8 +594,8 @@ table.hub-users-table--hub-tools td.hub-users-col--hub-code {
 
 table.hub-users-table--hub-tools th.hub-users-col--hub-project,
 table.hub-users-table--hub-tools td.hub-users-col--hub-project {
-  width: 28%;
-  min-width: 13rem;
+  width: 16rem;
+  min-width: 16rem;
 }
 
 table.hub-users-table--hub-tools th.hub-users-col--hub-version,
@@ -576,8 +624,8 @@ table.hub-users-table--hub-tools td.hub-users-col--hub-updated {
 
 table.hub-users-table--hub-tools th.hub-users-col--hub-manifest,
 table.hub-users-table--hub-tools td.hub-users-col--hub-manifest {
-  width: 18%;
-  min-width: 9.5rem;
+  width: 14rem;
+  min-width: 14rem;
   text-align: left;
 }
 
@@ -839,15 +887,15 @@ table.hub-users-table--agent-context td.hub-users-col--agent-updated {
 table.hub-users-table--agent-context col.hub-users-col--agent-name,
 table.hub-users-table--agent-context th.hub-users-col--agent-name,
 table.hub-users-table--agent-context td.hub-users-col--agent-name {
-  width: 14%;
-  min-width: 9rem;
+  width: 12rem;
+  min-width: 12rem;
   text-align: left;
 }
 
 table.hub-users-table--agent-context col.hub-users-col--agent-kw,
 table.hub-users-table--agent-context th.hub-users-col--agent-kw,
 table.hub-users-table--agent-context td.hub-users-col--agent-kw {
-  width: 8%;
+  width: 5rem;
   min-width: 5rem;
   text-align: center;
 }
@@ -855,7 +903,7 @@ table.hub-users-table--agent-context td.hub-users-col--agent-kw {
 table.hub-users-table--agent-context col.hub-users-col--agent-golden,
 table.hub-users-table--agent-context th.hub-users-col--agent-golden,
 table.hub-users-table--agent-context td.hub-users-col--agent-golden {
-  width: 10%;
+  width: 6.5rem;
   min-width: 6.5rem;
   text-align: left;
   vertical-align: top;
@@ -864,7 +912,7 @@ table.hub-users-table--agent-context td.hub-users-col--agent-golden {
 table.hub-users-table--agent-context col.hub-users-col--agent-clone,
 table.hub-users-table--agent-context th.hub-users-col--agent-clone,
 table.hub-users-table--agent-context td.hub-users-col--agent-clone {
-  width: 10%;
+  width: 7.5rem;
   min-width: 7.5rem;
   text-align: left;
   vertical-align: top;
@@ -873,7 +921,7 @@ table.hub-users-table--agent-context td.hub-users-col--agent-clone {
 table.hub-users-table--agent-context col.hub-users-col--agent-path,
 table.hub-users-table--agent-context th.hub-users-col--agent-path,
 table.hub-users-table--agent-context td.hub-users-col--agent-path {
-  width: 18%;
+  width: 11rem;
   min-width: 11rem;
   text-align: left;
   vertical-align: top;
@@ -882,7 +930,7 @@ table.hub-users-table--agent-context td.hub-users-col--agent-path {
 table.hub-users-table--agent-context col.hub-users-col--agent-scope,
 table.hub-users-table--agent-context th.hub-users-col--agent-scope,
 table.hub-users-table--agent-context td.hub-users-col--agent-scope {
-  width: 7%;
+  width: 4.5rem;
   min-width: 4.5rem;
   text-align: center;
 }
@@ -944,8 +992,8 @@ table.hub-users-table--tool-versions td.hub-users-col--ver-released {
 table.hub-users-table--tool-versions col.hub-users-col--ver-title,
 table.hub-users-table--tool-versions th.hub-users-col--ver-title,
 table.hub-users-table--tool-versions td.hub-users-col--ver-title {
-  width: 12%;
-  min-width: 8rem;
+  width: 14rem;
+  min-width: 14rem;
   text-align: left;
   overflow: hidden;
 }
@@ -985,8 +1033,8 @@ table.hub-users-table--tool-versions td.hub-users-col--ver-release {
 table.hub-users-table--tool-versions col.hub-users-col--ver-note,
 table.hub-users-table--tool-versions th.hub-users-col--ver-note,
 table.hub-users-table--tool-versions td.hub-users-col--ver-note {
-  width: 18%;
-  min-width: 10rem;
+  width: 20rem;
+  min-width: 20rem;
   text-align: left;
   vertical-align: top;
 }
@@ -1024,16 +1072,16 @@ table.hub-users-table--tool-links td.hub-users-col--link-group {
 table.hub-users-table--tool-links col.hub-users-col--link-label,
 table.hub-users-table--tool-links th.hub-users-col--link-label,
 table.hub-users-table--tool-links td.hub-users-col--link-label {
-  width: 16%;
-  min-width: 8rem;
+  width: 14rem;
+  min-width: 14rem;
   text-align: left;
 }
 
 table.hub-users-table--tool-links col.hub-users-col--link-url,
 table.hub-users-table--tool-links th.hub-users-col--link-url,
 table.hub-users-table--tool-links td.hub-users-col--link-url {
-  width: auto;
-  min-width: 12rem;
+  width: 20rem;
+  min-width: 20rem;
   text-align: left;
 }
 
@@ -1469,10 +1517,12 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 }
 
 .hub-users-status-dot {
+  display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 999px;
   flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .hub-users-status-dot--online { background: #22c55e; }
@@ -1593,8 +1643,8 @@ table.hub-users-table--dashboard-screens td.hub-users-col--dash-status {
 table.hub-users-table--dashboard-screens col.hub-users-col--dash-screen,
 table.hub-users-table--dashboard-screens th.hub-users-col--dash-screen,
 table.hub-users-table--dashboard-screens td.hub-users-col--dash-screen {
-  width: 14%;
-  min-width: 9rem;
+  width: 14rem;
+  min-width: 14rem;
   text-align: left;
   overflow: hidden;
 }
@@ -1602,8 +1652,8 @@ table.hub-users-table--dashboard-screens td.hub-users-col--dash-screen {
 table.hub-users-table--dashboard-screens col.hub-users-col--dash-path,
 table.hub-users-table--dashboard-screens th.hub-users-col--dash-path,
 table.hub-users-table--dashboard-screens td.hub-users-col--dash-path {
-  width: 14%;
-  min-width: 10rem;
+  width: 14rem;
+  min-width: 14rem;
   text-align: left;
   overflow: hidden;
 }
@@ -1611,8 +1661,8 @@ table.hub-users-table--dashboard-screens td.hub-users-col--dash-path {
 table.hub-users-table--dashboard-screens col.hub-users-col--dash-summary,
 table.hub-users-table--dashboard-screens th.hub-users-col--dash-summary,
 table.hub-users-table--dashboard-screens td.hub-users-col--dash-summary {
-  width: auto;
-  min-width: 14rem;
+  width: 20rem;
+  min-width: 20rem;
   text-align: left;
   overflow: hidden;
 }
@@ -1650,8 +1700,8 @@ table.hub-users-table--dashboard-screens td {
 
 /* Route People & access — modal (User Access parity) */
 table.hub-users-table.hub-users-table--route-access-modal {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   table-layout: fixed;
   --hub-table-body-size: 12px;
   --hub-table-body-line-height: 1.45;
@@ -1689,7 +1739,8 @@ table.hub-users-table--route-access-modal td {
 table.hub-users-table--route-access-modal col.hub-route-access-col--user,
 table.hub-users-table--route-access-modal th.hub-route-access-col--user,
 table.hub-users-table--route-access-modal td.hub-route-access-col--user {
-  width: 32%;
+  width: 12rem;
+  min-width: 12rem;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1699,14 +1750,16 @@ table.hub-users-table--route-access-modal td.hub-route-access-col--user {
 table.hub-users-table--route-access-modal col.hub-route-access-col--role,
 table.hub-users-table--route-access-modal th.hub-route-access-col--role,
 table.hub-users-table--route-access-modal td.hub-route-access-col--role {
-  width: 14%;
+  width: 5.5rem;
+  min-width: 5.5rem;
   text-align: center;
 }
 
 table.hub-users-table--route-access-modal col.hub-route-access-col--activity,
 table.hub-users-table--route-access-modal th.hub-route-access-col--activity,
 table.hub-users-table--route-access-modal td.hub-route-access-col--activity {
-  width: 18%;
+  width: 6.25rem;
+  min-width: 6.25rem;
   text-align: center;
   font-size: 10px;
   line-height: 1.25;
@@ -1716,21 +1769,24 @@ table.hub-users-table--route-access-modal td.hub-route-access-col--activity {
 table.hub-users-table--route-access-modal col.hub-route-access-col--rights,
 table.hub-users-table--route-access-modal th.hub-route-access-col--rights,
 table.hub-users-table--route-access-modal td.hub-route-access-col--rights {
-  width: 12%;
+  width: 4.5rem;
+  min-width: 4.5rem;
   text-align: center;
 }
 
 table.hub-users-table--route-access-modal col.hub-route-access-col--route,
 table.hub-users-table--route-access-modal th.hub-route-access-col--route,
 table.hub-users-table--route-access-modal td.hub-route-access-col--route {
-  width: 12%;
+  width: 5.5rem;
+  min-width: 5.5rem;
   text-align: center;
 }
 
 table.hub-users-table--route-access-modal col.hub-route-access-col--added-at,
 table.hub-users-table--route-access-modal th.hub-route-access-col--added-at,
 table.hub-users-table--route-access-modal td.hub-route-access-col--added-at {
-  width: auto;
+  width: var(--hub-dir-col-date);
+  min-width: var(--hub-dir-col-date);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1740,32 +1796,11 @@ table.hub-users-table--route-access-modal td.hub-route-access-col--added-at {
 table.hub-users-table--route-access-modal col.hub-route-access-col--expires,
 table.hub-users-table--route-access-modal th.hub-route-access-col--expires,
 table.hub-users-table--route-access-modal td.hub-route-access-col--expires {
-  width: auto;
+  width: var(--hub-dir-col-date);
+  min-width: var(--hub-dir-col-date);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
-}
-
-/* With Route column hidden (modal default) — redistribute width */
-table.hub-users-table--route-access-modal:not(.hub-users-table--route-access-modal--with-route)
-  col.hub-route-access-col--user {
-  width: 34%;
-}
-
-table.hub-users-table--route-access-modal:not(.hub-users-table--route-access-modal--with-route)
-  col.hub-route-access-col--role {
-  width: 16%;
-  min-width: 4.75rem;
-}
-
-table.hub-users-table--route-access-modal:not(.hub-users-table--route-access-modal--with-route)
-  col.hub-route-access-col--activity {
-  width: 20%;
-}
-
-table.hub-users-table--route-access-modal:not(.hub-users-table--route-access-modal--with-route)
-  col.hub-route-access-col--rights {
-  width: 13%;
 }
 
 table.hub-users-table--route-access-modal .hub-users-th-btn {
@@ -1780,8 +1815,8 @@ table.hub-users-table--route-access-modal .hub-users-th-label {
   white-space: nowrap;
 }
 
-table.hub-users-table--route-access-modal .hub-users-th-icon {
-  display: none;
+table.hub-users-table--route-access-modal .hub-users-th-heading {
+  gap: var(--hub-inline-gap-name, 8px);
 }
 
 table.hub-users-table--route-access-modal .hub-users-th-text {
@@ -1843,20 +1878,14 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--rol
   text-align: center;
 }
 
-/* Profile / Own / Status — Mail rem floors (browser/own/Status 5.5). */
-table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--profile,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--profile,
+/* Source / Own — compact chips (Services Own 5.5rem). */
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--source,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--source,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--ownership,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--ownership,
-table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--usage,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--usage {
-  width: 5.5rem;
-  min-width: 5.5rem;
-  max-width: 5.5rem;
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--ownership {
+  width: var(--hub-dir-col-own);
+  min-width: var(--hub-dir-col-own);
+  max-width: var(--hub-dir-col-own);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1865,12 +1894,69 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--usa
   vertical-align: middle;
 }
 
-/* Teams Identity — Password / Recovery Mail / Full Info from linked Account. */
+/* Status — Services account Status floor. */
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--live-status,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--live-status {
+  width: var(--hub-dir-col-status);
+  min-width: var(--hub-dir-col-status);
+  max-width: var(--hub-dir-col-status);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+/* Profile / Usage / Usage Expired / Day Left — hub-dir-col-* SSOT (Services). */
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--profile,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--profile {
+  width: var(--hub-dir-col-profile);
+  min-width: var(--hub-dir-col-profile);
+  max-width: var(--hub-dir-col-profile);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--usage {
+  width: var(--hub-dir-col-usage);
+  min-width: var(--hub-dir-col-usage);
+  max-width: var(--hub-dir-col-usage);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--usage-expired,
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--usage-expired,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--usage-expired {
+  width: var(--hub-dir-col-usage-expired);
+  min-width: var(--hub-dir-col-usage-expired);
+  max-width: var(--hub-dir-col-usage-expired);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+/* Teams Identity — Password / Recovery / Full Info / Plan Package = Services rem. */
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--password,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--password,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--password {
-  width: 7.5rem;
-  min-width: 7.5rem;
-  max-width: 9rem;
+  width: var(--hub-dir-col-password);
+  min-width: var(--hub-dir-col-password);
+  max-width: var(--hub-dir-col-password);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1878,11 +1964,12 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--pas
   vertical-align: middle;
 }
 
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--mail-recover,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--mail-recover,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--mail-recover {
-  width: 9rem;
-  min-width: 9rem;
-  max-width: 12rem;
+  width: var(--hub-dir-col-recover);
+  min-width: var(--hub-dir-col-recover);
+  max-width: var(--hub-dir-col-recover);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1890,10 +1977,12 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--mai
   vertical-align: middle;
 }
 
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--full-info,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--full-info,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--full-info {
-  min-width: 10rem;
-  max-width: 16rem;
+  width: var(--hub-dir-col-full-info);
+  min-width: var(--hub-dir-col-full-info);
+  max-width: var(--hub-dir-col-full-info);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1901,10 +1990,12 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--ful
   vertical-align: middle;
 }
 
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--sync-at,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--sync-at,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--sync-at {
-  min-width: 12rem;
-  max-width: 22rem;
+  width: var(--hub-dir-col-plan-package);
+  min-width: var(--hub-dir-col-plan-package);
+  max-width: var(--hub-dir-col-plan-package);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1914,8 +2005,9 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--syn
 
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--load-at,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--load-at {
-  width: 6.5rem;
-  min-width: 6.5rem;
+  width: var(--hub-dir-col-status);
+  min-width: var(--hub-dir-col-status);
+  max-width: var(--hub-dir-col-status);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1929,14 +2021,37 @@ table.hub-users-table--route-access-modal--plan-schedule {
 
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--plan-date,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--plan-date,
-table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--plan-days,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--plan-days,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--plan-due,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--plan-due,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--plan-due {
+  width: var(--hub-dir-col-date);
+  min-width: var(--hub-dir-col-date);
+  max-width: var(--hub-dir-col-date);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--plan-days,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--plan-days {
+  width: var(--hub-dir-col-plan-left);
+  min-width: var(--hub-dir-col-plan-left);
+  max-width: var(--hub-dir-col-plan-left);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--plan-left,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--plan-left {
-  width: 5.5rem;
-  min-width: 5.5rem;
+  width: var(--hub-dir-col-plan-left);
+  min-width: var(--hub-dir-col-plan-left);
+  max-width: var(--hub-dir-col-plan-left);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -1966,10 +2081,12 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--rou
   text-align: center;
 }
 
+table.hub-users-table--route-access-modal--expanded col.hub-route-access-col--added-at,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--added-at,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--added-at {
-  width: 6.5rem;
-  min-width: 6.5rem;
+  width: var(--hub-dir-col-date);
+  min-width: var(--hub-dir-col-date);
+  max-width: var(--hub-dir-col-date);
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -2001,13 +2118,15 @@ table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--use
 }
 
 /*
- * Stacked card embeds (Teams schema) — pin identical tracks so sibling
- * tables align vertically. Expanded default stays `table-layout:auto` for modals.
- * User narrower; Plan Package (sync-at) absorbs width; Own/Live/Profile = Mail rem floors.
+ * Stacked card embeds (Teams schema) — pin rem tracks so sibling tables
+ * share column edges. Never `width: 100%` here: fixed+100% scales every
+ * col down to the card (Usage 6.25rem → ~4rem). Wrap already scrolls.
+ * Modal expanded also rem + max-content (workspace directory SSOT).
  */
 table.hub-users-table--route-access-modal--expanded.hub-users-table--route-access-modal--stack-align {
   table-layout: fixed;
-  width: 100%;
+  width: max-content;
+  min-width: max-content;
 }
 
 /* Select col must stay 36px under stack-align — % tracks otherwise stretch the checkbox lane. */
@@ -2038,109 +2157,144 @@ table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--role,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--role,
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--role {
-  width: 6%;
-  min-width: 0;
-  max-width: none;
-}
-
-/* Mail SSOT rem floors — Profile/Own/Status 5.5rem */
-table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--profile,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--profile,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--profile,
-table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--source,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--source,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--source,
-table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--ownership,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--ownership,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--ownership,
-table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--usage,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--usage,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--usage {
   width: 5.5rem !important;
   min-width: 5.5rem !important;
   max-width: 5.5rem !important;
 }
 
+/* Source / Own — Services Own rem */
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--source,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--source,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--source,
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--ownership,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--ownership,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--ownership {
+  width: var(--hub-dir-col-own) !important;
+  min-width: var(--hub-dir-col-own) !important;
+  max-width: var(--hub-dir-col-own) !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--live-status,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--live-status,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--live-status {
+  width: var(--hub-dir-col-status) !important;
+  min-width: var(--hub-dir-col-status) !important;
+  max-width: var(--hub-dir-col-status) !important;
+}
+
+/* Profile / Usage / Usage Expired — same rem as Services (hub-dir-col-*). */
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--profile,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--profile,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--profile {
+  width: var(--hub-dir-col-profile) !important;
+  min-width: var(--hub-dir-col-profile) !important;
+  max-width: var(--hub-dir-col-profile) !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--usage {
+  width: var(--hub-dir-col-usage) !important;
+  min-width: var(--hub-dir-col-usage) !important;
+  max-width: var(--hub-dir-col-usage) !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--usage-expired,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--usage-expired,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--usage-expired {
+  width: var(--hub-dir-col-usage-expired) !important;
+  min-width: var(--hub-dir-col-usage-expired) !important;
+  max-width: var(--hub-dir-col-usage-expired) !important;
+}
+
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--password,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--password,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--password {
-  width: 7.5rem !important;
-  min-width: 7.5rem !important;
-  max-width: 7.5rem !important;
+  width: var(--hub-dir-col-password) !important;
+  min-width: var(--hub-dir-col-password) !important;
+  max-width: var(--hub-dir-col-password) !important;
 }
 
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--mail-recover,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--mail-recover,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--mail-recover {
-  width: 9rem !important;
-  min-width: 9rem !important;
-  max-width: 9rem !important;
+  width: var(--hub-dir-col-recover) !important;
+  min-width: var(--hub-dir-col-recover) !important;
+  max-width: var(--hub-dir-col-recover) !important;
 }
 
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--full-info,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--full-info,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--full-info {
-  width: 10rem !important;
-  min-width: 10rem !important;
-  max-width: 10rem !important;
+  width: var(--hub-dir-col-full-info) !important;
+  min-width: var(--hub-dir-col-full-info) !important;
+  max-width: var(--hub-dir-col-full-info) !important;
 }
 
-/* Plan Package absorbs freed Account width */
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--sync-at,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--sync-at,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--sync-at {
-  width: 40%;
-  min-width: 0;
-  max-width: none;
+  width: var(--hub-dir-col-plan-package) !important;
+  min-width: var(--hub-dir-col-plan-package) !important;
+  max-width: var(--hub-dir-col-plan-package) !important;
 }
 
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--load-at,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--load-at {
-  width: 6%;
-  min-width: 0;
-  max-width: none;
+  width: var(--hub-dir-col-status) !important;
+  min-width: var(--hub-dir-col-status) !important;
+  max-width: var(--hub-dir-col-status) !important;
 }
 
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--plan-date,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-date,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--plan-days,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-days,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--plan-due,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-due,
-table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--plan-left,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-left {
-  width: 5.5%;
-  min-width: 0;
-  max-width: none;
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-due {
+  width: var(--hub-dir-col-date) !important;
+  min-width: var(--hub-dir-col-date) !important;
+  max-width: var(--hub-dir-col-date) !important;
 }
 
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--plan-days,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-days {
+  width: var(--hub-dir-col-plan-left) !important;
+  min-width: var(--hub-dir-col-plan-left) !important;
+  max-width: var(--hub-dir-col-plan-left) !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--plan-left,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--plan-left {
+  width: var(--hub-dir-col-plan-left) !important;
+  min-width: var(--hub-dir-col-plan-left) !important;
+  max-width: var(--hub-dir-col-plan-left) !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--added-at,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--added-at,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--added-at {
-  width: 6.5%;
-  min-width: 0;
-  max-width: none;
+  width: var(--hub-dir-col-date) !important;
+  min-width: var(--hub-dir-col-date) !important;
+  max-width: var(--hub-dir-col-date) !important;
 }
 
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--expires,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--expires {
-  width: 6.5%;
-  min-width: 0;
-  max-width: none;
+  width: var(--hub-dir-col-date) !important;
+  min-width: var(--hub-dir-col-date) !important;
+  max-width: var(--hub-dir-col-date) !important;
 }
 
-/* Route People & access — full-width directory (legacy) */
+/* Route People & access — rem tracks + wrap overflow-x */
 table.hub-users-table.hub-users-table--route-access {
   table-layout: fixed;
-  width: 100%;
-  min-width: 38rem;
+  width: max-content;
+  min-width: 100%;
 }
 
 table.hub-users-table--route-access th.hub-route-access-col--user,
 table.hub-users-table--route-access td.hub-route-access-col--user {
-  width: 24%;
+  width: 12rem;
+  min-width: 12rem;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2149,13 +2303,15 @@ table.hub-users-table--route-access td.hub-route-access-col--user {
 
 table.hub-users-table--route-access th.hub-route-access-col--role,
 table.hub-users-table--route-access td.hub-route-access-col--role {
-  width: 9%;
+  width: 5.5rem;
+  min-width: 5.5rem;
   text-align: center;
 }
 
 table.hub-users-table--route-access th.hub-route-access-col--activity,
 table.hub-users-table--route-access td.hub-route-access-col--activity {
-  width: 14%;
+  width: 6.25rem;
+  min-width: 6.25rem;
   text-align: center;
   white-space: nowrap;
   font-size: 10px;
@@ -2215,7 +2371,8 @@ table.hub-users-table--route-access .hub-route-access-activity__line {
 
 table.hub-users-table--route-access th.hub-route-access-col--rights,
 table.hub-users-table--route-access td.hub-route-access-col--rights {
-  width: 8%;
+  width: 4.5rem;
+  min-width: 4.5rem;
   text-align: center;
 }
 
@@ -2228,13 +2385,15 @@ table.hub-users-table--route-access td.hub-route-access-col--rights {
 
 table.hub-users-table--route-access th.hub-route-access-col--route,
 table.hub-users-table--route-access td.hub-route-access-col--route {
-  width: 10%;
+  width: 5.5rem;
+  min-width: 5.5rem;
   text-align: center;
 }
 
 table.hub-users-table--route-access th.hub-route-access-col--added-at,
 table.hub-users-table--route-access td.hub-route-access-col--added-at {
-  width: 10%;
+  width: var(--hub-dir-col-date);
+  min-width: var(--hub-dir-col-date);
   text-align: center;
   white-space: nowrap;
   font-size: 11px;
@@ -2243,7 +2402,8 @@ table.hub-users-table--route-access td.hub-route-access-col--added-at {
 
 table.hub-users-table--route-access th.hub-route-access-col--expires,
 table.hub-users-table--route-access td.hub-route-access-col--expires {
-  width: 12%;
+  width: var(--hub-dir-col-date);
+  min-width: var(--hub-dir-col-date);
   text-align: center;
   white-space: nowrap;
   font-size: 11px;

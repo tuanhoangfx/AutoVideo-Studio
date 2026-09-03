@@ -16,13 +16,16 @@ import {
 import { HubHeaderPanelButton } from "../shell/HubHeaderPanelButton";
 import { HUB_SETTINGS_ICON_CLASS } from "../shell/hub-typography";
 import { HubKeyboardShortcutsPanel } from "../keyboard/HubKeyboardShortcutsPanel";
-import { HubToolDetailModal, HubToolDetailModalSecondaryAction, HUB_TOOL_DETAIL_SCROLL_ROOT } from "../shell/HubToolDetailModal";
+import { HubToolDetailModal } from "../shell/HubToolDetailModal";
+import { HubToolDetailModalSecondaryAction } from "../shell/HubToolDetailModalActions";
+import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "../shell/hubToolDetailModalChrome";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "../shell/HubTocSectionNav";
 import { registerHubSettingsOpen } from "../keyboard/hub-keyboard-shortcuts";
 import { HUB_SETTINGS_TITLE } from "../shell/hub-chrome-messages";
 import { HubDirectoryTableColumnPresetMenu } from "../prefs/HubDirectoryTableColumnPresetMenu";
 import { patchHubTablePageSizeValue } from "../table/hub-table-page-size";
+import { readHubChromePrefs } from "../shell/HubTabChrome";
 
 function parseSet(raw: string | null): Set<string> | null {
   if (raw === null) return null;
@@ -384,11 +387,13 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (showHeaderPin || headerExtras) {
+  const pinLocked = Boolean(readHubChromePrefs().pinLocked);
+  const showPinToggles = showHeaderPin && !pinLocked;
+  if (showPinToggles || headerExtras) {
     const showSearchPin = !(hideSearchPinOnSystem && isSystem);
     displayParts.push(
       <SettingsAdmSection key="header" label="Header" emoji="🗂️">
-        {showHeaderPin ? (
+        {showPinToggles ? (
           <>
             <div className={showSearchPin ? "hub-settings-pin-row" : undefined}>
               <ToggleRow

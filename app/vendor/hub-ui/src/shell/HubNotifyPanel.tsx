@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
 import { HubHeaderPanelButton } from "./HubHeaderPanelButton";
-import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
+import { HubToolDetailModal } from "./HubToolDetailModal";
+import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "./hubToolDetailModalChrome";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { markAllNotifySeen, markNotifySeenId, mergeNotifySeenIds, pruneNotifySeenIds, readNotifySeenIds } from "./hub-notify-seen";
@@ -184,6 +185,11 @@ function alertToFeedItem(
     typeof entityIdRaw === "string" || typeof entityIdRaw === "number"
       ? String(entityIdRaw)
       : undefined;
+  const entityIdDisplayRaw = alert.meta?.entityIdDisplay;
+  const entityIdDisplay =
+    typeof entityIdDisplayRaw === "string" && entityIdDisplayRaw.trim()
+      ? entityIdDisplayRaw.trim()
+      : entityId;
   const screen =
     typeof alert.meta?.screen === "string" && alert.meta.screen.trim()
       ? alert.meta.screen.trim()
@@ -210,7 +216,7 @@ function alertToFeedItem(
     ...(entityId && screen
       ? {
           entityRef: { screen, entityId },
-          entityChips: idLabel ? [{ label: idLabel, value: entityId }] : undefined,
+          entityChips: idLabel ? [{ label: idLabel, value: entityIdDisplay ?? entityId }] : undefined,
         }
       : {}),
   };

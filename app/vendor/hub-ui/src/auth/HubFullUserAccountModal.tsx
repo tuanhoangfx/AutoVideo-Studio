@@ -29,13 +29,15 @@ import { HubContactOpenAction } from "../shell/HubContactOpenAction";
 import { hubZaloValueFromPhone } from "../lib/hub-zalo-from-phone";
 import { hubAccountFieldBaseline, hubAccountFieldDirty } from "./hub-account-field-baseline";
 import { readUserAccountLog, writeUserAccountLog } from "./hub-user-account-log-persist";
-import { HubToolDetailModal, HubToolDetailModalPrimaryAction } from "../shell/HubToolDetailModal";
+import { HubToolDetailModal } from "../shell/HubToolDetailModal";
+import { HubToolDetailModalPrimaryAction } from "../shell/HubToolDetailModalActions";
 import { HubToolDetailModalAccountFooter } from "../shell/HubToolDetailModalAccountFooter";
 import { HubAdmClickEditField, HubAdmReadonlyField } from "../shell/HubAdmClickEditField";
 import { HubAdmNoteRail } from "../shell/HubAdmNoteRail";
 import { HubAccountDetailAdmScaffold } from "../shell/HubAccountDetailAdmScaffold";
 import { HubAccountDetailHeaderSearch } from "../shell/HubAccountDetailHeaderSearch";
 import { HubAccountDetailSearchProvider } from "../shell/hubAccountDetailSearch";
+import { HubAccountAvatarEditor } from "./HubAccountAvatarEditor";
 import { HubToolDetailRail } from "../shell/HubToolDetailSplitLayout";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
 import {
@@ -86,6 +88,7 @@ const EMPTY_OWN_PROFILE: HubOwnProfileFields = {
   telegram: "",
   meta: "",
   notes: "",
+  avatarUrl: "",
 };
 
 const CHANNEL_BRAND: Record<"Zalo" | "Tele" | "Meta", HubBrandIconId> = {
@@ -121,6 +124,12 @@ export type HubFullUserAccountModalProps = {
   onLoadOwnProfile?: (userId: string) => Promise<HubOwnProfileFields | null>;
   /** Persist self-edit profile fields — never mutates credentials or role. */
   onUpdateOwnProfile?: (patch: HubOwnProfilePatch) => Promise<HubFullUserAccountResult>;
+  /** Upload avatar to Hub Storage + write profiles.avatar_url. */
+  onUploadAvatar?: (file: File) => Promise<HubFullUserAccountResult & { avatarUrl?: string }>;
+  /** Clear profiles.avatar_url (and best-effort Storage object). */
+  onClearAvatar?: () => Promise<HubFullUserAccountResult>;
+  /** Notify host chrome (sidebar / chips) when avatar URL changes. */
+  onAvatarUrlChange?: (url: string | null) => void;
   onSignOut: () => Promise<HubFullUserAccountResult>;
   onSignOutError?: (title: string, message: string) => void;
   /** Cloud hydrate — merge with session cache on open. */
@@ -155,6 +164,9 @@ export function HubFullUserAccountModal({
   onUpdateUsername,
   onLoadOwnProfile,
   onUpdateOwnProfile,
+  onUploadAvatar,
+  onClearAvatar,
+  onAvatarUrlChange,
   onSignOut,
   onSignOutError,
   onLoadActivityLog,
@@ -178,6 +190,7 @@ export function HubFullUserAccountModal({
   const [activityLog, setActivityLog] = useState<HubEntityLogEntry[]>([]);
   const [usernameOverride, setUsernameOverride] = useState<string | null>(null);
   const [emailOverride, setEmailOverride] = useState<string | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<{ text: string; ok: boolean } | null>(null);
 
   const user = session?.user ?? null;
   const sessionUserId = user?.id?.trim() ?? "";
@@ -191,7 +204,6 @@ export function HubFullUserAccountModal({
     title ??
     (fullNameDraft.trim() ||
       (loginDisplay !== "—" ? loginDisplay : labels.email) ||
-      user?.id?.slice(0, 8) ||
       "User");
 
   // Same SSOT as Users directory detail — profiles.email / contact_email only.
@@ -312,6 +324,7 @@ export function HubFullUserAccountModal({
       setMetaDraft("");
       setNoteDraft("");
       setInitialProfile(EMPTY_OWN_PROFILE);
+      setAvatarStatus(null);
       return;
     }
     setUsernameDraft(hubAccountFieldBaseline(loginDisplay));
@@ -334,6 +347,7 @@ export function HubFullUserAccountModal({
         ...fields,
         zalo: hubZaloValueFromPhone(fields.zalo, fields.phone),
       });
+      onAvatarUrlChange?.(fields.avatarUrl?.trim() || null);
       const fromProfile = hubDisplayEmail({
         authEmail: labels.authEmail,
         contactEmail: fields.contactEmail,
@@ -517,6 +531,7 @@ export function HubFullUserAccountModal({
           telegram: telegramDraft.trim(),
           meta: metaDraft.trim(),
           notes: noteDraft,
+          avatarUrl: initialProfile.avatarUrl,
         });
       }
       setSaving(false);
@@ -524,13 +539,40 @@ export function HubFullUserAccountModal({
   };
 
   const avatarNode = headerLeading ?? (
-    <span
-      className="user-access-modal__avatar grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/30 bg-indigo-500/25 text-sm font-bold text-indigo-50"
-      aria-hidden
-      title="Avatar"
-    >
-      {initials}
-    </span>
+    onUploadAvatar && onClearAvatar ? (
+      <div className="flex flex-col items-start gap-1">
+        <HubAccountAvatarEditor
+          initials={initials}
+          avatarUrl={initialProfile.avatarUrl || null}
+          disabled={!session || saving}
+          busy={saving}
+          onUpload={onUploadAvatar}
+          onClear={onClearAvatar}
+          onMessage={(text, ok) => setAvatarStatus({ text, ok })}
+          onAvatarUrlChange={(url) => {
+            setInitialProfile((prev) => ({ ...prev, avatarUrl: url ?? "" }));
+            onAvatarUrlChange?.(url);
+          }}
+        />
+        {avatarStatus ? (
+          <span
+            className={`max-w-[11rem] text-[10px] leading-tight ${avatarStatus.ok ? "text-emerald-400" : "text-rose-400"}`}
+            role="status"
+          >
+            {avatarStatus.text}
+            {avatarStatus.ok ? " (saved — no Save needed)" : ""}
+          </span>
+        ) : null}
+      </div>
+    ) : (
+      <span
+        className="user-access-modal__avatar grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/30 bg-indigo-500/25 text-sm font-bold text-indigo-50"
+        aria-hidden
+        title="Avatar"
+      >
+        {initials}
+      </span>
+    )
   );
 
   return (
@@ -541,13 +583,7 @@ export function HubFullUserAccountModal({
         title={displayName}
         titleId="hub-user-modal-title"
         headerLeading={avatarNode}
-        headerTrailing={
-          headerTrailing ?? (
-            <span className="truncate font-mono text-[10px] text-[var(--muted)]">
-              {loginDisplay !== "—" ? loginDisplay : user?.id?.slice(0, 8) ?? "—"}
-            </span>
-          )
-        }
+        headerTrailing={headerTrailing ?? null}
         headerCenter={<HubAccountDetailHeaderSearch />}
         shellClassName={hubAccountDetailShellClass()}
         scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
@@ -596,7 +632,7 @@ export function HubFullUserAccountModal({
                 statusTrailing || workspaceNote ? (
                   <>
                     {workspaceNote ? (
-                      <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{workspaceNote}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{workspaceNote}</p>
                     ) : null}
                     {statusTrailing}
                   </>

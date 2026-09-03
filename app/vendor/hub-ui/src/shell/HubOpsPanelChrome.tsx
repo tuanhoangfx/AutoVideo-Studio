@@ -114,9 +114,11 @@ export function HubOpsKindBadge({ kind }: { kind?: string }) {
   if (!meta) return null;
   return (
     <span
-      className={`hub-release-kind-badge inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${meta.chip}`}
+      className={`hub-release-kind-badge ${meta.chip}`}
     >
-      <span className={`text-[11px] leading-none ${meta.className}`} aria-hidden>{meta.emoji}</span>
+      <span className={`hub-release-kind-badge__emoji ${meta.className}`} aria-hidden>
+        {meta.emoji}
+      </span>
       {meta.label}
     </span>
   );
@@ -136,7 +138,7 @@ export function resolveHubOpsTypeTocChrome(kind: HubActivityKindFilter): HubOpsT
 
 export function hubOpsTypeTocIcon(kind: HubActivityKindFilter): ReactNode {
   const { emoji, Icon, className } = resolveHubOpsTypeTocChrome(kind);
-  if (emoji) return <span className={`text-[11px] leading-none ${className}`} aria-hidden>{emoji}</span>;
+  if (emoji) return <span className={`text-xs leading-none ${className}`} aria-hidden>{emoji}</span>;
   return Icon ? <Icon size={11} className={className} aria-hidden /> : null;
 }
 
@@ -193,7 +195,7 @@ export function buildHubOpsTypeTocEntries({
       kind,
       label,
       icon: emoji ? (
-        <span className={`text-[11px] leading-none ${className}`} aria-hidden>{emoji}</span>
+        <span className={`text-xs leading-none ${className}`} aria-hidden>{emoji}</span>
       ) : Icon ? (
         <Icon size={11} className={className} aria-hidden />
       ) : null,
@@ -406,19 +408,24 @@ export function HubOpsPanelBadge({
 export function HubOpsMarkAllReadButton({
   onClick,
   label = "Mark all read",
+  icon: Icon = CheckCheck,
+  disabled = false,
 }: {
   onClick: () => void;
   label?: string;
+  icon?: LucideIcon;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      className="hub-ops-mark-all-read rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)]"
+      className="hub-ops-mark-all-read rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-65"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
     >
-      <CheckCheck size={compactIconSize(14)} className="hub-ops-mark-all-read__icon shrink-0" aria-hidden />
+      <Icon size={compactIconSize(14)} className="hub-ops-mark-all-read__icon shrink-0" aria-hidden />
       <span className="hub-ops-mark-all-read__label" aria-hidden>
         {label}
       </span>

@@ -27,6 +27,24 @@ export function buildSceneLines(
   });
 }
 
+export function sceneLinesEqual(a: ScriptLine[], b: ScriptLine[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (
+      left.text !== right.text ||
+      left.image_index !== right.image_index ||
+      left.durationSec !== right.durationSec ||
+      left.effect !== right.effect ||
+      left.transition !== right.transition
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
   if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return items;
   if (fromIndex >= items.length || toIndex >= items.length) return items;
@@ -36,7 +54,20 @@ export function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
   return next;
 }
 
+/** Fisher–Yates shuffle (returns new array). */
+export function shuffleArray<T>(items: readonly T[]): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
 export function jobDurationMismatchMs(job: Job | null): number | null {
   if (!job?.expected_duration_ms || job.output_duration_ms == null) return null;
-  return Math.abs(job.output_duration_ms - job.expected_duration_ms);
+  const delta = Math.abs(job.output_duration_ms - job.expected_duration_ms);
+  const toleranceMs = Math.max(1500, Math.round(job.expected_duration_ms * 0.03));
+  if (delta <= toleranceMs) return null;
+  return delta;
 }

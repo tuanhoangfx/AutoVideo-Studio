@@ -1,7 +1,9 @@
 'use client';
 
 import { Check, Upload } from 'lucide-react';
+import { HubTablePager } from '@tool-workspace/hub-ui/content/HubTablePager';
 import type { LibraryImage } from '@/types/studio';
+import { LIBRARY_GRID_COLS, LIBRARY_GRID_ROWS } from './constants';
 
 export type LibraryGridEntry = { img: LibraryImage; index: number };
 
@@ -14,6 +16,7 @@ export function ImageGridPanel({
   pendingSet,
   pendingIndexes,
   canAddToKeyframe,
+  pager,
   onUploadClick,
   onAddToKeyframe,
   onTogglePending,
@@ -28,6 +31,16 @@ export function ImageGridPanel({
   pendingSet: Set<number>;
   pendingIndexes: number[];
   canAddToKeyframe: boolean;
+  pager: {
+    pageIndex: number;
+    totalPages: number;
+    rangeStart: number;
+    rangeEnd: number;
+    totalCount: number;
+    showPager: boolean;
+    goPrev: () => void;
+    goNext: () => void;
+  };
   onUploadClick: () => void;
   onAddToKeyframe: () => void;
   onTogglePending: (index: number, additive: boolean) => void;
@@ -54,7 +67,13 @@ export function ImageGridPanel({
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="grid min-h-0 flex-1 select-none grid-cols-6 content-start gap-1.5 overflow-y-auto p-1.5">
+          <div
+            className="grid min-h-0 flex-1 select-none gap-1.5 p-1.5"
+            style={{
+              gridTemplateColumns: `repeat(${LIBRARY_GRID_COLS}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${LIBRARY_GRID_ROWS}, minmax(0, 1fr))`,
+            }}
+          >
             {visibleLibraryEntries.map(({ img, index: i }) => {
               const renderSelected = selectedRenderSet.has(i);
               const pending = pendingSet.has(i);
@@ -64,7 +83,7 @@ export function ImageGridPanel({
                   data-library-index={i}
                   role="button"
                   tabIndex={0}
-                  className={`group relative aspect-square cursor-pointer overflow-hidden rounded-md ring-1 transition-all duration-150 ease-out ${
+                  className={`group relative min-h-0 cursor-pointer overflow-hidden rounded-md ring-1 transition-all duration-150 ease-out ${
                     pending
                       ? 'ring-emerald-400/80 ring-2 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
                       : i === selectedIndex
@@ -121,6 +140,20 @@ export function ImageGridPanel({
               );
             })}
           </div>
+          {pager.totalCount > 0 ? (
+            <div className="shrink-0 border-t border-white/10 px-1 py-0.5">
+              <HubTablePager
+                pageIndex={pager.pageIndex}
+                totalPages={pager.totalPages}
+                rangeStart={pager.rangeStart}
+                rangeEnd={pager.rangeEnd}
+                totalCount={pager.totalCount}
+                onPrev={pager.goPrev}
+                onNext={pager.goNext}
+                ariaLabel="Image library pages"
+              />
+            </div>
+          ) : null}
           <div className="shrink-0 border-t border-white/10 bg-[#0d1228]/95 p-1 shadow-[0_-8px_24px_rgba(0,0,0,0.35)] backdrop-blur-sm">
             <button
               type="button"

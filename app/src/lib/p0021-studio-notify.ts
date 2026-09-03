@@ -1,4 +1,4 @@
-import type { HubNotifyPanelProps } from '@tool-workspace/hub-ui';
+import type { HubNotifyPanelProps } from '@/lib/hub-ui';
 
 export type StudioNotifyInput = {
   workerOk: boolean | null;

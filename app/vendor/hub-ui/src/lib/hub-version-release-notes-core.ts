@@ -193,11 +193,36 @@ export function ensureHubReleaseNotesIncludeCurrent(
     title: `chore: release v${cur}`,
     bullets: [],
     kind: "improve",
-    userTitle: "Latest version",
+    userTitle: "Current version",
     userSummary: "",
     userHighlights: ["Maintenance and polish since the last documented release."],
   };
   return [stub, ...notNewerThanCurrent];
+}
+
+/** Insert GitHub pending version when electron-updater reports a build not yet in the feed. */
+export function ensureHubReleaseNotesIncludePendingUpdate(
+  entries: readonly HubReleaseNoteEntry[],
+  currentVersion: string,
+  pendingVersion: string | null | undefined,
+): HubReleaseNoteEntry[] {
+  const pending = normalizeReleaseNotesVersion(pendingVersion);
+  const cur = normalizeReleaseNotesVersion(currentVersion);
+  if (!pending || !cur || compareSemver(pending, cur) <= 0) return [...entries];
+  if (entries.some((e) => normalizeReleaseNotesVersion(e.version) === pending)) return [...entries];
+  const today = new Date().toISOString().slice(0, 10);
+  const stub: HubReleaseNoteEntry = {
+    version: pending,
+    date: today,
+    at: new Date().toISOString(),
+    title: `Update v${pending}`,
+    bullets: [],
+    kind: "improve",
+    userTitle: "Update available",
+    userSummary: "Download from Update Release to install this build.",
+    userHighlights: [],
+  };
+  return [stub, ...entries];
 }
 
 /**

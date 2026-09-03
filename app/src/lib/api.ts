@@ -1,12 +1,25 @@
 // Worker API client — wraps fetch calls to FastAPI on port 8021.
-// Override base via NEXT_PUBLIC_WORKER_URL when deploying.
+// Override base via NEXT_PUBLIC_WORKER_URL / VITE_WORKER_URL when deploying.
 
-const CONFIGURED_WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL?.trim();
+const meta = import.meta.env;
+
+function envString(...keys: string[]): string {
+  for (const key of keys) {
+    const raw = meta[key];
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  }
+  return '';
+}
+
+const CONFIGURED_WORKER_URL = envString('NEXT_PUBLIC_WORKER_URL', 'VITE_WORKER_URL');
 const QUERY_WORKER_URL = readWorkerUrlFromQuery();
 const DESKTOP_WORKER_URL = readDesktopWorkerUrl();
 
 let runtimeWorkerUrl =
-  DESKTOP_WORKER_URL || QUERY_WORKER_URL || CONFIGURED_WORKER_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8021');
+  DESKTOP_WORKER_URL ||
+  QUERY_WORKER_URL ||
+  CONFIGURED_WORKER_URL ||
+  (meta.PROD ? '' : 'http://127.0.0.1:8021');
 
 export const WORKER_URL = runtimeWorkerUrl;
 
@@ -18,7 +31,21 @@ export async function initializeDesktopWorkerUrl() {
   if (typeof window === 'undefined' || !window.autovideo) return runtimeWorkerUrl;
   const next = await window.autovideo.getWorkerUrl().catch(() => '');
   if (next) runtimeWorkerUrl = next;
+  await syncDesktopDownloadFolderFromRuntime().catch(() => {});
   return runtimeWorkerUrl;
+}
+
+/** Keep renderer settings aligned with Electron outputDirectory (avoids Save As fallback). */
+export async function syncDesktopDownloadFolderFromRuntime(): Promise<void> {
+  if (typeof window === 'undefined' || !window.autovideo?.getRuntimeProfile) return;
+  const { readStudioExportSettings, writeStudioExportSettings } = await import('@/lib/studio-export-settings');
+  const profile = await window.autovideo.getRuntimeProfile();
+  const outputPath = profile.outputDirectory?.trim();
+  if (!outputPath) return;
+  const name = outputPath.split(/[/\\]/).filter(Boolean).pop() ?? outputPath;
+  const settings = readStudioExportSettings();
+  if (settings.downloadDirectoryName === name) return;
+  writeStudioExportSettings({ ...settings, downloadDirectoryName: name, autoDownload: settings.autoDownload });
 }
 
 export function resolveWorkerAssetUrl(url: string): string {
@@ -51,6 +78,10 @@ export type JobConfig = {
   bgm_volume?: number;
   /** Full script read once; not split per scene/image. */
   narration_script?: string;
+  /** Target export length (ms) — may exceed image timeline in script mode. */
+  export_duration_ms?: number;
+  /** Black-screen tail after last image when narration outlasts scenes (ms). */
+  hold_tail_ms?: number;
 };
 
 export type Job = {
@@ -100,6 +131,10 @@ export async function getRoot() {
     version: string;
     jobs: number;
     concurrent_limit: number;
+    compose?: {
+      xfade_available: boolean;
+      transition_s: number;
+    };
     storage?: {
       backend: string;
       ready: boolean;
@@ -154,13 +189,16 @@ export function outputUrl(id: string): string {
   return workerUrl(`/jobs/${id}/output`);
 }
 
+import { resolveStudioVoiceId } from '@/lib/voice-catalog';
+
 export function voicePreviewUrl(text: string, voice: string, rate = '+0%'): string {
   const base = getWorkerUrl();
   if (!base) return '';
   const trimmed = text.trim();
   const safeText =
     trimmed.length > 800 ? trimmed.slice(0, 800) : trimmed || 'Hello, this is a voice preview.';
-  const params = new URLSearchParams({ text: safeText, voice, rate });
+  const resolvedVoice = resolveStudioVoiceId(voice);
+  const params = new URLSearchParams({ text: safeText, voice: resolvedVoice, rate });
   return `${base.replace(/\/$/, '')}/voices/preview?${params.toString()}`;
 }
 

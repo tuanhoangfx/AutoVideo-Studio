@@ -90,6 +90,7 @@ export function useStudioProjectTabs(deps: TabDeps) {
           sequenceTiming: null,
           downloadState: 'idle',
           downloadMessage: '',
+          sceneOrderMode: 'sequential',
         });
       } else {
         deps.applyEmptyEditor();
@@ -165,6 +166,7 @@ export function useStudioProjectTabs(deps: TabDeps) {
       sequenceTiming: null,
       downloadState: 'idle',
       downloadMessage: '',
+      sceneOrderMode: 'sequential',
     });
     bindJobToSlot(draftId, draftId, { labelAt: new Date().toISOString() });
     deps.setJobs((prev) => [draft, ...prev]);

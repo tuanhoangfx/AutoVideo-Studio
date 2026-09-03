@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Gauge, RefreshCw } from 'lucide-react';
+import { Gauge } from 'lucide-react';
 import * as api from '@/lib/api';
 import type { Job } from '@/lib/api';
 import {
@@ -104,15 +104,6 @@ export function ExportBenchmarkPanel() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[.03] px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/[.06] disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
           <button
             type="button"
             onClick={calibrate}

@@ -7,27 +7,26 @@ export function PanelHead({
   icon,
   title,
   count,
+  centerSlot,
   rightSlot,
-  compact = false,
 }: {
   icon: React.ReactNode;
   title: string;
   count?: number;
+  centerSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
+  /** @deprecated All studio panel heads use fixed h-8 — prop ignored. */
   compact?: boolean;
 }) {
   return (
-    <div
-      className={`flex items-center justify-between border-b border-[var(--border-subtle)] ${
-        compact ? 'px-2.5 py-1.5' : 'px-3 py-2'
-      }`}
-    >
-      <div className="studio-panel-label">
+    <div className={`studio-panel-head${centerSlot ? ' studio-panel-head--with-center' : ''}`}>
+      <div className="studio-panel-label shrink-0">
         <span className="studio-panel-label-icon">{icon}</span>
         {title}
         {typeof count === 'number' && <span className="studio-panel-count">{count}</span>}
       </div>
-      {rightSlot}
+      {centerSlot ? <div className="studio-panel-head__center">{centerSlot}</div> : null}
+      {rightSlot ? <div className="studio-panel-head__slot">{rightSlot}</div> : null}
     </div>
   );
 }
@@ -47,7 +46,7 @@ export function RightPanelTab({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold transition ${
+      className={`flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold transition ${
         active
           ? 'bg-[var(--accent)] text-white'
           : 'text-white/45 hover:bg-white/[.04] hover:text-white'

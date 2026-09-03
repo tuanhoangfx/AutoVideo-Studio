@@ -99,7 +99,7 @@ export function mergeExportTimeModel(prev: ExportTimeModel, next: ExportTimeMode
   const w = 0.35;
   const blend = (a: number, b: number) => Math.round(a * (1 - w) + b * w);
   return {
-    sampleCount: prev.sampleCount + next.sampleCount,
+    sampleCount: Math.max(prev.sampleCount, next.sampleCount),
     perSceneTtsMs: blend(prev.perSceneTtsMs, next.perSceneTtsMs),
     perSceneComposeMs: blend(prev.perSceneComposeMs, next.perSceneComposeMs),
     audioBaseMs: blend(prev.audioBaseMs, next.audioBaseMs),
@@ -107,6 +107,17 @@ export function mergeExportTimeModel(prev: ExportTimeModel, next: ExportTimeMode
     subtitleExtraMs: blend(prev.subtitleExtraMs, next.subtitleExtraMs),
     resolutionScale: { ...prev.resolutionScale },
   };
+}
+
+export function exportTimeModelsEqual(a: ExportTimeModel, b: ExportTimeModel): boolean {
+  return (
+    a.sampleCount === b.sampleCount &&
+    a.perSceneTtsMs === b.perSceneTtsMs &&
+    a.perSceneComposeMs === b.perSceneComposeMs &&
+    a.audioBaseMs === b.audioBaseMs &&
+    a.bgmExtraMs === b.bgmExtraMs &&
+    a.subtitleExtraMs === b.subtitleExtraMs
+  );
 }
 
 function learnedRealtimeFactor(model: ExportTimeModel): number {

@@ -1,4 +1,31 @@
 import type { Session, User } from "@supabase/supabase-js";
+import { extractAuthErrorText } from "./extract-auth-error-text";
+import { fetchHubAuth, HUB_GOTRUE_FETCH_TIMEOUT_MS } from "./hub-auth-fetch";
+
+export const HUB_USER_TELEGRAM_FLUSH_URL = "https://infi.io.vn/api/hub/users/telegram-flush";
+
+export function kickHubUserTelegramFlush(
+  fetchImpl: typeof fetch = fetch,
+  extra: { userId?: string; toolCode?: string } = {},
+) {
+  try {
+    const body: Record<string, string> = {};
+    const userId = String(extra.userId || "").trim();
+    const toolCode = String(extra.toolCode || "").trim().toUpperCase();
+    if (userId) body.userId = userId;
+    if (/^P\d{4}$/.test(toolCode)) body.toolCode = toolCode;
+    void Promise.resolve(
+      fetchImpl(HUB_USER_TELEGRAM_FLUSH_URL, {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    ).catch(() => {});
+  } catch {
+    /* never fail Sign In */
+  }
+}
 
 export type GoTruePasswordGrantInput = {
   supabaseUrl: string;
@@ -6,6 +33,7 @@ export type GoTruePasswordGrantInput = {
   email: string;
   password: string;
   fetchImpl?: typeof fetch;
+  toolCode?: string;
 };
 
 /**
@@ -26,15 +54,19 @@ export async function grantGoTruePasswordSession(
 
   const doFetch = input.fetchImpl ?? fetch;
   try {
-    const res = await doFetch(`${url}/auth/v1/token?grant_type=password`, {
-      method: "POST",
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
+    const res = await fetchHubAuth(
+      `${url}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       },
-      body: JSON.stringify({ email, password }),
-    });
+      { timeoutMs: HUB_GOTRUE_FETCH_TIMEOUT_MS, retries: 1, fetchImpl: doFetch },
+    );
     const payload = (await res.json().catch(() => null)) as {
       access_token?: string;
       refresh_token?: string;
@@ -47,9 +79,16 @@ export async function grantGoTruePasswordSession(
       error?: string;
     } | null;
     if (!res.ok || !payload?.access_token) {
-      const message =
-        payload?.error_description || payload?.msg || payload?.error || `HTTP ${res.status}`;
-      return { session: null, error: new Error(String(message)) };
+      if (res.status === 502 || res.status === 503 || res.status === 504 || res.status === 530) {
+        return {
+          session: null,
+          error: new Error(
+            `Sign-in service is offline (HTTP ${res.status}). Wait a moment and try again.`,
+          ),
+        };
+      }
+      const message = extractAuthErrorText(payload) || `HTTP ${res.status}`;
+      return { session: null, error: new Error(message) };
     }
     const expiresIn = Number(payload.expires_in || 3600);
     const expiresAt =
@@ -64,6 +103,10 @@ export async function grantGoTruePasswordSession(
       token_type: payload.token_type || "bearer",
       user: (payload.user ?? { id: "", email }) as User,
     } as Session;
+    kickHubUserTelegramFlush(doFetch, {
+      userId: session.user?.id,
+      toolCode: input.toolCode,
+    });
     return { session, error: null };
   } catch (err) {
     return { session: null, error: err instanceof Error ? err : new Error(String(err)) };

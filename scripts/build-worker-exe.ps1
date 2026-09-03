@@ -36,6 +36,8 @@ try {
     --noconfirm `
     --icon $IconPath `
     --paths $WorkerDir `
+    --paths (Join-Path $Root "..\..\packages\video-pipeline-core\src") `
+    --hidden-import video_pipeline_core `
     --hidden-import uvicorn.logging `
     --hidden-import uvicorn.loops.auto `
     --hidden-import uvicorn.protocols.http.auto `
@@ -59,3 +61,9 @@ if (-not (Test-Path $Exe)) {
 }
 
 Write-Host "Worker exe ready: $Exe" -ForegroundColor Green
+
+$FingerprintScript = Join-Path $PSScriptRoot "worker-fingerprint.mjs"
+if (Test-Path -LiteralPath $FingerprintScript) {
+  & node $FingerprintScript --write
+  if ($LASTEXITCODE -ne 0) { throw "worker-fingerprint --write failed" }
+}

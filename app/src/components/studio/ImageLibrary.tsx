@@ -1,6 +1,12 @@
 ﻿'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Cloud, FolderPlus, ListChecks, Search, Trash2, Upload } from 'lucide-react';
+import { Cloud, FolderPlus, Search, Upload } from 'lucide-react';
+import { useHubTablePagination } from '@tool-workspace/hub-ui/table/hub-table-pagination';
+import {
+  hubDirectoryListResetKey,
+  HubDirectoryDeleteBulkAction,
+  HubDirectorySelectAllChip,
+} from '@/lib/hub-ui';
 import {
   StudioToolbarButton,
   StudioToolbarGroup,
@@ -16,12 +22,13 @@ import {
   listDriveFolderImages,
 } from '@/lib/google-drive';
 import { clearCachedDriveImages, loadCachedDriveImage, saveCachedDriveImage } from '@/lib/drive-cache';
+import { filterRasterImageFiles, RASTER_IMAGE_ACCEPT } from '@/lib/studio/raster-image';
 
 import type { LibraryImage, LibraryImageInput } from '@/types/studio';
 
 export type { LibraryImage, LibraryImageInput } from '@/types/studio';
 
-import { LAST_LOCAL_FOLDER_ID_KEY, LIBRARY_SOURCE_FILTERS } from './image-library/constants';
+import { LAST_LOCAL_FOLDER_ID_KEY, LIBRARY_PAGE_SIZE, LIBRARY_SOURCE_FILTERS } from './image-library/constants';
 import type { FolderBucket, FolderError } from './image-library/types';
 import { DriveImportPanels } from './image-library/DriveImportPanels';
 import { FolderPanel } from './image-library/FolderPanel';
@@ -51,6 +58,7 @@ export function ImageLibrary({
   selectedForRender,
   onAddToKeyframe,
   imageDurationSec = 5,
+  onImageDurationSec,
 }: {
   images: LibraryImage[];
   onAdd: (files: FileList | File[] | LibraryImageInput[]) => void;
@@ -60,6 +68,7 @@ export function ImageLibrary({
   selectedForRender?: number[];
   onAddToKeyframe?: (indexes: number[]) => void;
   imageDurationSec?: number;
+  onImageDurationSec?: (durationSec: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +149,11 @@ export function ImageLibrary({
         }),
     [images, sourceFilter]
   );
+  const libraryPager = useHubTablePagination(visibleLibraryEntries, {
+    pageSize: LIBRARY_PAGE_SIZE,
+    resetKey: hubDirectoryListResetKey(sourceFilter, workspaceQuery, images.length),
+  });
+  const pagedLibraryEntries = libraryPager.pageItems;
   const visibleIndexSet = useMemo(
     () => new Set(visibleLibraryEntries.map((entry) => entry.index)),
     [visibleLibraryEntries]
@@ -505,18 +519,18 @@ export function ImageLibrary({
     return () => window.removeEventListener('mouseup', finishLibrarySweep);
   }, [finishLibrarySweep]);
 
-  const allVisibleSelected =
+  const allLibrarySelected =
     visibleLibraryEntries.length > 0 &&
     visibleLibraryEntries.every((entry) => pendingSet.has(entry.index));
 
   const toggleSelectAllPending = () => {
-    const visible = visibleLibraryEntries.map((entry) => entry.index);
-    if (visible.length === 0) return;
-    if (allVisibleSelected) {
-      setPendingIndexes((prev) => prev.filter((index) => !visible.includes(index)));
+    const libraryIndexes = visibleLibraryEntries.map((entry) => entry.index);
+    if (libraryIndexes.length === 0) return;
+    if (allLibrarySelected) {
+      setPendingIndexes((prev) => prev.filter((index) => !libraryIndexes.includes(index)));
       return;
     }
-    setPendingIndexes((prev) => [...new Set([...prev, ...visible])].sort((a, b) => a - b));
+    setPendingIndexes((prev) => [...new Set([...prev, ...libraryIndexes])].sort((a, b) => a - b));
   };
 
   const addPendingToKeyframe = () => {
@@ -541,15 +555,20 @@ export function ImageLibrary({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={RASTER_IMAGE_ACCEPT}
         multiple
         hidden
-        onChange={(e) => e.target.files && onAdd(e.target.files)}
+        onChange={(e) => {
+          if (!e.target.files?.length) return;
+          const raster = filterRasterImageFiles(e.target.files);
+          if (raster.length) onAdd(raster);
+          e.target.value = '';
+        }}
       />
       <input
         ref={folderInputRef}
         type="file"
-        accept="image/*"
+        accept={RASTER_IMAGE_ACCEPT}
         multiple
         hidden
         onChange={(e) => addFolders(e.target.files)}
@@ -641,33 +660,43 @@ export function ImageLibrary({
 
         {/* Row 2 â€” Library: select / delete only */}
         <div className={`col-start-2 row-start-2 flex shrink-0 min-w-0 items-center gap-1 ${TOOLBAR_ROW}`}>
-          <StudioToolbarGroup className="min-w-0 flex-1">
-            <StudioToolbarButton
-              tone="sky"
-              active={allVisibleSelected}
-              icon={ListChecks}
-              onClick={toggleSelectAllPending}
-              disabled={visibleLibraryEntries.length === 0}
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <HubDirectorySelectAllChip
+              visibleCount={visibleLibraryEntries.length}
+              selectedCount={visiblePendingCount}
+              allVisibleSelected={allLibrarySelected}
+              onToggleSelectAll={toggleSelectAllPending}
+              noun="images"
+              filteredScope={sourceFilter !== 'all'}
+            />
+            <HubDirectoryDeleteBulkAction
               title={
-                visibleLibraryEntries.length === 0
-                  ? 'No images for this source'
-                  : allVisibleSelected
-                  ? 'Deselect all visible images'
-                  : 'Select all visible images'
+                images.length === 0
+                  ? 'No images yet'
+                  : pendingIndexes.length === 0
+                    ? 'Select images to delete'
+                    : `Delete ${pendingIndexes.length} selected image${pendingIndexes.length === 1 ? '' : 's'} from library`
               }
-            >
-              {allVisibleSelected ? 'Deselect' : 'Select all'}
-            </StudioToolbarButton>
-            <StudioToolbarButton
-              tone="rose"
-              icon={Trash2}
-              onClick={deletePendingFromLibrary}
               disabled={images.length === 0 || pendingIndexes.length === 0}
-              title={images.length === 0 ? 'No images yet' : 'Delete selected images from library'}
-            >
-              Delete ({pendingIndexes.length})
-            </StudioToolbarButton>
-          </StudioToolbarGroup>
+              onClick={deletePendingFromLibrary}
+            />
+            {onImageDurationSec ? (
+              <label className="studio-image-default-chip" title="Default seconds per image for new keyframe scenes">
+                <span>Default</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={imageDurationSec}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    if (Number.isFinite(next) && next >= 1) onImageDurationSec(next);
+                  }}
+                  className="h-[18px] w-10 rounded border border-white/10 bg-black/25 px-1 text-center font-mono text-[10px] text-white outline-none focus:border-[var(--accent)]/60"
+                />
+                <span className="text-white/55">s/img</span>
+              </label>
+            ) : null}
+          </div>
           <span className="inline-flex shrink-0 items-center gap-1 px-1 text-[10px] text-white/60">
             <span className={`h-1.5 w-1.5 rounded-full ${pendingDotClass}`} />
             <span className="font-mono tabular-nums text-white/70" title="Selected / visible (total in library)">
@@ -682,13 +711,14 @@ export function ImageLibrary({
         <div className="col-start-2 row-start-3 flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-black/15">
           <ImageGridPanel
             images={images}
-            visibleLibraryEntries={visibleLibraryEntries}
+            visibleLibraryEntries={pagedLibraryEntries}
             sourceFilter={sourceFilter}
             selectedIndex={selectedIndex}
             selectedRenderSet={selectedRenderSet}
             pendingSet={pendingSet}
             pendingIndexes={pendingIndexes}
             canAddToKeyframe={Boolean(onAddToKeyframe)}
+            pager={libraryPager}
             onUploadClick={() => inputRef.current?.click()}
             onAddToKeyframe={addPendingToKeyframe}
             onTogglePending={(index, additive) => {

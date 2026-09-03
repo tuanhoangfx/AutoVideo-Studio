@@ -1,4 +1,4 @@
-import { Check, ChevronDown, FolderOpen, Plus, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, FolderOpen, Plus, X, type LucideIcon } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
@@ -96,6 +96,7 @@ export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterD
         title={title}
         data-has-value={hasValue === undefined ? undefined : hasValue ? "true" : "false"}
         className={hubFilterTriggerClass(active, className, typoClass)}
+        style={{ gap: "var(--hub-inline-gap-name, 8px)" }}
       >
         {icon !== false ? (
           icon ?? (
@@ -109,7 +110,7 @@ export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterD
             </span>
           )
         ) : null}
-        <span className="hub-filter-trigger__label min-w-0 max-w-[12rem] truncate leading-none">{label}</span>
+        <span className="hub-filter-trigger__label min-w-0 max-w-[12rem] truncate leading-none">{`\u00A0${label}`}</span>
 
         <ChevronDown
           size={compactIconSize(12)}
@@ -160,7 +161,10 @@ export function HubFilterDropdownCircle({
 
 /** Scrollable option list inside filter / period dropdown panels. */
 export const HUB_SCROLLBAR_CLASS = "hub-scrollbar";
-export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list hub-scrollbar max-h-72 overflow-y-auto overflow-x-hidden p-1 min-w-0";
+export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list hub-scrollbar max-h-72 overflow-y-auto overflow-x-auto p-1 min-w-0";
+
+/** Roster rows (Name · Team · Position · Status) may exceed the trigger — keep the row full-width then grow. */
+export const HUB_FILTER_DROPDOWN_ROW_WIDE_CLASS = "w-max min-w-full";
 
 export const HUB_FILTER_DROPDOWN_PANEL_CLASS =
   "anim-pop absolute top-full z-30 mt-1 w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] text-[var(--text)] shadow-xl shadow-black/40";
@@ -195,6 +199,21 @@ export const HUB_FILTER_OPTION_EMOJI_CLASS = "shrink-0 leading-none";
 
 /** CSS custom property — set on :root or [data-hub-screen] to resize all inline emojis. */
 export const HUB_INLINE_EMOJI_SIZE_CSS_VAR = "--hub-inline-emoji-size";
+
+/** Dingbats that must stay text (♀) — everything else is color emoji (headers / FilterBar). */
+const HUB_FILTER_TEXT_PRESENTATION_EMOJI = /^(?:♀|♂|\u2640|\u2642)$/u;
+
+export function hubFilterEmojiUsesColorPresentation(emoji: string): boolean {
+  const glyph = emoji.trim();
+  if (!glyph) return false;
+  if (HUB_FILTER_TEXT_PRESENTATION_EMOJI.test(glyph)) return false;
+  return true;
+}
+
+export function hubFilterEmojiToneClass(emoji: string, color?: boolean): string {
+  const useColor = color === true || (color !== false && hubFilterEmojiUsesColorPresentation(emoji));
+  return useColor ? "hub-filter-option-emoji--color" : "hub-filter-option-emoji--sticker";
+}
 
 export function hubFilterOptionEmojiClass(extra = ""): string {
   return `hub-filter-option-emoji ${HUB_FILTER_OPTION_EMOJI_CLASS}${extra ? ` ${extra}` : ""}`;
@@ -269,12 +288,24 @@ type HubFilterDropdownPanelSearchProps = {
   clearSelectionLabel?: string;
   clearSelectionEnabled?: boolean;
   /**
-   * Optional — panel header “+” (replaces Clear when set).
+   * Optional — panel header “+” (sits beside Clear when both are set).
    * Services Plan Package → open Add Material.
    */
   onCreateAction?: () => void;
   createActionAriaLabel?: string;
 };
+
+const HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE =
+  "grid h-[var(--hub-control-h)] w-[var(--hub-control-h)] shrink-0 place-items-center rounded-md";
+
+/** Clear (X) — rose, same family as FilterBar clear / HubFilterRowButton rose. */
+export const HUB_FILTER_PANEL_CLEAR_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-rose-400/30 bg-rose-400/10 text-rose-200 hover:bg-rose-400/16 hover:text-rose-100`;
+
+/** Add (+) — emerald, same family as HubFilterRowButton emerald / directory New. */
+export const HUB_FILTER_PANEL_CREATE_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/16 hover:text-emerald-100`;
+
+/** Plus glyph on “Create …” rows — matches search-bar Add. */
+export const HUB_FILTER_CREATE_GLYPH_CLASS = "shrink-0 text-emerald-300";
 
 /** Compact search row at top of filter dropdown panels (multi-select + portal). */
 export function HubFilterDropdownPanelSearch({
@@ -288,39 +319,59 @@ export function HubFilterDropdownPanelSearch({
   createActionAriaLabel = "Add",
 }: HubFilterDropdownPanelSearchProps) {
   const showCreate = Boolean(onCreateAction);
-  const showClear = !showCreate && Boolean(onClearSelection) && clearSelectionEnabled;
+  /** Optional dropdowns always paint Clear (X); mute it until a value exists. */
+  const showClear = Boolean(onClearSelection);
   const showTrailing = showCreate || showClear;
   return (
     <div className="border-b border-white/5 p-2">
       <div className={`flex min-w-0 items-center${showTrailing ? " gap-2" : ""}`}>
         <div className="relative min-w-0 flex-1">
           <input
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
+            enterKeyHint="search"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
-            style={{ paddingLeft: 10, paddingRight: 10 }}
+            className="field hub-filter-dropdown-search h-[var(--hub-control-h)] w-full min-w-0 text-xs"
+            style={{ paddingLeft: 10, paddingRight: value ? 28 : 10 }}
+            aria-label={placeholder}
             {...HUB_NO_SPELLCHECK_PROPS}
           />
+          {value ? (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              aria-label="Clear search"
+              title="Clear search"
+              className="absolute right-1 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded text-[var(--muted)] hover:bg-white/10 hover:text-[var(--text)]"
+            >
+              <X size={compactIconSize(12)} aria-hidden />
+            </button>
+          ) : null}
         </div>
+        {showClear ? (
+          <button
+            type="button"
+            onClick={onClearSelection}
+            disabled={!clearSelectionEnabled}
+            aria-label={clearSelectionLabel}
+            title={clearSelectionLabel}
+            className={`${HUB_FILTER_PANEL_CLEAR_BTN_CLASS}${clearSelectionEnabled ? "" : " opacity-40"}`}
+          >
+            <X size={compactIconSize(14)} aria-hidden />
+          </button>
+        ) : null}
         {showCreate ? (
           <button
             type="button"
             onClick={onCreateAction}
             aria-label={createActionAriaLabel}
             title={createActionAriaLabel}
-            className="grid h-[var(--hub-control-h)] w-[var(--hub-control-h)] shrink-0 place-items-center rounded-md text-[var(--muted)] hover:bg-white/[0.06] hover:text-[var(--text)]"
+            className={HUB_FILTER_PANEL_CREATE_BTN_CLASS}
           >
             <Plus size={compactIconSize(14)} aria-hidden />
-          </button>
-        ) : showClear ? (
-          <button
-            type="button"
-            onClick={onClearSelection}
-            className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:underline"
-          >
-            {clearSelectionLabel}
           </button>
         ) : null}
       </div>

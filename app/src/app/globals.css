@@ -1,12 +1,24 @@
 @import "../../vendor/hub-ui/src/styles/hub-fonts.css";
 @import "../../vendor/hub-ui/src/styles/hub-check-indicator.css";
 @import "../../vendor/hub-ui/src/styles/hub-shell-layout.css";
+@import "../../vendor/hub-ui/src/styles/hub-mobile.css";
 @import "../../vendor/hub-ui/src/styles/hub-app-tab-header.css";
 @import "../../vendor/hub-ui/src/styles/hub-fields.css";
 @import "../../vendor/hub-ui/src/styles/hub-users-table.css";
+@import "../../vendor/hub-ui/src/styles/hub-inline-emoji.css";
 @import "../../vendor/hub-ui/src/styles/hub-directory-table.css";
+@import "../../vendor/hub-ui/src/styles/hub-table-controls.css";
+@import "../../vendor/hub-ui/src/styles/hub-directory-frame-table.css";
+@import "../../vendor/hub-ui/src/styles/hub-segment-toggle.css";
+@import "../../vendor/hub-ui/src/styles/hub-split-directory-pane.css";
 @import "../../vendor/hub-ui/src/styles/hub-modal.css";
 @import "../../vendor/hub-ui/src/styles/hub-auth-gate.css";
+@import "../../vendor/hub-ui/src/styles/hub-account-detail-modal.css";
+
+@import "../styles/p0021-stealth-hub-shell.css";
+@import "../styles/p0021-stealth-hub-sidebar.css";
+@import "../styles/p0021-hub-sliders.css";
+@import "../styles/p0021-directory-fixed-cols.generated.css";
 
 @tailwind base;
 @tailwind components;
@@ -50,11 +62,14 @@
   --shadow-card-hover: 0 8px 24px rgba(99, 102, 241, 0.12);
 }
 
-html, body {
+html,
+body {
   background: var(--bg);
   color: var(--text);
   margin: 0;
   padding: 0;
+  height: 100%;
+  min-height: 100%;
 }
 
 * { box-sizing: border-box; }
@@ -159,18 +174,21 @@ html, body {
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.35); }
 
-/* Studio readability pass — keep compact layout but lift tiny labels. */
+
 .studio-page {
-  font-size: 13px;
+  width: 100%;
+  min-width: 0;
+  padding-top: 0.25rem;
+  font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
 }
-.studio-page .text-\[7px\] { font-size: 9px; }
-.studio-page .text-\[8px\] { font-size: 10px; }
-.studio-page .text-\[9px\] { font-size: 10.5px; }
-.studio-page .text-\[10px\] { font-size: 11.5px; }
-.studio-page .text-\[10\.5px\] { font-size: 12px; }
-.studio-page .text-\[11px\] { font-size: 12.5px; }
 .studio-page .hub-card {
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+}
+
+.studio-tab-kpis .studio-tab-kpi {
+  min-height: 1.75rem;
 }
 
 .app-tab-header {
@@ -187,6 +205,17 @@ html, body {
 .app-tab-header img {
   display: block;
   flex-shrink: 0;
+}
+
+/* P0003 Profiles parity — wide RAM chip: `18.2 / 32 GB · 57%`. */
+.stealth-host-ram-stat .app-tab-header-stat-value {
+  max-width: min(16rem, 38vw);
+}
+
+/* Prevent center CPU/RAM rail clipping into ghost dots under header actions. */
+.app-tab-header-center-stats {
+  overflow: clip;
+  padding-inline-end: 1px;
 }
 
 /* P0004 Hub filter/search clone. */
@@ -249,19 +278,56 @@ html, body {
   align-items: center;
   gap: 0.35rem;
 }
+.studio-timeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.55) rgba(255, 255, 255, 0.08);
+}
+.studio-timeline-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.studio-timeline-scroll::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.studio-timeline-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.55);
+}
+.studio-timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 180, 252, 0.75);
+}
+.studio-script-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.55) rgba(255, 255, 255, 0.06);
+}
+.studio-script-textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.studio-script-textarea::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.studio-script-textarea::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.55);
+}
+.studio-script-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 180, 252, 0.75);
+}
 /* Studio compact controls — unified 26px row height */
 .studio-control {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  height: 26px;
+  height: var(--hub-control-h, 26px);
   padding: 0 0.5rem;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--hub-table-body-size, 12px);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -319,18 +385,18 @@ html, body {
 }
 
 .studio-page .hub-filter-chip {
-  height: 26px;
+  height: var(--hub-control-h, 26px);
   padding: 0 0.5rem;
-  font-size: 10px;
+  font-size: var(--hub-table-body-size, 12px);
   border-radius: 6px;
 }
 .studio-page .hub-search-box {
-  height: 26px;
-  min-height: 26px;
+  height: var(--hub-control-h, 26px);
+  min-height: var(--hub-control-h, 26px);
   padding: 0 0.5rem;
 }
 .studio-page .hub-search-box input {
-  font-size: 10px;
+  font-size: var(--hub-table-body-size, 12px);
 }
 
 .hub-filter-chip {
@@ -392,6 +458,219 @@ html, body {
   border-color: rgba(99, 102, 241, 0.65);
   box-shadow: var(--shadow-focus);
 }
+.studio-voice-toolbar.hub-filter-toolbar {
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+.studio-page .studio-voice-toolbar.hub-filter-toolbar {
+  padding: 0.5rem 0.5rem 0;
+}
+
+/* Directory rail frames — keyframe fixed-row density (Voice uses panel pager SSOT). */
+.studio-directory-rail-frame.hub-split-directory-pane {
+  container-type: inline-size;
+  container-name: studio-directory-rail;
+  border-radius: 0.75rem;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.06);
+  font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+/* Voice directory — compact rail density + strict 2-row FilterBar. */
+.studio-voice-directory-frame.hub-split-directory-pane {
+  container-type: inline-size;
+  container-name: studio-voice-directory;
+  min-height: 0;
+  --hub-directory-row-h: 1.5rem;
+  --hub-directory-head-row-h: 1.75rem;
+}
+
+.studio-voice-directory-frame .hub-split-directory-pane__filters {
+  padding: 0.5rem 0.625rem;
+}
+
+.studio-voice-directory-frame .hub-split-directory-pane__body {
+  min-height: 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.studio-voice-directory-frame .hub-filter-bar__row-tools,
+.studio-voice-directory-frame .hub-filter-bar__row-band {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.studio-voice-directory-frame .hub-filter-bar__row-search {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.studio-voice-directory-frame .hub-filter-bar__search-main {
+  min-width: 0;
+}
+
+.studio-voice-directory-frame .hub-filter-bar__row-filters {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-voice-directory-frame .hub-filter-bar__actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+
+.studio-voice-directory-frame .hub-filter-bar__toolbar {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table tbody tr > td {
+  height: var(--hub-directory-row-h);
+  max-height: var(--hub-directory-row-h);
+  padding-top: 0;
+  padding-bottom: 0;
+  vertical-align: middle;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table thead th {
+  height: var(--hub-directory-head-row-h);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@container studio-voice-directory (max-width: 22rem) {
+  .studio-voice-directory-frame .hub-filter-bar .hub-filter-trigger {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
+
+  .studio-voice-directory-frame .hub-filter-bar .hub-filter-trigger__label,
+  .studio-voice-directory-frame .hub-segment-toggle__label,
+  .studio-voice-directory-frame .studio-voice-chip-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Studio directory rail — shared fixed-row density (Keyframe scene table). */
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows {
+  --hub-studio-rail-rows: 10;
+  --hub-studio-rail-row-h: 1.5rem;
+  --hub-directory-row-h: 1.5rem;
+  --hub-directory-head-row-h: 1.75rem;
+}
+
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows .hub-split-directory-pane__body {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
+  flex: 0 0 auto;
+  min-height: calc(
+    var(--hub-directory-head-row-h, 2.125rem) +
+      var(--hub-studio-rail-rows, 10) * var(--hub-studio-rail-row-h, 1.875rem)
+  );
+  overflow: hidden;
+}
+
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell > .hub-users-table-wrap {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: hidden;
+}
+
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows .hub-table-pager {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows table th,
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows table td {
+  overflow: hidden;
+}
+
+.studio-directory-rail-frame.hub-split-directory-pane--fixed-rows table tbody tr > td {
+  height: var(--hub-studio-rail-row-h, 1.875rem);
+  max-height: var(--hub-studio-rail-row-h, 1.875rem);
+  vertical-align: middle;
+}
+
+/* Voice rail — table-specific layout (panel pager + split scroll) */
+.studio-voice-directory-frame.hub-split-directory-pane--fixed-rows table.studio-voice-rail-table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.studio-voice-directory-frame.hub-split-directory-pane--fixed-rows table.studio-voice-rail-table td.studio-voice-col--name,
+.studio-voice-directory-frame.hub-split-directory-pane--fixed-rows table.studio-voice-rail-table th.studio-voice-col--name {
+  max-width: 0;
+}
+
+.studio-voice-directory-frame.hub-split-directory-pane--fixed-rows table.studio-voice-rail-table .hub-users-name-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-voice-directory-frame .hub-users-table--directory.studio-voice-rail-table {
+  font-size: var(--hub-table-body-size, 12px);
+}
+
+.studio-voice-directory-frame .studio-voice-col--gender,
+.studio-voice-directory-frame .studio-voice-col--locale {
+  text-align: center;
+}
+
+.studio-voice-directory-frame .studio-voice-col--actions {
+  width: 4.75rem;
+  padding-right: 0.25rem;
+}
+
+.studio-voice-directory-frame.hub-split-directory-pane--fixed-rows table.hub-users-table--directory-6 {
+  min-width: 0;
+}
+
+.studio-voice-directory-frame .studio-voice-actions-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.125rem;
+  width: 100%;
+}
+
+.studio-voice-directory-frame .hub-users-row.is-detail > td {
+  background: rgb(99 102 241 / 0.12);
+}
+
+/* Keyframe scene rail — table-specific fixed rows */
+.studio-keyframe-scene-directory-frame.hub-split-directory-pane--fixed-rows table.studio-keyframe-scene-table {
+  min-width: 0;
+  width: 100%;
+}
+
 .studio-panel-label {
   display: inline-flex;
   align-items: center;
@@ -400,6 +679,323 @@ html, body {
   font-weight: 600;
   color: #fff;
 }
+.studio-panel-head {
+  display: flex;
+  height: 2rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+.studio-panel-head--with-center {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.studio-panel-head__center {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: center;
+  overflow: hidden;
+}
+.studio-panel-head__slot {
+  margin-left: auto;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  overflow: hidden;
+}
+.studio-panel-head--with-center .studio-panel-head__slot {
+  margin-left: 0;
+  flex: 0 1 auto;
+  width: 100%;
+}
+
+/* Script body — P0005 Order Detail Note (HubAdmNoteEditorField): no native resize grip. */
+.studio-script-note .hub-adm-note-editor-field,
+.studio-script-note .hub-adm-note-editor {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  align-self: stretch;
+}
+.studio-script-note .hub-adm-note-editor {
+  background: rgb(15 23 42 / 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.45rem;
+}
+.studio-script-note textarea.hub-adm-note-textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  resize: none;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--hub-adm-type-value-color, rgb(203, 213, 225));
+}
+.studio-script-note textarea.hub-adm-note-textarea:hover,
+.studio-script-note textarea.hub-adm-note-textarea:focus {
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.keyframe-scene-chrome {
+  background: var(--panel-2);
+}
+.keyframe-scene-search-row {
+  display: flex;
+  width: 100%;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.keyframe-scene-filter-row {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+.keyframe-scene-bulk-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.keyframe-scene-toolbar {
+  background: var(--panel-2);
+}
+
+/* Keyframe scene directory — HubSplitDirectoryPane SSOT (search row-1 · filters+bulk row-2 · table body). */
+.studio-keyframe-scene-directory-frame .hub-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.studio-keyframe-scene-directory-frame .hub-filter-bar__row-tools,
+.studio-keyframe-scene-directory-frame .hub-filter-bar__row-band {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.studio-keyframe-scene-directory-frame .hub-filter-bar__row-search,
+.studio-keyframe-scene-directory-frame .hub-filter-bar__search-main {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.studio-keyframe-scene-directory-frame .hub-filter-bar__row-filters {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-keyframe-scene-directory-frame .hub-filter-bar__actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+
+.studio-keyframe-scene-directory-frame.hub-split-directory-pane--rail {
+  border-radius: 0.75rem;
+}
+
+.studio-mini-waveform {
+  pointer-events: none;
+}
+
+.studio-mini-waveform--interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.studio-mini-waveform--interactive:hover {
+  filter: brightness(1.08);
+}
+
+.studio-keyframe-scene-directory-frame tbody tr .studio-mini-waveform {
+  opacity: 0.92;
+  transition: opacity 0.15s ease;
+}
+
+.studio-keyframe-scene-directory-frame tbody tr:hover .studio-mini-waveform {
+  opacity: 1;
+}
+
+.studio-mini-waveform--silent {
+  opacity: 0.62;
+}
+
+.studio-keyframe-scene-directory-frame tbody tr:hover .studio-mini-waveform--silent {
+  opacity: 0.82;
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table {
+  table-layout: fixed;
+  min-width: 72rem;
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table {
+  table-layout: fixed;
+  min-width: 58rem;
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td {
+  padding: 0 0.45rem;
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table tbody tr > td {
+  height: var(--hub-directory-row-h, 1.5rem);
+  max-height: var(--hub-directory-row-h, 1.5rem);
+  padding-top: 0;
+  padding-bottom: 0;
+  vertical-align: middle;
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table thead th {
+  height: var(--hub-directory-head-row-h, 1.75rem);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.studio-keyframe-scene-directory-frame .hub-users-directory-body-text {
+  font-size: 11px;
+}
+
+.studio-panel-head--keyframe {
+  height: auto;
+  min-height: calc(var(--hub-control-h, 26px) + 0.5rem);
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.studio-keyframe-head-chip {
+  display: inline-flex;
+  height: var(--hub-control-h, 26px);
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--panel);
+  padding: 0 0.625rem;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+}
+
+.studio-keyframe-head-chip--active {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.12);
+  color: rgba(224, 231, 255, 0.95);
+}
+
+.studio-keyframe-head-chip__icon {
+  display: grid;
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.375rem;
+}
+
+.studio-keyframe-head-chip__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.studio-keyframe-head-chip__value {
+  color: var(--accent-2);
+  font-size: 12px;
+}
+
+.studio-image-default-chip {
+  display: inline-flex;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0 0.625rem;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+}
+
+/* Studio directory rails — P0005 Orders filter/bulk glyph↔label SSOT (NBSP spacing, no double flex gap). */
+.studio-keyframe-scene-directory-frame .hub-filter-bar .hub-filter-trigger,
+.studio-voice-directory-frame .hub-filter-bar .hub-filter-trigger {
+  gap: 0 !important;
+}
+
+.studio-keyframe-scene-directory-frame .hub-filter-bar .hub-bulk-action-btn,
+.studio-voice-directory-frame .hub-filter-bar .hub-bulk-action-btn {
+  gap: 0;
+}
+
+.studio-keyframe-scene-directory-frame .hub-filter-bar .hub-bulk-action-btn__label::before,
+.studio-voice-directory-frame .hub-filter-bar .hub-bulk-action-btn__label::before {
+  content: '\00a0';
+}
+
+/* Keyframe scene directory — P0005 Orders header glyph↔label SSOT (NBSP spacing, no double flex gap). */
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji) .hub-users-th-heading,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji) .hub-users-th-label {
+  flex: 0 1 auto;
+  min-width: max-content;
+  width: auto;
+  overflow: visible;
+  gap: 0;
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji) .hub-users-th-text:not(.hub-users-th-text--measure) {
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] .hub-users-th-emoji {
+  margin-right: 0;
+}
+
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] .hub-users-th-heading > .hub-users-th-emoji + .hub-users-th-text {
+  padding-left: 0;
+}
+
 .studio-panel-label-icon {
   display: inline-flex;
   color: var(--accent-2);

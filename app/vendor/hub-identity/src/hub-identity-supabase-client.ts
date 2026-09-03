@@ -3,9 +3,12 @@ import {
   cacheHubIdentity,
   clearHubIdentity,
   readHubIdentity,
+  shouldRefuseHubIdentityResurrect,
   type HubIdentitySnapshot,
 } from "./hub-identity-cache";
+import { isAuthNetworkError } from "./supabase-auth-error";
 import {
+  isSessionStillWriteable,
   isWorkspaceSessionExpiryFresh,
   WORKSPACE_SESSION_FRESH_BUFFER_MS,
 } from "./workspace-auth-session";
@@ -93,11 +96,13 @@ export function createHubIdentitySupabaseClient(config: HubIdentitySupabaseClien
   }
 
   async function applyHubIdentitySessionCore(): Promise<Session | null> {
+    if (shouldRefuseHubIdentityResurrect()) return null;
     const client = getIdentitySupabase();
     if (!client) return null;
 
     const { data: live } = await client.auth.getSession();
     if (sessionStillValid(live.session)) {
+      if (shouldRefuseHubIdentityResurrect()) return null;
       if (live.session) persistHubSession(live.session);
       return live.session;
     }
@@ -110,11 +115,32 @@ export function createHubIdentitySupabaseClient(config: HubIdentitySupabaseClien
       refresh_token: snap.refresh_token || "",
     });
     if (error) {
+      // Expired access_token: try refresh before wiping the Hub cache (Enzy/Todo still has Data Box).
+      const refreshToken = snap.refresh_token?.trim() || "";
+      if (refreshToken) {
+        const refreshed = await client.auth.refreshSession({ refresh_token: refreshToken });
+        if (!refreshed.error && refreshed.data.session) {
+          if (shouldRefuseHubIdentityResurrect()) return null;
+          persistHubSession(refreshed.data.session);
+          return refreshed.data.session;
+        }
+        if (isAuthNetworkError(refreshed.error) || isAuthNetworkError(error)) {
+          return sessionFromHubSnapshot(snap);
+        }
+      }
+      if (isAuthNetworkError(error)) {
+        return sessionFromHubSnapshot(snap);
+      }
+      const kept = sessionFromHubSnapshot(snap);
+      if (kept && isSessionStillWriteable(kept)) {
+        return kept;
+      }
       if (readHubIdentity()?.access_token === snap.access_token) {
         clearHubIdentity("restore_failed");
       }
       return live.session ?? null;
     }
+    if (shouldRefuseHubIdentityResurrect()) return null;
     if (data.session) persistHubSession(data.session);
     return data.session;
   }

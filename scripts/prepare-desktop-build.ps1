@@ -1,16 +1,14 @@
 param(
-  [switch]$SkipNextBuild
+  [switch]$SkipUiBuild
 )
 
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $AppDir = Join-Path $Root "app"
-$StandaloneDir = Join-Path $AppDir ".next\standalone"
-$StaticSource = Join-Path $AppDir ".next\static"
-$StaticTarget = Join-Path $StandaloneDir ".next\static"
-$PublicSource = Join-Path $AppDir "public"
-$PublicTarget = Join-Path $StandaloneDir "public"
+$DistDir = Join-Path $AppDir "dist"
+$DevRoot = if ($env:DEV_ROOT) { $env:DEV_ROOT } else { (Resolve-Path (Join-Path $Root "..\..")).Path }
+$RunPnpm = Join-Path $DevRoot "Tool\scripts\run-pnpm.mjs"
 
 function Write-Step([string]$Message) {
   Write-Host "==> $Message" -ForegroundColor Cyan
@@ -18,23 +16,21 @@ function Write-Step([string]$Message) {
 
 Push-Location $AppDir
 try {
-  if (-not $SkipNextBuild) {
-    Write-Step "Building Next.js standalone app"
-    pnpm build
+  if (-not $SkipUiBuild) {
+    Write-Step "Building Vite UI (desktop bundle)"
+    $env:AUTOVIDEO_DESKTOP_BUILD = "1"
+    & node (Join-Path $AppDir "scripts\build.mjs") --desktop
+    if ($LASTEXITCODE -ne 0) { throw "vite desktop build failed (exit $LASTEXITCODE)" }
+    Remove-Item Env:AUTOVIDEO_DESKTOP_BUILD -ErrorAction SilentlyContinue
   }
 
-  if (-not (Test-Path $StandaloneDir)) {
-    throw "Next standalone output not found at $StandaloneDir. Check next.config.mjs output='standalone'."
+  if (-not (Test-Path (Join-Path $DistDir "index.html"))) {
+    throw "Vite dist missing at $DistDir. Check scripts/build.mjs output."
   }
 
-  Write-Step "Copying Next static assets into standalone bundle"
-  New-Item -ItemType Directory -Force -Path $StaticTarget | Out-Null
-  Copy-Item -Path (Join-Path $StaticSource "*") -Destination $StaticTarget -Recurse -Force
-
-  if (Test-Path $PublicSource) {
-    Write-Step "Copying public assets into standalone bundle"
-    New-Item -ItemType Directory -Force -Path $PublicTarget | Out-Null
-    Copy-Item -Path (Join-Path $PublicSource "*") -Destination $PublicTarget -Recurse -Force
+  $indexHtml = Get-Content (Join-Path $DistDir "index.html") -Raw
+  if ($indexHtml -match 'src="/assets/') {
+    throw "Desktop build produced absolute /assets/ URLs; file protocol would black-screen."
   }
 } finally {
   Pop-Location

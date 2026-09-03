@@ -1,0 +1,147 @@
+/* AUTO-GENERATED — P0021 generate-p0021-directory-fixed-col-css.mjs */
+/* Code/date fixed columns only — edit tool manifest then re-run generator. */
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-voice-col--gender,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-voice-col--gender,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-voice-col--gender,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-voice-col--gender,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--gender,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--gender {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-voice-col--name,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-voice-col--name,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-voice-col--name,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-voice-col--name,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--name,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--name {
+  width: 7rem;
+  min-width: 7rem;
+  max-width: 7rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-voice-col--locale,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-voice-col--locale,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-voice-col--locale,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-voice-col--locale,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--locale,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--locale {
+  width: 4.25rem;
+  min-width: 4.25rem;
+  max-width: 4.25rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--scene,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--scene,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--scene,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--scene,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--scene,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--scene {
+  width: 5rem;
+  min-width: 5rem;
+  max-width: 5rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--image,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--image,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--image,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--image,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--image,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--image {
+  width: 9rem;
+  min-width: 9rem;
+  max-width: 9rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--start,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--start,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--start,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--start,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--start,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--start {
+  width: 6.5rem;
+  min-width: 6.5rem;
+  max-width: 6.5rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--duration,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--duration,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--duration,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--duration,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--duration,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--duration {
+  width: 6rem;
+  min-width: 6rem;
+  max-width: 6rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--transition,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--transition,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--transition,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--transition,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--transition,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--transition {
+  width: 10rem;
+  min-width: 10rem;
+  max-width: 10rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--effect,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--effect,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--effect,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--effect,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--effect,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--effect {
+  width: 9rem;
+  min-width: 9rem;
+  max-width: 9rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table col.studio-keyframe-col--transcript,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table col.studio-keyframe-col--transcript,
+.studio-voice-directory-frame table.studio-voice-rail-table th.studio-keyframe-col--transcript,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table th.studio-keyframe-col--transcript,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--transcript,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--transcript {
+  width: 18rem;
+  min-width: 18rem;
+  max-width: 18rem;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--name,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--name,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--scene,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--scene {
+  text-align: left;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--gender,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--gender,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--locale,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--locale,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--image,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--image,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--start,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--start,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--duration,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--duration,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--transition,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--transition,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--effect,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--effect,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--transcript,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--transcript {
+  text-align: center;
+}
+
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-voice-col--name .customer-copy-text,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-voice-col--name .customer-copy-text,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--scene .customer-copy-text,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--scene .customer-copy-text,
+.studio-voice-directory-frame table.studio-voice-rail-table td.studio-keyframe-col--start .hub-directory-timestamp,
+.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table td.studio-keyframe-col--start .hub-directory-timestamp {
+  font-variant-numeric: tabular-nums;
+}

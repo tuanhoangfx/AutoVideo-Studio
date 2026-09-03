@@ -143,6 +143,25 @@ class SceneInput:
     transition: str = "slide_left"  # slide_left | slide_right | fade | zoom | random | none (cut)
 
 
+def expected_output_duration_ms(scenes: list) -> int:
+    """Timeline length after compose — subtract xfade overlap when that path is used."""
+    base = sum(max(500, getattr(sc, "duration_ms", None) or 5000) for sc in scenes)
+    if len(scenes) <= 1:
+        return base
+    transitions = [normalize_transition(getattr(sc, "transition", None)) for sc in scenes[:-1]]
+    if _xfade_available() and any(t != "cut" for t in transitions):
+        overlap_ms = sum(int(TRANSITION_S * 1000) for t in transitions if t != "cut")
+        return max(500, base - overlap_ms)
+    return base
+
+
+def _compose_will_use_xfade(scenes: list) -> bool:
+    if len(scenes) <= 1:
+        return False
+    transitions = [normalize_transition(getattr(sc, "transition", None)) for sc in scenes[:-1]]
+    return bool(transitions) and any(t != "cut" for t in transitions) and _xfade_available()
+
+
 def _zoompan_filter(effect: str, duration_s: float, fps: int, w: int, h: int) -> str:
     """Build zoompan expression for Ken Burns effect."""
     frames = max(1, int(duration_s * fps))
@@ -385,12 +404,18 @@ def _xfade_available() -> bool:
     return _XF_FILTER_AVAILABLE
 
 
+def xfade_available() -> bool:
+    """Public probe — cached after first ffmpeg -filters check."""
+    return _xfade_available()
+
+
 def mux_audio(
     video_path: Path,
     audio_path: Path,
     out_path: Path,
     subtitle_path: Path | None = None,
     video_quality: str = "auto",
+    target_duration_ms: int | None = None,
 ) -> Path:
     """Mux video + audio + (optional) burn-in subtitle.
 
@@ -405,13 +430,13 @@ def mux_audio(
             "-c:v", "copy",
             "-c:a", "aac",
             "-b:a", "192k",
-            # Ensure the video timeline isn't truncated when TTS audio
-            # is shorter than the requested scene durations.
             "-af", "apad",
-            "-shortest",
-            "-movflags", "+faststart",
-            str(out_path),
         ]
+        if target_duration_ms and target_duration_ms > 0:
+            cmd.extend(["-t", f"{target_duration_ms / 1000:.3f}"])
+        else:
+            cmd.append("-shortest")
+        cmd.extend(["-movflags", "+faststart", str(out_path)])
     else:
         # ffmpeg subtitles filter requires POSIX path on Windows.
         sub_for_filter = str(subtitle_path.resolve()).replace("\\", "/").replace(":", "\\:")
@@ -428,11 +453,49 @@ def mux_audio(
             "-c:a", "aac",
             "-b:a", "192k",
             "-af", "apad",
-            "-shortest",
-            "-movflags", "+faststart",
+        ]
+        if target_duration_ms and target_duration_ms > 0:
+            cmd.extend(["-t", f"{target_duration_ms / 1000:.3f}"])
+        else:
+            cmd.append("-shortest")
+        cmd.extend(["-movflags", "+faststart", str(out_path)])
+    subprocess.run(cmd, check=True, capture_output=True)
+    return out_path
+
+
+def render_black_segment(
+    out_path: Path,
+    duration_ms: int,
+    *,
+    aspect: str = "9:16",
+    fps: int = 30,
+    resolution: str = "1080p",
+    video_quality: str = "auto",
+) -> Path:
+    """Solid black segment for script-mode tail after the last image."""
+    w, h = _target_size(aspect, resolution)
+    dur_s = max(0.1, duration_ms / 1000.0)
+    encoder, encoder_args = _pick_h264_encoder()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    run_ffmpeg_checked(
+        [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=black:s={w}x{h}:r={fps}:d={dur_s:.3f}",
+            "-c:v",
+            encoder,
+            *encoder_args,
+            *_video_bitrate_args(video_quality),
+            "-pix_fmt",
+            "yuv420p",
+            "-r",
+            str(fps),
+            "-an",
             str(out_path),
         ]
-    subprocess.run(cmd, check=True, capture_output=True)
+    )
     return out_path
 
 
@@ -446,6 +509,8 @@ def compose_video(
     video_quality: str = "auto",
     workdir: Path | None = None,
     subtitle_path: Path | None = None,
+    hold_tail_ms: int = 0,
+    target_duration_ms: int | None = None,
 ) -> Path:
     refresh_encoder_for_job()
     workdir = workdir or out_path.parent / "_work"
@@ -454,7 +519,7 @@ def compose_video(
     segments: list[Path] = []
     scene_durations_s: list[float] = []
     transitions: list[str] = []
-    use_xfade = len(scenes) > 1
+    will_use_xfade = _compose_will_use_xfade(scenes)
 
     # Pre-compute timeline + output segment paths (keeps order stable).
     render_jobs: list[tuple[int, SceneInput, Path]] = []
@@ -464,8 +529,9 @@ def compose_video(
         transition = normalize_transition(sc.transition)
         if i < len(scenes) - 1:
             transitions.append(transition)
+        # Extra segment length is only for xfade overlap — concat fallback must not pad (+Δ ~58s/144 scenes).
         transition_buffer_ms = (
-            int(TRANSITION_S * 1000) if use_xfade and i < len(scenes) - 1 and transition != "cut" else 0
+            int(TRANSITION_S * 1000) if will_use_xfade and i < len(scenes) - 1 and transition != "cut" else 0
         )
         render_input = SceneInput(
             image_path=sc.image_path,
@@ -553,7 +619,27 @@ def compose_video(
         scene_durations_s=scene_durations_s,
         video_quality=video_quality,
     )
-    mux_audio(silent_video, audio_path, out_path, subtitle_path=subtitle_path, video_quality=video_quality)
+    if hold_tail_ms > 0:
+        tail_video = workdir / "hold_tail.mp4"
+        render_black_segment(
+            tail_video,
+            hold_tail_ms,
+            aspect=aspect,
+            fps=fps,
+            resolution=resolution,
+            video_quality=video_quality,
+        )
+        merged_video = workdir / "video_with_hold.mp4"
+        concat_segments([silent_video, tail_video], merged_video, video_quality=video_quality)
+        silent_video = merged_video
+    mux_audio(
+        silent_video,
+        audio_path,
+        out_path,
+        subtitle_path=subtitle_path,
+        video_quality=video_quality,
+        target_duration_ms=target_duration_ms,
+    )
 
     shutil.rmtree(workdir, ignore_errors=True)
     return out_path

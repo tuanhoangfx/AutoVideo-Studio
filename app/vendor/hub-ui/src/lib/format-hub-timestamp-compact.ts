@@ -14,6 +14,13 @@ export function formatHubDirectoryDateCompact(iso: string | null | undefined): s
   }
 }
 
+/** Picker / vault calendar date — always `dd/mm/yy` (e.g. `12/08/26`). Input `YYYY-MM-DD`. */
+export function formatHubCalendarDateCompact(isoDate: string): string {
+  const [y, m, d] = isoDate.trim().split("-");
+  if (!y || !m || !d) return isoDate;
+  return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y.slice(-2)}`;
+}
+
 /** Local date: `dd/mm/yy` (e.g. `03/06/26`) — stale activity labels, compact directory cells. */
 export function formatHubTimestampDateOnly(iso: string | null | undefined): string {
   if (!iso?.trim()) return "";
@@ -41,6 +48,24 @@ export function formatHubTimestampCompact(iso: string | null | undefined): strin
     const mo = String(d.getMonth() + 1).padStart(2, "0");
     const yy = String(d.getFullYear() % 100).padStart(2, "0");
     return `${hh}:${mm} ${dd}/${mo}/${yy}`;
+  } catch {
+    return "";
+  }
+}
+
+/** Log / Detail meta absolute — `hh:mm:ss dd/mm/yy` (e.g. `12:45:00 19/08/26`). */
+export function formatHubTimestampLog(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear() % 100).padStart(2, "0");
+    return `${hh}:${mm}:${ss} ${dd}/${mo}/${yy}`;
   } catch {
     return "";
   }

@@ -8,9 +8,13 @@ import {
   resolveJobDownloadBadge,
   type JobDownloadBadgeState,
 } from '@/lib/job-download-badge';
-import { formatJobDateTimeLabel } from '@/lib/job-datetime-label';
+import { formatJobDateTimeLabel, formatJobTabCompactLabel } from '@/lib/job-datetime-label';
 import { getJobTabLabelIso, getSlotDownloadCount } from '@/lib/job-project-slot';
 import { JobTabTooltip } from './JobTabTooltip';
+import { StudioJobKpiBadges } from './StudioJobKpiBadges';
+import type { KpiTileData } from '@tool-workspace/hub-ui/shell/KpiStrip';
+import type { StudioJobStatusFilterKey } from '@/lib/studio/studio-job-status-filter';
+import { filterJobsByStudioStatus } from '@/lib/studio/studio-job-status-filter';
 
 type JobStatus = Job['status'];
 
@@ -58,6 +62,9 @@ export function ProjectTabs({
   onNew,
   onClose,
   onOpenOutput,
+  kpiItems = [],
+  statusFilter = null,
+  onToggleStatusFilter,
 }: {
   jobs: Job[];
   activeId: string | null;
@@ -68,6 +75,9 @@ export function ProjectTabs({
   onNew: () => void;
   onClose?: (id: string) => void;
   onOpenOutput?: (job: Job, filename?: string) => void;
+  kpiItems?: KpiTileData[];
+  statusFilter?: StudioJobStatusFilterKey | null;
+  onToggleStatusFilter?: (key: StudioJobStatusFilterKey) => void;
 }) {
   const [tooltipJobId, setTooltipJobId] = useState<string | null>(null);
   const [tooltipAnchor, setTooltipAnchor] = useState<HTMLElement | null>(null);
@@ -112,6 +122,15 @@ export function ProjectTabs({
   useEffect(() => () => clearHideTooltipTimer(), [clearHideTooltipTimer]);
 
   const tooltipJob = tooltipJobId ? jobs.find((j) => j.id === tooltipJobId) : null;
+  const visibleJobs = filterJobsByStudioStatus(jobs, statusFilter);
+  const filterLabel =
+    statusFilter === 'active'
+      ? 'active'
+      : statusFilter === 'done'
+        ? 'done'
+        : statusFilter === 'error'
+          ? 'error'
+          : null;
 
   return (
     <div className="flex items-center gap-1 border-b border-white/10 bg-black/25 px-2 py-1.5">
@@ -123,18 +142,27 @@ export function ProjectTabs({
       >
         <Plus size={14} />
       </button>
-      {jobs.length === 0 && (
-        <div className="px-3 py-1.5 text-[11px] italic text-white/40">
-          No projects yet. Click + to create one.
-        </div>
-      )}
-      {jobs.map((job) => {
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto studio-timeline-scroll">
+        {jobs.length === 0 && (
+          <div className="px-3 py-1.5 text-[11px] italic text-white/40">
+            No projects yet. Click + to create one.
+          </div>
+        )}
+        {jobs.length > 0 && visibleJobs.length === 0 && filterLabel ? (
+          <div className="px-3 py-1.5 text-[11px] italic text-white/45">
+            No {filterLabel} projects — click the badge again to show all.
+          </div>
+        ) : null}
+        {visibleJobs.map((job) => {
         const active = job.id === activeId;
         const meta = STATUS_META[job.status] ?? STATUS_META.pending;
         const pct = Math.round(Math.max(0, Math.min(100, job.progress ?? 0)));
         const isNew = Boolean(newJobId && job.id === newJobId);
         const savedFilename = savedOutputFilenames?.[job.id];
         const createdLabel = clientReady
+          ? formatJobTabCompactLabel(getJobTabLabelIso(job.id) ?? job.created_at)
+          : '';
+        const createdTitle = clientReady
           ? formatJobDateTimeLabel(getJobTabLabelIso(job.id) ?? job.created_at)
           : '';
         const downloadCount = clientReady ? getSlotDownloadCount(job.id) : 0;
@@ -144,15 +172,24 @@ export function ProjectTabs({
         const badgeStyle = downloadBadge ? JOB_DOWNLOAD_BADGE_STYLES[downloadBadge] : null;
 
         return (
-          <button
+          <div
             key={job.id}
-            type="button"
+            role="tab"
+            tabIndex={0}
+            aria-selected={active}
             onClick={() => onSelect(job.id)}
-            className={`group relative flex max-w-[11.5rem] min-w-[8.25rem] items-center gap-1.5 rounded-t-lg border border-transparent px-2 py-1 text-[10px] ${
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect(job.id);
+              }
+            }}
+            className={`group relative flex max-w-[11.5rem] min-w-[8.25rem] cursor-pointer items-center gap-1.5 rounded-t-lg border border-transparent px-2 py-1 text-[10px] ${
               active
                 ? 'border-white/10 bg-[var(--panel)] text-white'
                 : 'bg-white/[.02] text-white/60 hover:bg-white/[.04]'
             }`}
+            title={createdTitle || undefined}
           >
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot} ${job.status !== 'done' && job.status !== 'error' ? 'animate-pulse' : ''}`} />
             {isNew ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-300 animate-pulse" /> : null}
@@ -237,9 +274,15 @@ export function ProjectTabs({
                 />
               </div>
             ) : null}
-          </button>
+          </div>
         );
       })}
+      </div>
+      <StudioJobKpiBadges
+        items={kpiItems}
+        activeFilter={statusFilter}
+        onToggleFilter={onToggleStatusFilter ?? (() => undefined)}
+      />
       {tooltipJob ? (
         <JobTabTooltip
           job={tooltipJob}

@@ -1,12 +1,24 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { isHubAuthRateLimitError } from "./hub-auth-rate-limit";
-import { hubOpaqueAuthEmailFromUserId, resolveHubLogin, sanitizeHubLoginInput } from "./hub-login";
+import {
+  classifyHubLoginIdentifier,
+  hubOpaqueAuthEmailFromUserId,
+  isHubOpaqueAuthEmail,
+  resolveHubLogin,
+  sanitizeHubLoginInput,
+} from "./hub-login";
+import {
+  type HubResolveLoginLookup,
+  resolveHubLoginEmails,
+} from "./hub-resolve-login-client";
 import {
   adoptGrantedGoTrueSession,
   grantGoTruePasswordSession,
   readSupabaseGoTrueTarget,
 } from "./gotrue-password-grant";
-import { signInWithHubPassword } from "./hub-auth-submit";
+import { isHubIdentityTransientFailure, signInWithHubPassword } from "./hub-auth-submit";
+import { enforceHubProfileApproval, signOutHubIfPresent } from "./hub-profile-approval";
+import { reopenHubIdentityAfterSignIn } from "./hub-identity-cache";
 import type { MirrorSupabaseAuthResult } from "./mirror-supabase-auth";
 
 export type { MirrorSupabaseAuthResult };
@@ -45,6 +57,11 @@ export type SignInHubIdentityConfig = {
   ) => Promise<HubSessionRecoveryResult | null>;
   /** Auth emails already resolved by the caller — skips a second resolve-login round trip. */
   resolvedAuthEmails?: string[];
+  /** Lookup from the caller's resolve-login — skip a second fetch on miss/timeout. */
+  resolveLookup?: HubResolveLoginLookup;
+  /** Known Hub GoTrue target — do not depend on supabase-js exposing supabaseUrl. */
+  hubGrant?: { supabaseUrl: string; anonKey: string };
+  toolCode?: string;
 };
 
 export type SignInHubIdentityResult = {
@@ -84,12 +101,13 @@ export async function signInHubIdentityPlane(
       return { data: { session: result.data.session }, error: result.error };
     }
     // Token-only grant (P0004 parity) — skip supabase-js /auth/v1/user.
-    const target = readSupabaseGoTrueTarget(hub);
+    const target = config.hubGrant ?? readSupabaseGoTrueTarget(hub);
     if (target) {
       const granted = await grantGoTruePasswordSession({
         ...target,
         email: authEmail,
         password,
+        toolCode: config.toolCode,
       });
       if (granted.session) adoptGrantedGoTrueSession(hub, granted.session);
       return { data: { session: granted.session }, error: granted.error };
@@ -101,6 +119,7 @@ export async function signInHubIdentityPlane(
   const identityResult = await signInWithHubPassword(login, identityAttempt, mode, {
     resolveLoginApiUrl: config.resolveLoginApiUrl,
     extraAuthEmails: config.resolvedAuthEmails,
+    resolveLookup: config.resolveLookup,
   });
   let identitySession = identityResult.data?.session as Session | null | undefined;
 
@@ -109,12 +128,17 @@ export async function signInHubIdentityPlane(
       mode === "signin" &&
       identityResult.error &&
       isHubAuthRateLimitError(identityResult.error.message);
+    const resolveUnavailable =
+      mode === "signin" && isHubIdentityTransientFailure(identityResult.error?.message);
     const needsSignupConfirm = mode === "signup" && !identityResult.error;
     const signupAlreadyRegistered =
       mode === "signup" &&
       Boolean(identityResult.error?.message?.match(/already registered|already been registered/i));
 
-    if ((rateLimited || needsSignupConfirm || signupAlreadyRegistered) && config.recoverHubSession) {
+    if (
+      (rateLimited || resolveUnavailable || needsSignupConfirm || signupAlreadyRegistered) &&
+      config.recoverHubSession
+    ) {
       try {
         const recovered = await config.recoverHubSession(
           loginInput,
@@ -160,7 +184,14 @@ export async function signInHubIdentityPlane(
       .eq("id", userId);
   }
 
+  const gate = await enforceHubProfileApproval(hub, identitySession.user?.id);
+  if (!gate.ok) {
+    await signOutHubIfPresent(hub);
+    throw new Error(gate.error);
+  }
+
   const mirrorEmail = identitySession.user?.email ?? identityResult.authEmail ?? resolved.authEmail;
+  reopenHubIdentityAfterSignIn();
   config.cacheHubIdentityFromSession(identitySession, mirrorEmail);
 
   return {
@@ -207,12 +238,33 @@ function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
-function planesAreRevocable(planes: WorkspaceDataPlane[], mode: string): boolean {
-  return (
-    mode === "signin" &&
-    planes.length > 0 &&
-    planes.every((plane) => typeof plane.revokeSpeculativeSession === "function")
-  );
+function planeIsRevocable(plane: WorkspaceDataPlane): boolean {
+  return typeof plane.revokeSpeculativeSession === "function";
+}
+
+function anyPlaneRevocable(planes: WorkspaceDataPlane[], mode: string): boolean {
+  return mode === "signin" && planes.some(planeIsRevocable);
+}
+
+/**
+ * Extra product plane on the same GoTrue as the primary data plane (P0020 vault).
+ * Dual Sign In must not wait on / grant this plane — extra planes adopt after Data Box.
+ */
+export const WORKSPACE_SHARED_PLANE_SKIP = "shared-data-plane";
+
+/**
+ * Speculative plane ran with an empty/unknown email — retry after Hub returns
+ * mirrorEmail. Timeout / wrong password already finished; a second 16s+ chain
+ * is what trips the 45s dual wrapper on P0005 / P0020 / P0022.
+ */
+export function shouldRetrySpeculativePlane(result: MirrorSupabaseAuthResult | undefined): boolean {
+  if (!result) return true;
+  if (result.session) return false;
+  const msg = String(result.error ?? "");
+  // Empty error = placeholder (non-revocable plane skipped the speculative tick).
+  if (!msg) return true;
+  if (msg === WORKSPACE_SHARED_PLANE_SKIP || /shared-data-plane/i.test(msg)) return false;
+  return /identity missing|opaque required|not configured/i.test(msg);
 }
 
 /** Hub rejected the password after a parallel plane already signed in — drop those sessions. */
@@ -293,9 +345,29 @@ export async function runWorkspaceDualSignIn(
       : undefined,
   };
 
-  // P0004 parity: Hub starts immediately (resolve-login lives inside the grant).
-  // Revocable data planes start at t=0 from loginInput — do not wait for a unique
-  // resolve-login email (multi-email CEO accounts used to serialize Hub then Data Box).
+  const login = sanitizeHubLoginInput(loginInput);
+  const classified = classifyHubLoginIdentifier(login);
+  if (
+    mode === "signin" &&
+    !wrappedConfig.resolvedAuthEmails?.length &&
+    (classified.kind === "username" || classified.kind === "phone")
+  ) {
+    const tResolve = nowMs();
+    const resolved = await resolveHubLoginEmails(login, {
+      resolveLoginApiUrl: wrappedConfig.resolveLoginApiUrl,
+    });
+    resolveLoginMs = Math.max(0, Math.round(nowMs() - tResolve));
+    if (resolved.emails.length) wrappedConfig.resolvedAuthEmails = resolved.emails;
+    wrappedConfig.resolveLookup = resolved.lookup;
+  }
+  const speculativeMirrorEmail =
+    (wrappedConfig.resolvedAuthEmails ?? []).find((email) => isHubOpaqueAuthEmail(email)) ||
+    (wrappedConfig.resolvedAuthEmails ?? [])[0] ||
+    "";
+
+  // P0004 parity: Hub grant starts immediately after one resolve-login.
+  // Revocable data planes start in the same tick with the opaque Hub email so
+  // Data Box is not serialized behind Hub (empty mirrorEmail used to no-op).
   const tHubStart = nowMs();
   const identityPromise = signInHubIdentityPlane(loginInput, password, mode, wrappedConfig).then(
     (value) => {
@@ -304,13 +376,16 @@ export async function runWorkspaceDualSignIn(
     },
   );
   let speculativePlanes: Promise<MirrorSupabaseAuthResult[]> | null = null;
-  if (planesAreRevocable(config.planes, mode)) {
+  if (anyPlaneRevocable(config.planes, mode)) {
     parallel = true;
-    const speculativeCtx = { loginInput, password, mode, mirrorEmail: "" };
+    const speculativeCtx = { loginInput, password, mode, mirrorEmail: speculativeMirrorEmail };
     speculativePlanes = Promise.all(
-      config.planes.map((plane, index) =>
-        measurePlaneAuthenticate(plane, speculativeCtx, index, true, planeTimings),
-      ),
+      config.planes.map((plane, index) => {
+        if (!planeIsRevocable(plane)) {
+          return Promise.resolve({ session: null, error: null } as MirrorSupabaseAuthResult);
+        }
+        return measurePlaneAuthenticate(plane, speculativeCtx, index, true, planeTimings);
+      }),
     );
     speculativePlanes.catch(() => []);
   }
@@ -333,7 +408,7 @@ export async function runWorkspaceDualSignIn(
   }
   planeResults = await Promise.all(
     config.planes.map(async (plane, index) => {
-      if (planeResults[index]?.session) return planeResults[index];
+      if (!shouldRetrySpeculativePlane(planeResults[index])) return planeResults[index];
       return measurePlaneAuthenticate(plane, planeCtx, index, false, planeTimings);
     }),
   );

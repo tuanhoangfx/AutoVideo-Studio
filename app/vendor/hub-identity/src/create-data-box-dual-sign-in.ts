@@ -1,5 +1,6 @@
 /**
- * SSOT Data Box dual-plane sign-in — used by P0012 / P0020 (P0015 inherits P0012).
+ * SSOT workspace-data dual-plane sign-in (legacy factory name).
+ * Used by P0012 / P0020 (P0015 inherits P0012). UI: not “Data Box” except P0020.
  * Pattern used ≥2 tools → live here, not as near-copies under each Tool/.
  */
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
@@ -23,6 +24,9 @@ import {
   type WorkspaceDualSignInTimings,
 } from "./workspace-dual-sign-in";
 import { WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS } from "./workspace-auth-session";
+
+/** Drift auto-heal: sync-mirror-password + retry — only runs after Data Box invalid-credentials. */
+export const WORKSPACE_DATABOX_PASSWORD_SYNC_TIMEOUT_MS = 8_000;
 
 export type DataBoxDualSignInResult = {
   identitySession: Session | null;
@@ -63,12 +67,26 @@ export type CreateDataBoxDualSignInConfig = {
   cacheDataSession: (session: Session) => void;
   clearDataSession: () => void;
   recoverApiUrl: (path: string) => string;
-  resolveLoginApiUrl: string;
+  /** Pass `hubResolveLoginApiUrl` (function) — do not call it at module init. */
+  resolveLoginApiUrl?: string | (() => string);
   recoverToken?: string;
   /** Default 16_000. */
   dataSignInTimeoutMs?: number;
   onTimings?: (timings: WorkspaceDualSignInTimings) => void;
+  toolCode?: string;
 };
+
+function resolvedLoginApiUrl(value: string | (() => string) | undefined): string | undefined {
+  if (typeof value === "function") return value() || undefined;
+  const next = String(value ?? "").trim();
+  return next || undefined;
+}
+
+function shouldRescueDataPlane(dataError: string | null): boolean {
+  const msg = String(dataError ?? "");
+  if (/opaque required|identity missing|not configured/i.test(msg)) return false;
+  return /rate limit|timeout|AUTH_TIMEOUT|unavailable|offline|aborted/i.test(msg);
+}
 
 function maskLogin(input: string): string {
   const s = String(input ?? "").trim();
@@ -105,7 +123,7 @@ export type DataBoxDualSignInApi = {
   ) => Promise<DataBoxDualSignInResult>;
 };
 
-/** Factory — one implementation for every Data Box dual-plane host. */
+/** Factory — one implementation for every workspace-data dual-plane host (legacy name). */
 export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): DataBoxDualSignInApi {
   const log = config.logPrefix ?? "[hub][auth]";
   const dataTimeoutMs = config.dataSignInTimeoutMs ?? 16_000;
@@ -130,7 +148,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
         mirrorSessionKey: "dataSession",
         mode,
       }),
-      4_000,
+      14_000,
     ).catch((err) => {
       console.warn(`${log} hub recover timeout/fail`, {
         ms: Math.round(nowMs() - t0),
@@ -165,7 +183,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     });
     const primaryEmail = mirrorEmails[0];
     if (!primaryEmail) {
-      return { session: null, error: "Data Box mirror identity missing (Hub opaque required)." };
+      return { session: null, error: "Workspace data identity missing (Hub opaque required)." };
     }
     const extraAuthEmails = mirrorEmails.slice(0, 2);
     const hubMirrorEmail = String(mirrorEmail ?? "").trim().toLowerCase();
@@ -177,7 +195,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
         password,
         mode,
         cacheSession: config.cacheDataSession,
-        planeLabel: "Data Box",
+        planeLabel: "workspace data",
       });
     }
 
@@ -216,7 +234,8 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     const lastError = signIn.error?.message ?? null;
     if (lastError?.startsWith("AUTH_TIMEOUT:")) {
       console.warn(`${log} databox signin timeout`, { ms: Math.round(nowMs() - t0) });
-      return { session: null, error: "Data Box sign-in timed out. Please try again." };
+      // Do not chain password-sync + mirror-signup — that second 16s+ is the 45s dual timeout.
+      return { session: null, error: "Workspace data sign-in timed out. Please try again." };
     }
     if (lastError && isHubAuthRateLimitError(lastError)) {
       console.warn(`${log} databox signin rate-limited`, { ms: Math.round(nowMs() - t0), err: lastError });
@@ -224,7 +243,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     }
     if (!lastError || !HUB_INVALID_LOGIN.test(lastError)) {
       console.warn(`${log} databox signin failed`, { ms: Math.round(nowMs() - t0), err: lastError });
-      return { session: null, error: lastError ?? "Data Box sign-in failed." };
+      return { session: null, error: lastError ?? "Workspace data sign-in failed." };
     }
 
     for (const syncEmail of mirrorEmails) {
@@ -246,7 +265,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
             return { session: null, error: again.error?.message ?? lastError };
           },
         }),
-        4_000,
+        WORKSPACE_DATABOX_PASSWORD_SYNC_TIMEOUT_MS,
       ).catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         return { session: null as Session | null, error: msg, via: undefined as string | undefined };
@@ -274,7 +293,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
         password,
         mode: "signup",
         cacheSession: config.cacheDataSession,
-        planeLabel: "Data Box",
+        planeLabel: "workspace data",
       }),
       dataTimeoutMs,
     ).catch((err) => {
@@ -307,7 +326,12 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
       "workspace-dual",
       runWorkspaceDualSignIn(loginInput, password, mode, {
         getHubClient: config.getHubClient,
-        resolveLoginApiUrl: config.resolveLoginApiUrl,
+        toolCode: config.toolCode || (String(config.logPrefix || "").toUpperCase().match(/P\d{4}/) || [])[0],
+        hubGrant:
+          config.hubUrl && config.hubAnonKey
+            ? { supabaseUrl: config.hubUrl, anonKey: config.hubAnonKey }
+            : undefined,
+        resolveLoginApiUrl: resolvedLoginApiUrl(config.resolveLoginApiUrl),
         recoverHubSession: recoverHubSessionViaWorker,
         adoptRecoveredPlaneSession: config.cacheDataSession,
         cacheHubIdentityFromSession: (session, mirrorEmail) => {
@@ -386,7 +410,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
 
     let dataSession = data.session;
     let dataError = data.error;
-    if (result.identitySession && !dataSession) {
+    if (result.identitySession && !dataSession && shouldRescueDataPlane(dataError)) {
       const rescued = await recoverHubSessionViaWorker(
         loginInput,
         password,

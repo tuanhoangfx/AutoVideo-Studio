@@ -1,3 +1,8 @@
+/** True when two durations round to the same whole second (Read vs Export chip). */
+export function durationSecondsEqual(a: number, b: number): boolean {
+  return Math.max(0, Math.round(a)) === Math.max(0, Math.round(b));
+}
+
 /** Format seconds as m:ss or HhMMm when >= 1 hour. */
 export function formatDuration(totalSec: number): string {
   const safe = Math.max(0, Math.round(totalSec));

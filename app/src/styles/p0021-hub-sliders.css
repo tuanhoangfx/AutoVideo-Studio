@@ -1,0 +1,94 @@
+/* P0021 — Hub range sliders SSOT (packages/hub-ui hub-theme-tokens.css). */
+
+.hub-ui-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hub-ui-zoom-row__label {
+  width: 2rem;
+}
+
+.hub-ui-zoom-row__pct {
+  width: 2.25rem;
+  text-align: right;
+}
+
+.hub-ui-zoom-slider,
+.studio-hub-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.125rem;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.hub-ui-zoom-slider:focus-visible,
+.studio-hub-range:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.hub-ui-zoom-slider::-webkit-slider-runnable-track,
+.studio-hub-range::-webkit-slider-runnable-track {
+  height: 0.3rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+    color-mix(in srgb, var(--accent-2) 70%, transparent) var(--hub-zoom-fill, 33%),
+    rgba(255, 255, 255, 0.07) var(--hub-zoom-fill, 33%),
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.hub-ui-zoom-slider::-webkit-slider-thumb,
+.studio-hub-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-top: -0.26rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(145deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 2px 8px rgba(99, 102, 241, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.hub-ui-zoom-slider:active::-webkit-slider-thumb,
+.studio-hub-range:active::-webkit-slider-thumb {
+  transform: scale(1.08);
+}
+
+.hub-ui-zoom-slider::-moz-range-track,
+.studio-hub-range::-moz-range-track {
+  height: 0.3rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.hub-ui-zoom-slider::-moz-range-progress,
+.studio-hub-range::-moz-range-progress {
+  height: 0.3rem;
+  border-radius: 9999px 0 0 9999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.hub-ui-zoom-slider::-moz-range-thumb,
+.studio-hub-range::-moz-range-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--accent-2), var(--accent));
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.45);
+}
+
+.hub-app.stealth-hub-app > aside footer .hub-ui-zoom-row {
+  width: 100%;
+}

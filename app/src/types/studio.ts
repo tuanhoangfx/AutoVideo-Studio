@@ -34,6 +34,8 @@ export type SequenceScene = {
   effect?: string;
   durationSec?: number;
   transition?: string;
+  /** Script-mode export boundary — omitted when fully included. */
+  exportStatus?: 'included' | 'partial' | 'skipped';
 };
 
 export type SequenceTiming = {

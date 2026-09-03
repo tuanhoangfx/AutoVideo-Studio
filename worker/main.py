@@ -34,7 +34,10 @@ from pipeline.paths import worker_preview_root, worker_storage_root
 from pipeline.runner import JobProgress, JobSpec, SceneSpec, run_job
 from pipeline.storage_backend import publish_output, storage_status
 from pipeline.tts import list_vi_voices
+from pipeline.compose import expected_output_duration_ms, xfade_available
 from pipeline.ffmpeg_util import FFmpegRenderError, called_process_to_ffmpeg_error, probe_duration_ms
+from pipeline.image_normalize import normalize_job_image
+from pipeline.pipeline_constants import TRANSITION_S
 
 app = FastAPI(title="AutoVideo Studio Worker", version="0.2.0")
 
@@ -208,6 +211,8 @@ class JobConfig(BaseModel):
     subtitle_style: Literal["off", "line", "word_capcut"] = "off"
     bgm_volume: float = 0.18  # 0.0 – 1.0
     narration_script: str = ""
+    export_duration_ms: int | None = None
+    hold_tail_ms: int | None = None
 
 
 class SceneIn(BaseModel):
@@ -237,18 +242,25 @@ class Job(BaseModel):
 
 
 def expected_duration_ms_from_scenes(scenes: list[SceneIn]) -> int:
-    """Sum scene durations as sent by Studio (image-based export timeline)."""
-    return sum(max(500, s.duration_ms or 5000) for s in scenes)
+    """Expected output length after compose (xfade overlap subtracted when applicable)."""
+    return expected_output_duration_ms(scenes)
 
 
 JOBS: dict[str, Job] = {}
+
+COMPOSE_CAPABILITIES: dict[str, bool | float] = {
+    "xfade_available": False,
+    "transition_s": TRANSITION_S,
+}
 
 
 @app.on_event("startup")
 def _restore_jobs():
     """Load persisted jobs from disk."""
     JOBS.update(_load_jobs())
+    COMPOSE_CAPABILITIES["xfade_available"] = xfade_available()
     print(f"  [startup] restored {len(JOBS)} jobs from disk")
+    print(f"  [startup] compose xfade={COMPOSE_CAPABILITIES['xfade_available']}")
 
 
 def new_job_id() -> str:
@@ -264,6 +276,10 @@ def root():
         "jobs": len(JOBS),
         "concurrent_limit": MAX_CONCURRENT,
         "storage": storage_status(),
+        "compose": {
+            "xfade_available": bool(COMPOSE_CAPABILITIES.get("xfade_available")),
+            "transition_s": float(COMPOSE_CAPABILITIES.get("transition_s") or TRANSITION_S),
+        },
     }
 
 
@@ -299,10 +315,24 @@ async def voice_preview(
     # Cache key
     key = _hashlib.sha1(f"{voice}|{rate}|{text}".encode("utf-8")).hexdigest()[:16]
     out = PREVIEW_DIR / f"{key}.mp3"
+    provider = "cached"
     if not out.exists():
         from pipeline.tts import synthesize
-        await synthesize(text, out, voice=voice, rate=rate)
-    return FileResponse(out, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=3600"})
+
+        try:
+            result = await synthesize(text, out, voice=voice, rate=rate)
+        except Exception as exc:
+            raise HTTPException(502, f"edge tts failed for {voice}: {exc}") from exc
+        provider = result.provider
+    return FileResponse(
+        out,
+        media_type="audio/mpeg",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "X-TTS-Provider": provider,
+            "X-TTS-Voice": voice,
+        },
+    )
 
 
 @app.post("/jobs", response_model=Job)
@@ -330,7 +360,7 @@ async def create_job(
         dest = img_dir / f"img_{i:03d}{ext}"
         with open(dest, "wb") as f:
             shutil.copyfileobj(uf.file, f)
-        saved.append(dest)
+        saved.append(normalize_job_image(dest))
 
     # Save optional BGM
     bgm_path: str | None = None
@@ -355,6 +385,8 @@ async def create_job(
     ]
 
     expected_ms = expected_duration_ms_from_scenes(raw_scenes)
+    if cfg.export_duration_ms and cfg.export_duration_ms > expected_ms:
+        expected_ms = int(cfg.export_duration_ms)
 
     job = Job(
         id=job_id,
@@ -383,6 +415,8 @@ async def create_job(
         bgm_volume=cfg.bgm_volume,
         subtitle_style=cfg.subtitle_style,
         narration_text=(cfg.narration_script or "").strip(),
+        export_duration_ms=cfg.export_duration_ms,
+        hold_tail_ms=cfg.hold_tail_ms,
     )
 
     def progress_cb(p: JobProgress):
@@ -403,6 +437,7 @@ async def create_job(
             j.output_url = publish_output(job_id, out) or f"/jobs/{job_id}/output"
             j.output_duration_ms = probe_duration_ms(out)
             j.phase_timing_ms = phase_timing
+            j.expected_duration_ms = int(phase_timing.get("timeline_ms") or j.expected_duration_ms or 0) or j.expected_duration_ms
             j.completed_at = datetime.utcnow().isoformat() + "Z"
             j.render_duration_ms = max(0, int(datetime.utcnow().timestamp() * 1000) - started_ms)
             _persist_job(j)

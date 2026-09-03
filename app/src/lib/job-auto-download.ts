@@ -2,7 +2,7 @@ import * as api from '@/lib/api';
 import type { Job } from '@/lib/api';
 import { fetchJobOutputBlob, verifyJobOutputFile } from '@/lib/download-output';
 import { readStudioExportSettings } from '@/lib/studio-export-settings';
-import { saveBlobToStudioDirectory, triggerBrowserDownload } from '@/lib/studio-download-target';
+import { saveBlobToStudioDirectory, supportsDesktopSilentSave, triggerBrowserDownload } from '@/lib/studio-download-target';
 import { getSlotExportCount, incrementSlotDownloadCount } from '@/lib/job-project-slot';
 import { buildVideoFilename } from '@/lib/video-filename';
 
@@ -168,18 +168,24 @@ export async function performJobAutoDownload(
     }
 
     const blob = await fetchJobOutputBlob(job.id);
+    const desktopSave = supportsDesktopSilentSave();
     let savedToFolder = false;
-    let target = settings.downloadDirectoryName ?? 'Browser downloads';
+    let target = settings.downloadDirectoryName ?? (desktopSave ? 'Output folder' : 'Browser downloads');
 
-    if (settings.downloadDirectoryName) {
+    if (desktopSave || settings.downloadDirectoryName) {
       const saveResult = await saveBlobToStudioDirectory(filename, blob);
       savedToFolder = saveResult.saved;
       if (savedToFolder) {
-        target = settings.downloadDirectoryName;
+        target = settings.downloadDirectoryName ?? saveResult.filePath ?? target;
       }
     }
 
     if (!savedToFolder) {
+      if (desktopSave) {
+        throw new Error(
+          'Could not save to the output folder. Open Settings → Download Folder and choose the folder again.'
+        );
+      }
       const queued = triggerBrowserDownload(filename, blob);
       if (queued === 'deferred') {
         target = 'Browser downloads (when tab is visible)';

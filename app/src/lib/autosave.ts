@@ -29,6 +29,9 @@ export type DraftState = {
   subtitleStyle: SubtitleStyle;
   imagesCount: number;
   savedAt: string;
+  sceneOrderMode?: 'sequential' | 'shuffle';
+  /** Visible keyframe directory columns — synced from Display prefs. */
+  keyframeDirectoryColumns?: string[];
 };
 
 /** Save state to localStorage debounced. Returns last-save timestamp. */

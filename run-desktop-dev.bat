@@ -38,7 +38,7 @@ if not exist "app\node_modules" (
 )
 
 echo ==^> Starting desktop shell...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-desktop-dev.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-desktop-dev.ps1" -Wait
 set EXIT=%ERRORLEVEL%
 
 if not "%EXIT%"=="0" (

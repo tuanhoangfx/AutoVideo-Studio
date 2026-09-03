@@ -2,12 +2,16 @@ import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "
 import { createPortal } from "react-dom";
 import { ListChecks } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { HUB_DIRECTORY_BRAND_EMPTY_GLYPH } from "../lib/resolve-hub-brand-icon";
 import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubUsersStatusTone } from "../shell/HubUsersStatusLabel";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
 import { measureHubDirectoryPopoverPosition } from "../lib/hub-directory-popover";
 import { compactIconSize } from "../ui-scale";
 import { hubDirectoryMetricHeatDotClass } from "../lib/directory-metric-tier";
+import type { HubBrandIconShell } from "../shell/filter-dropdown-primitives";
+import { hubDirectoryTableBrandImgClass } from "../shell/filter-dropdown-primitives";
+import { HubDirectoryCopyText } from "../shell/HubDirectoryCopyText";
 import "../styles/hub-directory-popover.css";
 
 export type HubDirectoryColumnHintGlyph = {
@@ -29,10 +33,17 @@ export type HubDirectoryColumnHintLine = {
   icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   toneClass?: string;
+  /** Platform PNG / extension icon — same slot as brandIcon (Services name cell). */
+  imageSrc?: string;
+  imageShell?: HubBrandIconShell;
   /** Heat tier dot count for metric columns. */
   metricHeatCount?: number;
   /** When set with onLineAction, line renders as a button. */
   actionKey?: string;
+  /** Leading token — click copies `value` (Usage Order ID SSOT). */
+  copyLead?: { label: string; value: string; toastLabel?: string };
+  /** After copyLead — per-field spans (Days Left tone). ` • ` joined. */
+  tokens?: { text: string; className?: string }[];
 };
 
 export type HubDirectoryColumnHintContent = {
@@ -40,7 +51,8 @@ export type HubDirectoryColumnHintContent = {
   titleGlyph?: HubDirectoryColumnHintGlyph;
   description?: string;
   optionsLabel?: string;
-  optionsLabelGlyph?: HubDirectoryColumnHintGlyph;
+  /** `null` — no leading glyph (label already has per-column stickers). */
+  optionsLabelGlyph?: HubDirectoryColumnHintGlyph | null;
   lines: HubDirectoryColumnHintLine[];
 };
 
@@ -62,7 +74,7 @@ function HintSectionHeading({
   text,
   variant,
 }: {
-  glyph: HubDirectoryColumnHintGlyph;
+  glyph?: HubDirectoryColumnHintGlyph | null;
   text: string;
   variant: "title" | "section";
 }) {
@@ -74,55 +86,109 @@ function HintSectionHeading({
           : "hub-directory-popover__heading hub-directory-popover__heading--section"
       }
     >
-      <span className="hub-directory-popover__icon" aria-hidden>
-        {glyph.emoji ? (
-          <span className="hub-directory-popover__emoji">{glyph.emoji}</span>
-        ) : glyph.imageSrc ? (
-          <img
-            src={glyph.imageSrc}
-            alt=""
-            width={compactIconSize(variant === "title" ? 12 : 11)}
-            height={compactIconSize(variant === "title" ? 12 : 11)}
-            className="hub-directory-popover__image shrink-0"
-            draggable={false}
-          />
-        ) : (
-          <HubSemanticGlyph
-            icon={glyph.icon}
-            brandIcon={glyph.brandIcon}
-            size={compactIconSize(variant === "title" ? 12 : 11)}
-            className={glyph.toneClass ?? "text-[var(--muted)]"}
-          />
-        )}
-      </span>
+      {glyph ? (
+        <span className="hub-directory-popover__icon" aria-hidden>
+          {glyph.emoji ? (
+            <span className="hub-directory-popover__emoji">{glyph.emoji}</span>
+          ) : glyph.imageSrc ? (
+            <img
+              src={glyph.imageSrc}
+              alt=""
+              width={compactIconSize(variant === "title" ? 12 : 11)}
+              height={compactIconSize(variant === "title" ? 12 : 11)}
+              className="hub-directory-popover__image shrink-0"
+              draggable={false}
+            />
+          ) : (
+            <HubSemanticGlyph
+              icon={glyph.icon}
+              brandIcon={glyph.brandIcon}
+              size={compactIconSize(variant === "title" ? 12 : 11)}
+              className={glyph.toneClass ?? "text-[var(--muted)]"}
+            />
+          )}
+        </span>
+      ) : null}
       <span className="hub-directory-popover__heading-text">{text}</span>
     </p>
   );
 }
 
+export type HubDirectoryHintLineGlyph =
+  | { kind: "image"; src: string; shell: HubBrandIconShell }
+  | { kind: "semantic"; brandIcon?: HubBrandIconId; icon?: HubGlyphComponent; toneClass?: string }
+  | { kind: "statusDot"; tone: HubUsersStatusTone }
+  | { kind: "heatDot"; className: string }
+  | { kind: "emoji"; emoji: string };
+
+/**
+ * Leading glyph for a popover Option row.
+ * Brand / platform image wins over emoji fallback (⭕) — Mail Sub must not paint heat-empty
+ * circles in front of service labels.
+ */
+export function pickHubDirectoryHintLineGlyph(line: HubDirectoryColumnHintLine): HubDirectoryHintLineGlyph {
+  const imageSrc = line.imageSrc?.trim();
+  if (imageSrc) return { kind: "image", src: imageSrc, shell: line.imageShell ?? "bare" };
+  if (line.brandIcon || line.icon) {
+    return {
+      kind: "semantic",
+      brandIcon: line.brandIcon,
+      icon: line.icon,
+      toneClass: line.toneClass,
+    };
+  }
+  if (line.statusDot) return { kind: "statusDot", tone: line.statusDot };
+  if (line.dotClassName) return { kind: "heatDot", className: line.dotClassName };
+  return { kind: "emoji", emoji: line.emoji?.trim() || HUB_DIRECTORY_BRAND_EMPTY_GLYPH };
+}
+
+function lineHasHintGlyph(line: HubDirectoryColumnHintLine): boolean {
+  return Boolean(
+    line.imageSrc?.trim() ||
+      line.brandIcon ||
+      line.icon ||
+      line.statusDot ||
+      line.dotClassName ||
+      line.emoji?.trim() ||
+      line.metricHeatCount != null,
+  );
+}
+
 function HintLineGlyph({ line }: { line: HubDirectoryColumnHintLine }) {
-  if (line.statusDot) {
+  const glyph = pickHubDirectoryHintLineGlyph(line);
+  if (glyph.kind === "statusDot") {
+    return <span className={`hub-users-status-dot hub-users-status-dot--${glyph.tone}`} aria-hidden />;
+  }
+  if (glyph.kind === "heatDot") {
+    return <span className={glyph.className} aria-hidden />;
+  }
+  if (glyph.kind === "emoji") {
+    return <span className="hub-directory-popover__emoji">{glyph.emoji}</span>;
+  }
+  if (glyph.kind === "image") {
+    const px = compactIconSize(12);
     return (
-      <span className={`hub-users-status-dot hub-users-status-dot--${line.statusDot}`} aria-hidden />
+      <img
+        src={glyph.src}
+        alt=""
+        width={px}
+        height={px}
+        className={`hub-directory-popover__image shrink-0 ${hubDirectoryTableBrandImgClass(glyph.shell)}`}
+        draggable={false}
+      />
     );
-  }
-  if (line.dotClassName) {
-    return <span className={line.dotClassName} aria-hidden />;
-  }
-  if (line.emoji) {
-    return <span className="hub-directory-popover__emoji">{line.emoji}</span>;
   }
   return (
     <HubSemanticGlyph
-      icon={line.icon}
-      brandIcon={line.brandIcon}
+      icon={glyph.icon}
+      brandIcon={glyph.brandIcon}
       size={compactIconSize(12)}
-      className={line.toneClass ?? "text-[var(--muted)]"}
+      className={glyph.toneClass ?? "text-[var(--muted)]"}
     />
   );
 }
 
-/** Rich multi-line column header hint — hub-directory-popover SSOT (below anchor). */
+/** Rich multi-line column header hint — hub-directory-popover SSOT (dropdown flip). */
 export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAction }: Props) {
   const anchorRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -131,7 +197,8 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
 
   const updatePosition = useCallback(() => {
     const next = measureHubDirectoryPopoverPosition(anchorRef.current, popoverRef.current);
-    if (next) setPos(next);
+    if (!next) return;
+    setPos((prev) => (prev.top === next.top && prev.left === next.left ? prev : next));
   }, []);
 
   const show = useCallback(() => {
@@ -143,10 +210,14 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
-  }, [open, updatePosition, content]);
+    const id = window.requestAnimationFrame(updatePosition);
+    return () => window.cancelAnimationFrame(id);
+    // `content` remints every parent chrome lift — must not retrigger measure/setState (React #185).
+  }, [open, updatePosition]);
 
   const resolvedTitleGlyph = content.titleGlyph ?? titleGlyph;
-  const resolvedOptionsGlyph = content.optionsLabelGlyph ?? DEFAULT_OPTIONS_GLYPH;
+  const resolvedOptionsGlyph =
+    content.optionsLabelGlyph === undefined ? DEFAULT_OPTIONS_GLYPH : content.optionsLabelGlyph;
 
   const popover =
     open && typeof document !== "undefined"
@@ -158,6 +229,11 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
             role="tooltip"
             onMouseEnter={show}
             onMouseLeave={hide}
+            onMouseDown={(event) => {
+              if ((event.target as HTMLElement | null)?.closest(".hub-directory-copy-control")) {
+                event.preventDefault();
+              }
+            }}
           >
             {content.title ? (
               resolvedTitleGlyph ? (
@@ -179,24 +255,67 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
             <ul className="hub-directory-popover__list">
               {content.lines.map((line, index) => {
                 const text = line.detail ? `${line.label} · ${line.detail}` : line.label;
+                const lead = line.copyLead;
+                const tokens = line.tokens?.filter((token) => token.text);
+                const showGlyph = !lead || lineHasHintGlyph(line);
+                const tokenSpans = tokens?.length
+                  ? tokens.map((token, tokenIndex) => (
+                      <span key={`${token.text}-${tokenIndex}`}>
+                        {lead || line.label || tokenIndex > 0 ? " • " : null}
+                        <span className={token.className}>{token.text}</span>
+                      </span>
+                    ))
+                  : null;
+                const lineText = lead ? (
+                  <span className="hub-directory-popover__line">
+                    <HubDirectoryCopyText
+                      value={lead.value}
+                      copyToastLabel={lead.toastLabel ?? "Order ID copied"}
+                    >
+                      {lead.label}
+                    </HubDirectoryCopyText>
+                    {tokenSpans ?? (text ? <span>{` • ${text}`}</span> : null)}
+                  </span>
+                ) : (
+                  <span className="hub-directory-popover__line">
+                    {tokenSpans ? (
+                      <>
+                        {line.label ? <span>{line.label}</span> : null}
+                        {tokenSpans}
+                      </>
+                    ) : (
+                      text
+                    )}
+                  </span>
+                );
                 const rowBody = (
                   <>
-                    <span className="hub-directory-popover__icon hub-directory-popover__icon--with-heat" aria-hidden>
-                      <HintLineGlyph line={line} />
-                      {line.metricHeatCount != null ? (
-                        <span className={hubDirectoryMetricHeatDotClass(line.metricHeatCount)} aria-hidden />
-                      ) : null}
-                    </span>
-                    <span className="hub-directory-popover__line">{text}</span>
+                    {showGlyph ? (
+                      <span
+                        className={
+                          line.metricHeatCount != null
+                            ? "hub-directory-popover__icon hub-directory-popover__icon--with-heat"
+                            : "hub-directory-popover__icon"
+                        }
+                        aria-hidden
+                      >
+                        <HintLineGlyph line={line} />
+                        {line.metricHeatCount != null ? (
+                          <span className={hubDirectoryMetricHeatDotClass(line.metricHeatCount)} aria-hidden />
+                        ) : null}
+                      </span>
+                    ) : null}
+                    {lineText}
                   </>
                 );
-                const key = `${line.label}-${index}`;
+                const key = `${lead?.value ?? line.label}-${index}`;
                 if (line.actionKey && onLineAction) {
                   return (
                     <li key={key}>
                       <button
                         type="button"
                         className="hub-directory-popover__row hub-directory-popover__row--action"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) => {
                           event.stopPropagation();
                           onLineAction(line.actionKey!);
@@ -226,8 +345,6 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
         className="hub-directory-popover-anchor"
         onMouseEnter={show}
         onMouseLeave={hide}
-        onFocus={show}
-        onBlur={hide}
       >
         {children}
       </span>

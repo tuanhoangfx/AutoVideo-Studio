@@ -2,10 +2,8 @@
  * P0021 AutoVideo version clock — hub-ui `resolveHubProductVersionMeta` SSOT
  * (card: hub-version-clock-ssot).
  */
-import {
-  resolveHubProductVersionMeta,
-  type ToolManifestReleaseSlice,
-} from "@tool-workspace/hub-ui";
+import { resolveHubProductVersionMeta } from "../../vendor/hub-ui/src/lib/hub-product-version-meta";
+import type { ToolManifestReleaseSlice } from "../../vendor/hub-ui/src/lib/app-version-release-meta";
 import pkg from "../../package.json";
 import toolManifest from "../../../tool.manifest.json";
 
@@ -19,7 +17,10 @@ export const APP_RELEASE_UPDATED_AT = "2026-05-30";
 export const APP_RELEASE_VERSION = pkg.version;
 
 function readBuiltAtIso(): string | undefined {
-  const raw = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_APP_BUILT_AT : undefined;
+  const raw =
+    typeof import.meta !== "undefined"
+      ? (import.meta as ImportMeta & { env?: { VITE_APP_BUILT_AT?: string } }).env?.VITE_APP_BUILT_AT
+      : undefined;
   return typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
 }
 
@@ -30,6 +31,13 @@ export function autoVideoHostVersionMeta() {
     manifest: toolManifest as ToolManifestReleaseSlice,
     builtAtIso: readBuiltAtIso(),
   });
+}
+
+/** Same clock contract as P0003 `stealthVersionClockInput` — for `buildConsoleVersionMetaItems`. */
+export function autoVideoVersionClockInput() {
+  return {
+    builtAtIso: readBuiltAtIso(),
+  };
 }
 
 export function formatAppVersionLabel(): string {

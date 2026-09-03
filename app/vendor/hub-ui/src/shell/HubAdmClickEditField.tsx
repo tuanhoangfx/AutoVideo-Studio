@@ -15,11 +15,61 @@ import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { HubSingleFilterDropdown, type FilterOption, type HubSingleFilterDropdownProps } from "./FilterBar";
 import { HUB_DIRECTORY_TABLE_BRAND_ICON_PX } from "./HubDirectoryBrandNameCell";
 import { hubDirectoryTableBrandImgClass, hubFilterOptionEmojiClass } from "./filter-dropdown-primitives";
+import { resolveWorkspaceRoleIcon } from "../auth/hub-workspace-role-icon";
 import {
   buildHubAdmDetailCopyTrailingAction,
   mergeHubAdmTrailingActions,
 } from "./hub-adm-detail-copy-action";
 import "./hub-adm-detail-copy-action.css";
+
+function HubAdmFilterValueGlyph({
+  opt,
+  glyphPx,
+  slotStyle,
+}: {
+  opt: FilterOption | undefined;
+  glyphPx: number;
+  slotStyle: { width: number; height: number };
+}) {
+  if (!opt) return null;
+  if (opt.iconSrc) {
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
+        <img
+          src={opt.iconSrc}
+          alt=""
+          width={glyphPx}
+          height={glyphPx}
+          className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
+          decoding="async"
+          draggable={false}
+        />
+      </span>
+    );
+  }
+  if (opt.emoji) {
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+        <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
+      </span>
+    );
+  }
+  if (opt.roleKey) {
+    const roleMeta = resolveWorkspaceRoleIcon(opt.roleKey);
+    const RoleIcon = roleMeta.icon;
+    const rolePx = compactIconSize(Math.max(10, Math.round(glyphPx * 0.72)));
+    return (
+      <span
+        className="inline-flex shrink-0 items-center justify-center rounded-full border border-white/25 bg-indigo-500/15"
+        style={slotStyle}
+        aria-hidden
+      >
+        <RoleIcon size={rolePx} className={roleMeta.className} />
+      </span>
+    );
+  }
+  return null;
+}
 
 export type HubAdmClickEditRenderCtx = {
   value: string;
@@ -367,10 +417,10 @@ export type HubAdmClickFilterFieldProps = {
   className?: string;
   disabled?: boolean;
   panelSearchAsync?: HubSingleFilterDropdownProps["panelSearchAsync"];
-  /** Reset selection to empty — Clear beside panel search (no fake “None” option). */
+  /** Reset selection to empty — Clear (X) beside panel search, muted until a value is set (true blank, not a fake “None” option). Default on. */
   allowClear?: boolean;
   clearLabel?: string;
-  /** Panel header “+” — replaces Clear (e.g. Plan Package → Add Material). */
+  /** Panel header “+” — sits beside Clear (e.g. Plan Package → Add Material). */
   onPanelCreate?: () => void;
   panelCreateAriaLabel?: string;
   /** Allow creating a brand-new value from the panel search (free-text combobox). */
@@ -403,7 +453,7 @@ export function HubAdmClickFilterField({
   className = "",
   disabled = false,
   panelSearchAsync,
-  allowClear = false,
+  allowClear = true,
   clearLabel,
   onPanelCreate,
   panelCreateAriaLabel,
@@ -422,7 +472,9 @@ export function HubAdmClickFilterField({
   /** Parity with directory table brand glyphs (`HubDirectoryBrandNameCell` 16px). */
   const glyphPx = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
   const slotStyle = { width: glyphPx, height: glyphPx };
+  const empty = !value.trim();
   const displayLabel = opt?.label ?? (value.trim() || fieldLabel);
+  const valueTextClass = `hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate${empty ? " hub-adm-click-edit__text--empty" : ""}`;
   const tipText = (opt?.tip || opt?.detail || "").trim();
   const valueHint: HubDirectoryColumnHintContent | undefined = tipText
     ? {
@@ -482,30 +534,14 @@ export function HubAdmClickFilterField({
                 titleGlyph={valueHint.titleGlyph}
               >
                 <span
-                  className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
+                  className={valueTextClass}
                   data-testid="hub-adm-filter-value-tip"
                 >
                   {renderValue ? (
                     renderValue(value, displayLabel)
                   ) : (
                     <>
-                      {opt?.iconSrc ? (
-                        <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
-                          <img
-                            src={opt.iconSrc}
-                            alt=""
-                            width={glyphPx}
-                            height={glyphPx}
-                            className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
-                            decoding="async"
-                            draggable={false}
-                          />
-                        </span>
-                      ) : opt?.emoji ? (
-                        <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
-                          <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
-                        </span>
-                      ) : null}
+                      <HubAdmFilterValueGlyph opt={opt} glyphPx={glyphPx} slotStyle={slotStyle} />
                       <HubAdmSearchHighlightText text={displayLabel} />
                     </>
                   )}
@@ -513,30 +549,14 @@ export function HubAdmClickFilterField({
               </HubDirectoryColumnHint>
             ) : (
               <span
-                className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
-                title={displayLabel}
+                className={valueTextClass}
+                title={empty ? undefined : displayLabel}
               >
                 {renderValue ? (
                   renderValue(value, displayLabel)
                 ) : (
                   <>
-                    {opt?.iconSrc ? (
-                      <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
-                        <img
-                          src={opt.iconSrc}
-                          alt=""
-                          width={glyphPx}
-                          height={glyphPx}
-                          className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
-                          decoding="async"
-                          draggable={false}
-                        />
-                      </span>
-                    ) : opt?.emoji ? (
-                      <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
-                        <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
-                      </span>
-                    ) : null}
+                    <HubAdmFilterValueGlyph opt={opt} glyphPx={glyphPx} slotStyle={slotStyle} />
                     <HubAdmSearchHighlightText text={displayLabel} />
                   </>
                 )}

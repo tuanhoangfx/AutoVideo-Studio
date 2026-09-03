@@ -32,6 +32,8 @@ export type EditorSnapshot = {
   sequenceTiming: SequenceTiming | null;
   downloadState: StudioDownloadState;
   downloadMessage: string;
+  sceneOrderMode: 'sequential' | 'shuffle';
+  keyframeDirectoryColumns?: string[];
 };
 
 export function revokeEditorImages(images: LibraryImage[]) {

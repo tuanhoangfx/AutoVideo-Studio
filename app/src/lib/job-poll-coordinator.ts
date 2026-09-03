@@ -26,6 +26,8 @@ const state: CoordinatorState = {
   started: false,
 };
 
+let pollInFlight = false;
+
 function rememberTerminalJob(id: string) {
   state.handledTerminal.add(id);
   while (state.handledTerminal.size > TERMINAL_HANDLED_MAX) {
@@ -63,6 +65,9 @@ async function bootstrapOnce() {
 }
 
 async function pollOnce() {
+  if (pollInFlight) return;
+  pollInFlight = true;
+  try {
   const ids = state.runningKey.split('|').filter(Boolean);
   if (!ids.length) return;
 
@@ -102,6 +107,9 @@ async function pollOnce() {
         await performJobAutoDownload(enriched);
       })();
     }
+  }
+  } finally {
+    pollInFlight = false;
   }
 }
 

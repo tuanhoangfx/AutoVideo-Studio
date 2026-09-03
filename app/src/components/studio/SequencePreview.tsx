@@ -18,8 +18,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Pause, Square, Loader2, AlertCircle, RotateCcw, X } from 'lucide-react';
 import { voicePreviewUrl } from '@/lib/api';
 import { TRANSITION_S, resolveAutoEffect, resolvePreviewTransition } from '@/lib/pipeline-constants';
+import { exportDurationModeUsesScript } from '@/components/studio/StudioExportDurationToggle';
+import type { ExportDurationMode } from '@/lib/studio-export-settings';
 
 import type { SequenceScene, SequenceTiming } from '@/types/studio';
+import { bufferToWaveform, sliceWaveformWindow } from '@/lib/audio-waveform';
 
 export type { SequenceScene, SequenceTiming } from '@/types/studio';
 
@@ -31,6 +34,9 @@ export function SequencePreview({
   rate,
   aspect,
   narrationText,
+  exportDurationMode = 'image',
+  transcriptDurationSec = 0,
+  exportTotalSec,
   onClose,
   onProgress,
   onTimingReady,
@@ -42,6 +48,10 @@ export function SequencePreview({
   aspect: '9:16' | '16:9' | '1:1';
   /** Full narration script (Paste Full Script) when scene lines have no per-image text. */
   narrationText?: string;
+  exportDurationMode?: ExportDurationMode;
+  transcriptDurationSec?: number;
+  /** Export timeline length — defaults to summed scene durations. */
+  exportTotalSec?: number;
   onClose?: () => void;
   onProgress?: (elapsedSec: number) => void;
   onTimingReady?: (timing: SequenceTiming) => void;
@@ -63,7 +73,9 @@ export function SequencePreview({
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const startTimeRef = useRef<number>(0);
   const sceneStartsRef = useRef<number[]>([]);
-  const totalRef = useRef<number>(0);
+  const exportTotalRef = useRef<number>(0);
+  const transcriptSecRef = useRef(0);
+  const exportModeRef = useRef<ExportDurationMode>('image');
   const rafRef = useRef<number | null>(null);
   const pausedAtRef = useRef<number>(0);
   const drawFrameRef = useRef<(e: number) => void>(() => {});
@@ -140,7 +152,29 @@ export function SequencePreview({
       buffersRef.current = buffers;
       setWarnings(nextWarnings);
       const durations = buffers.map((b) => b.duration);
-      const waveforms = buffers.map((b) => bufferToWaveform(b, 40));
+
+      const sceneDur = (s: SequenceScene) => Math.max(0.5, s.durationSec ?? estimateDurationSec(s.text));
+      let cum = 0;
+      const starts: number[] = [];
+      const sceneDurs: number[] = [];
+      for (const s of scenes) {
+        starts.push(cum);
+        const d = sceneDur(s);
+        sceneDurs.push(d);
+        cum += d;
+      }
+      sceneStartsRef.current = starts;
+
+      let waveforms: number[][];
+      if (singleNarrationRef.current && narrationBufferRef.current) {
+        const narrBuf = narrationBufferRef.current;
+        const fullPeaks = bufferToWaveform(narrBuf, 40 * Math.max(1, scenes.length));
+        waveforms = scenes.map((_, i) =>
+          sliceWaveformWindow(fullPeaks, narrBuf.duration, starts[i]!, starts[i]! + sceneDurs[i]!, 40),
+        );
+      } else {
+        waveforms = buffers.map((b) => bufferToWaveform(b, 40));
+      }
 
       const images = await Promise.all(
         scenes.map(
@@ -156,20 +190,14 @@ export function SequencePreview({
       );
       imagesRef.current = images;
 
-      let cum = 0;
-      const starts: number[] = [];
-      for (const s of scenes) {
-        starts.push(cum);
-        cum += Math.max(0.5, s.durationSec ?? 5);
-      }
-      sceneStartsRef.current = starts;
-      totalRef.current = singleNarrationRef.current
-        ? Math.max(cum, narrationBufferRef.current?.duration ?? 0)
-        : cum;
+      const sceneSum = cum;
+      exportTotalRef.current = exportTotalSec ?? sceneSum;
+      transcriptSecRef.current = transcriptDurationSec;
+      exportModeRef.current = exportDurationMode;
       pausedAtRef.current = 0;
       lastProgressEmitRef.current = -1;
       onProgress?.(0);
-      onTimingReady?.({ durations, waveforms, total: cum });
+      onTimingReady?.({ durations, waveforms, total: exportTotalRef.current });
 
       // First frame so users see something immediately
       requestAnimationFrame(() => drawFrameRef.current(0));
@@ -180,7 +208,7 @@ export function SequencePreview({
       setStatus('error');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narrationText, onProgress, onTimingReady, scenes, voice, rate]);
+  }, [exportDurationMode, exportTotalSec, narrationText, onProgress, onTimingReady, scenes, transcriptDurationSec, voice, rate]);
 
   // ─── Play / Pause / Stop ────────────────────────────────────────────
   const play = useCallback(() => {
@@ -203,7 +231,7 @@ export function SequencePreview({
       src.connect(ctx.destination);
       const playDuration = Math.min(
         narrationBufferRef.current.duration,
-        Math.max(0, totalRef.current - offset)
+        Math.max(0, exportTotalRef.current - offset)
       );
       if (playDuration > 0) {
         src.start(ctx.currentTime, Math.min(offset, narrationBufferRef.current.duration - 0.05));
@@ -283,7 +311,7 @@ export function SequencePreview({
 
       const sceneStart = starts[idx];
       const sceneDur =
-        idx + 1 < starts.length ? starts[idx + 1] - sceneStart : totalRef.current - sceneStart;
+        idx + 1 < starts.length ? starts[idx + 1] - sceneStart : exportTotalRef.current - sceneStart;
       const sceneT = e - sceneStart;
       const progress = Math.min(1, sceneT / sceneDur);
       const effect = resolveAutoEffect(scenes[idx].effect, idx);
@@ -335,6 +363,34 @@ export function SequencePreview({
         drawCaption(cnvCtx, canvas, scenes[idx].text, 1);
       }
 
+      const exportStatus = scenes[idx]?.exportStatus;
+      if (exportStatus === 'partial') {
+        cnvCtx.save();
+        cnvCtx.fillStyle = 'rgba(251,191,36,0.92)';
+        cnvCtx.font = `bold ${Math.round(canvas.width * 0.028)}px Inter, system-ui, sans-serif`;
+        cnvCtx.textAlign = 'left';
+        cnvCtx.textBaseline = 'top';
+        cnvCtx.fillText('Partial export', 10, 10);
+        cnvCtx.restore();
+      }
+
+      const scriptCutoff = transcriptSecRef.current;
+      if (
+        exportDurationModeUsesScript(exportModeRef.current) &&
+        scriptCutoff > 0.05 &&
+        e > scriptCutoff + 0.05
+      ) {
+        cnvCtx.save();
+        cnvCtx.fillStyle = 'rgba(0,0,0,0.55)';
+        cnvCtx.fillRect(0, 0, canvas.width, canvas.height);
+        cnvCtx.fillStyle = 'rgba(251,191,36,0.9)';
+        cnvCtx.font = `bold ${Math.round(canvas.width * 0.032)}px Inter, system-ui, sans-serif`;
+        cnvCtx.textAlign = 'center';
+        cnvCtx.textBaseline = 'middle';
+        cnvCtx.fillText('After TTS end', canvas.width / 2, canvas.height / 2);
+        cnvCtx.restore();
+      }
+
       setCurrentScene(idx);
     },
     [scenes]
@@ -344,7 +400,7 @@ export function SequencePreview({
     const ctxAudio = ctxRef.current;
     if (!ctxAudio) return;
     const e = ctxAudio.currentTime - startTimeRef.current;
-    const total = totalRef.current;
+    const total = exportTotalRef.current;
     if (e >= total) {
       pausedAtRef.current = 0;
       setElapsed(total);
@@ -386,8 +442,15 @@ export function SequencePreview({
   }, [autoPlay, play, status]);
 
   // ─── UI ─────────────────────────────────────────────────────────────
-  const total = totalRef.current;
+  const total = exportTotalRef.current;
   const pct = total > 0 ? Math.min(100, (elapsed / total) * 100) : 0;
+  const scriptCutoffPct =
+    exportDurationModeUsesScript(exportDurationMode) &&
+    transcriptDurationSec > 0.05 &&
+    total > 0 &&
+    transcriptDurationSec < total
+      ? Math.min(100, (transcriptDurationSec / total) * 100)
+      : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -486,6 +549,13 @@ export function SequencePreview({
         <div className="flex items-center gap-2">
           <span className="font-mono text-[9px] text-[var(--muted)]">{elapsed.toFixed(1)}s</span>
           <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+            {scriptCutoffPct != null ? (
+              <div
+                className="pointer-events-none absolute inset-y-0 z-10 w-px bg-amber-400/90"
+                style={{ left: `${scriptCutoffPct}%` }}
+                title={`TTS end · ${transcriptDurationSec.toFixed(1)}s`}
+              />
+            ) : null}
             <div
               className="h-full rounded-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] transition-[width] duration-75"
               style={{ width: `${pct}%` }}
@@ -552,19 +622,6 @@ function estimateDurationSec(text: string) {
 function makeSilentBuffer(ctx: AudioContext, durationSec: number) {
   const frames = Math.max(1, Math.ceil(ctx.sampleRate * durationSec));
   return ctx.createBuffer(1, frames, ctx.sampleRate);
-}
-
-function bufferToWaveform(buffer: AudioBuffer, samples: number) {
-  const data = buffer.getChannelData(0);
-  if (data.length === 0) return Array.from({ length: samples }, () => 0.15);
-  const block = Math.max(1, Math.floor(data.length / samples));
-  return Array.from({ length: samples }, (_, i) => {
-    const start = i * block;
-    const end = Math.min(data.length, start + block);
-    let sum = 0;
-    for (let j = start; j < end; j += 1) sum += Math.abs(data[j]);
-    return Math.max(0.08, Math.min(1, (sum / Math.max(1, end - start)) * 4));
-  });
 }
 
 /* ─────────────────────────────────────────────────

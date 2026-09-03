@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, Cloud, Database, FolderOpen, RefreshCw, RotateCcw, Server, Terminal } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Cloud, Database, FolderOpen, RotateCcw, Server, Terminal } from 'lucide-react';
 import * as api from '@/lib/api';
 import { detectRuntimeProfile } from '@/lib/runtime-mode';
 
@@ -78,14 +78,6 @@ export function DeploymentCheck() {
             Verifies the Vercel frontend, worker API, and output storage path used by production exports.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.03] px-3 py-2 text-xs font-semibold text-white/60 hover:bg-white/[.06] hover:text-white"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-4">

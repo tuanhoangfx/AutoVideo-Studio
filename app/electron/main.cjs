@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -8,30 +8,79 @@ const os = require('node:os');
 const path = require('node:path');
 
 const packaged = app.isPackaged;
-const appDir = packaged ? path.join(process.resourcesPath, 'next') : path.resolve(__dirname, '..');
-const repoRoot = packaged ? process.resourcesPath : path.resolve(appDir, '..');
-const workerDir = path.join(repoRoot, 'worker');
+if (!packaged) {
+  app.commandLine.appendSwitch('ignore-connections-limit', '127.0.0.1,localhost');
+  app.commandLine.appendSwitch('disable-http2');
+}
+const forcedDevAppUrl = packaged ? '' : (process.env.AUTOVIDEO_APP_URL || '').trim();
+const devAppRoot = path.resolve(__dirname, '..');
+const productRoot = path.resolve(devAppRoot, '..');
+const uiDistDir = packaged
+  ? path.join(process.resourcesPath, 'ui')
+  : path.join(devAppRoot, 'dist');
+const repoRoot = packaged ? process.resourcesPath : productRoot;
+const workerDir = packaged ? path.join(process.resourcesPath, 'worker-dist') : path.join(productRoot, 'worker');
 const runtimeDir = packaged ? path.join(app.getPath('userData'), 'runtime') : path.join(repoRoot, '.runtime');
 const workerStorageDir = path.join(runtimeDir, 'worker-storage', 'jobs');
 const workerPreviewDir = path.join(runtimeDir, 'worker-storage', 'preview');
 const workerLog = path.join(runtimeDir, 'desktop-worker.log');
 const workerErrorLog = path.join(runtimeDir, 'desktop-worker.err.log');
-const nextLog = path.join(runtimeDir, 'desktop-next.log');
-const nextErrorLog = path.join(runtimeDir, 'desktop-next.err.log');
 const desktopConfigFile = path.join(runtimeDir, 'desktop-config.json');
+const electronBootLog = path.join(runtimeDir, 'electron-boot.log');
+
+function bootLogLine(message) {
+  if (packaged) return;
+  try {
+    fs.appendFileSync(electronBootLog, `${message}\n`, 'utf8');
+  } catch {
+    /* ignore */
+  }
+}
+
+function bootLog(message) {
+  console.log(message);
+  bootLogLine(message);
+}
+
+if (!packaged && process.env.AUTOVIDEO_DISABLE_GPU === '1') {
+  app.disableHardwareAcceleration();
+}
+
+function resolveDesktopIcon() {
+  const candidates = packaged
+    ? [
+        path.join(path.dirname(process.execPath), 'resources', 'build', 'icon.ico'),
+        path.join(process.resourcesPath, 'build', 'icon.ico'),
+      ]
+    : [path.join(__dirname, '..', 'build', 'icon.ico')];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+const desktopIcon = resolveDesktopIcon();
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 let mainWindow = null;
 let workerProcess = null;
-let nextProcess = null;
 let workerUrl = '';
 let workerPort = 8021;
-let appUrl = '';
 let outputDirectory = '';
+/** Background startup checks should not flash a warning when GitHub feed is unreachable. */
+let updateCheckUserInitiated = false;
+
 let updateStatus = {
-  state: packaged ? 'idle' : 'dev',
+  state: packaged ? 'latest' : 'dev',
   supportsUpdates: packaged,
   currentVersion: app.getVersion(),
-  message: packaged ? 'Ready to check for desktop updates.' : 'Auto update is available after installing the packaged app.',
+  message: packaged
+    ? `AutoVideo Studio ${app.getVersion()} is up to date.`
+    : 'Auto update is available after installing the packaged app.',
   updateVersion: '',
   releaseName: '',
   releaseDate: '',
@@ -146,6 +195,18 @@ function workerExecutable() {
   return candidates.find((candidate) => fs.existsSync(candidate)) || '';
 }
 
+function ensureDefaultOutputDirectory() {
+  if (outputDirectory) return;
+  const defaultDir = path.join(app.getPath('downloads'), 'AutoVideo');
+  try {
+    fs.mkdirSync(defaultDir, { recursive: true });
+    outputDirectory = defaultDir;
+    saveDesktopConfig();
+  } catch (error) {
+    console.warn('[P0021] Could not create default output folder:', error);
+  }
+}
+
 function loadDesktopConfig() {
   try {
     const data = JSON.parse(fs.readFileSync(desktopConfigFile, 'utf8'));
@@ -153,6 +214,7 @@ function loadDesktopConfig() {
   } catch {
     outputDirectory = '';
   }
+  ensureDefaultOutputDirectory();
 }
 
 function saveDesktopConfig() {
@@ -212,9 +274,18 @@ function configureAutoUpdater() {
   });
 
   autoUpdater.on('error', (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!updateCheckUserInitiated) {
+      setUpdateStatus({
+        state: 'latest',
+        message: `AutoVideo Studio ${app.getVersion()} is up to date.`,
+        progress: null,
+      });
+      return;
+    }
     setUpdateStatus({
       state: 'error',
-      message: error instanceof Error ? error.message : String(error),
+      message,
       progress: null,
     });
   });
@@ -241,7 +312,8 @@ function setUpdateStatus(next) {
   return updateStatus;
 }
 
-async function checkForDesktopUpdates() {
+async function checkForDesktopUpdates(userInitiated = false) {
+  updateCheckUserInitiated = Boolean(userInitiated);
   if (!packaged) {
     return setUpdateStatus({
       state: 'dev',
@@ -258,9 +330,17 @@ async function checkForDesktopUpdates() {
     await autoUpdater.checkForUpdates();
     return updateStatus;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!updateCheckUserInitiated) {
+      return setUpdateStatus({
+        state: 'latest',
+        message: `AutoVideo Studio ${app.getVersion()} is up to date.`,
+        progress: null,
+      });
+    }
     return setUpdateStatus({
       state: 'error',
-      message: error instanceof Error ? error.message : String(error),
+      message,
       progress: null,
     });
   }
@@ -306,8 +386,6 @@ function showStartupError(error) {
     'Log files:',
     workerLog,
     workerErrorLog,
-    nextLog,
-    nextErrorLog,
   ];
   if (packaged) {
     const bundledWorker = path.join(process.resourcesPath, 'worker-dist', 'autovideo-worker.exe');
@@ -373,36 +451,34 @@ async function startWorker() {
   return workerUrl;
 }
 
-async function resolveAppUrl() {
-  if (process.env.AUTOVIDEO_APP_URL) return process.env.AUTOVIDEO_APP_URL;
-  if (!packaged) return 'http://127.0.0.1:3021/studio';
-  if (nextProcess && appUrl) return appUrl;
-
-  const port = await findFreePort(Number(process.env.AUTOVIDEO_APP_PORT || 3021));
-  appUrl = `http://127.0.0.1:${port}/studio`;
-  const stdout = fs.openSync(nextLog, 'a');
-  const stderr = fs.openSync(nextErrorLog, 'a');
-  nextProcess = spawn(
-    process.execPath,
-    [path.join(appDir, 'server.js')],
-    {
-      cwd: appDir,
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: '1',
-        HOSTNAME: '127.0.0.1',
-        NODE_PATH: packaged ? path.join(process.resourcesPath, 'app.asar', 'node_modules') : process.env.NODE_PATH,
-        PORT: String(port),
-      },
-      stdio: ['ignore', stdout, stderr],
-      windowsHide: true,
+async function resolveDevAppUrl() {
+  const origin = 'http://127.0.0.1:3021';
+  const url = forcedDevAppUrl || `${origin}/studio`;
+  const waitOrigin = (() => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return origin;
     }
-  );
-  nextProcess.once('exit', () => {
-    nextProcess = null;
-  });
-  await waitForHttpOk(`http://127.0.0.1:${port}`);
-  return appUrl;
+  })();
+  await waitForHttpOk(`${waitOrigin}/`);
+  await waitForHttpOk(`${waitOrigin}/@vite/client`, { requireOk: true });
+  await prewarmViteDevGraph(waitOrigin);
+  return url;
+}
+
+function packagedIndexHtml() {
+  const indexHtml = path.join(uiDistDir, 'index.html');
+  if (!fs.existsSync(indexHtml)) {
+    throw new Error(`Packaged UI missing at ${indexHtml}. Run pnpm desktop:prepare then desktop:dist.`);
+  }
+  return indexHtml;
+}
+
+function desktopQuery() {
+  const query = { desktop: '1' };
+  if (workerUrl) query.workerUrl = workerUrl;
+  return query;
 }
 
 async function restartWorker() {
@@ -415,13 +491,6 @@ function stopWorker() {
   workerProcess.kill();
   workerProcess = null;
   workerUrl = '';
-}
-
-function stopNextServer() {
-  if (!nextProcess) return;
-  nextProcess.kill();
-  nextProcess = null;
-  appUrl = '';
 }
 
 async function chooseOutputDirectory() {
@@ -491,13 +560,47 @@ function waitForWorker(baseUrl) {
   });
 }
 
-function waitForHttpOk(baseUrl) {
+function httpGetStatus(url, timeoutMs = 120000) {
+  return new Promise((resolve) => {
+    const request = http.get(url, { timeout: timeoutMs }, (response) => {
+      response.resume();
+      resolve(response.statusCode || 0);
+    });
+    request.on('error', () => resolve(0));
+    request.on('timeout', () => {
+      request.destroy();
+      resolve(0);
+    });
+  });
+}
+
+/** Compile the Electron entry graph in Node (no Chromium socket cap) before loadURL. */
+async function prewarmViteDevGraph(origin) {
+  const paths = [
+    '/@vite/client',
+    '/src/main.tsx',
+    '/src/App.tsx',
+    '/src/lib/app-router.tsx',
+    '/src/components/workspace/ClientProviders.tsx',
+    '/src/components/workspace/WorkspaceShell.tsx',
+  ];
+  for (const pathname of paths) {
+    const url = `${origin}${pathname}`;
+    const started = Date.now();
+    const status = await httpGetStatus(url, 120000);
+    bootLog(`[P0021] vite prewarm ${pathname} status=${status} ms=${Date.now() - started}`);
+  }
+}
+
+function waitForHttpOk(baseUrl, { requireOk = false } = {}) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const tick = () => {
       const request = http.get(baseUrl, (response) => {
         response.resume();
-        if (response.statusCode && response.statusCode < 500) {
+        const status = response.statusCode || 0;
+        const ok = requireOk ? status === 200 : status > 0 && status < 500;
+        if (ok) {
           resolve();
         } else {
           retry();
@@ -507,7 +610,7 @@ function waitForHttpOk(baseUrl) {
     };
     const retry = () => {
       if (Date.now() - startedAt > 45_000) {
-        reject(new Error(`App server did not become ready. Check ${nextErrorLog}`));
+        reject(new Error('App server did not become ready. Start Vite on :3021 (pnpm dev).'));
         return;
       }
       setTimeout(tick, 750);
@@ -523,22 +626,96 @@ function withDesktopParams(rawUrl) {
   return url.toString();
 }
 
+let devWindowRevealed = false;
+let rendererEverReady = false;
+
+function revealDevWindow(reason) {
+  if (!mainWindow || packaged || devWindowRevealed) return;
+  devWindowRevealed = true;
+  mainWindow.show();
+  mainWindow.focus();
+  bootLog(`[P0021] dev window revealed (${reason})`);
+}
+
+async function probeRendererBoot(webContents) {
+  return webContents.executeJavaScript(
+    `(() => ({
+      boot: window.__p0021Boot || null,
+      hubReady: Boolean(window.__hubBootReady),
+      rootChildren: document.getElementById('root')?.childElementCount ?? 0,
+      lastError: window.__P0021_LAST_ERROR || window.__HUB_LAST_RENDER_ERROR || null,
+      crash: Boolean(document.getElementById('hub-boot-crash')),
+      boundary: Array.from(document.querySelectorAll('h2')).some((el) => /failed to load/i.test(el.textContent || '')),
+      moduleScripts: Array.from(document.querySelectorAll('script[type="module"]')).map((el) => el.getAttribute('src') || ''),
+    }))()`,
+    true,
+  );
+}
+
+function rendererBootFailed(boot) {
+  return Boolean(boot?.lastError || boot?.crash || boot?.boundary);
+}
+
+function rendererBootReady(boot) {
+  return Number(boot?.rootChildren ?? 0) > 0 && !rendererBootFailed(boot);
+}
+
+async function waitForRendererBoot(webContents, maxWaitMs = 90000) {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const boot = await probeRendererBoot(webContents);
+    if (rendererBootReady(boot) || rendererBootFailed(boot)) return boot;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return probeRendererBoot(webContents);
+}
+
 async function createWindow() {
+  if (!packaged) {
+    try {
+      fs.writeFileSync(electronBootLog, '', 'utf8');
+    } catch {
+      /* ignore */
+    }
+  }
   await startWorker();
-  const resolvedAppUrl = await resolveAppUrl();
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 940,
     minWidth: 1120,
     minHeight: 760,
     title: 'AutoVideo Studio',
+    icon: desktopIcon ?? undefined,
     backgroundColor: '#0b1020',
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      backgroundThrottling: false,
       preload: path.join(__dirname, 'preload.cjs'),
     },
+  });
+
+  if (!packaged) {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        {
+          label: 'View',
+          submenu: [
+            { role: 'reload', accelerator: 'CmdOrCtrl+R' },
+            { role: 'forceReload', accelerator: 'CmdOrCtrl+Shift+R' },
+            { role: 'toggleDevTools' },
+          ],
+        },
+      ]),
+    );
+  }
+
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow || !packaged) return;
+    mainWindow.show();
+    mainWindow.focus();
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -547,13 +724,67 @@ async function createWindow() {
   });
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith(new URL(resolvedAppUrl).origin)) {
+    if (packaged) {
+      if (!url.startsWith('file://')) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+      return;
+    }
+    const devOrigin = 'http://127.0.0.1:3021';
+    if (!url.startsWith(devOrigin)) {
       event.preventDefault();
       shell.openExternal(url);
     }
   });
 
-  await mainWindow.loadURL(withDesktopParams(resolvedAppUrl));
+  if (packaged) {
+    console.log(`[P0021] boot mode=packaged-file ui=${packagedIndexHtml()} worker=${workerUrl || 'none'}`);
+    await mainWindow.loadFile(packagedIndexHtml(), { query: desktopQuery(), hash: "/studio" });
+  } else {
+    const resolvedAppUrl = withDesktopParams(await resolveDevAppUrl());
+    bootLog(`[P0021] boot mode=dev-url url=${resolvedAppUrl} worker=${workerUrl || 'none'}`);
+    mainWindow.webContents.on('did-fail-load', (_event, code, desc, url) => {
+      console.error(`[P0021] did-fail-load code=${code} desc=${desc} url=${url}`);
+    });
+    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+      bootLog(`[P0021][renderer:${level}] ${message} (${sourceId}:${line})`);
+    });
+    mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+      bootLog(`[P0021] preload-error ${preloadPath} ${error?.message || error}`);
+    });
+    mainWindow.webContents.on('did-finish-load', async () => {
+      try {
+        const waitMs = rendererEverReady ? 8000 : 90000;
+        const boot = await waitForRendererBoot(mainWindow.webContents, waitMs);
+        bootLog(
+          `[P0021] renderer boot=${boot.boot} rootChildren=${boot.rootChildren} err=${boot.lastError || ''} crash=${boot.crash ? 'yes' : 'no'} boundary=${boot.boundary ? 'yes' : 'no'} modules=${JSON.stringify(boot.moduleScripts || [])}`,
+        );
+        if (rendererBootReady(boot)) {
+          rendererEverReady = true;
+          revealDevWindow('content-ready');
+          return;
+        }
+        if (rendererEverReady) {
+          bootLog('[P0021] empty root after prior ready — keeping Vite graph (no cache reload)');
+          revealDevWindow('keep-warm-after-nav');
+          return;
+        }
+        bootLog('[P0021] empty root after 90s — splash Retry/DevTools; not reloading Vite');
+        revealDevWindow('boot-waiting-splash');
+      } catch (error) {
+        console.error('[P0021] boot probe failed', error);
+        revealDevWindow('probe-failed');
+      }
+    });
+    setTimeout(() => {
+      if (!packaged && mainWindow && !devWindowRevealed) {
+        console.warn('[P0021] dev reveal timeout — splash visible, Vite stays warm');
+        revealDevWindow('timeout');
+      }
+    }, 15000);
+    await mainWindow.loadURL(resolvedAppUrl);
+  }
   setUpdateStatus(updateStatus);
   if (packaged) {
     setTimeout(() => {
@@ -562,6 +793,12 @@ async function createWindow() {
   }
 }
 
+ipcMain.handle('autovideo:open-devtools', async () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  }
+  return true;
+});
 ipcMain.handle('autovideo:get-worker-url', async () => startWorker());
 ipcMain.handle('autovideo:get-runtime-profile', async () => ({
   shell: 'desktop',
@@ -614,11 +851,20 @@ ipcMain.handle('autovideo:open-output-file', async (_event, filename) => {
   return { ok: true, path: filePath };
 });
 ipcMain.handle('autovideo:get-update-status', async () => updateStatus);
-ipcMain.handle('autovideo:check-for-updates', checkForDesktopUpdates);
+ipcMain.handle('autovideo:check-for-updates', async (_event, opts) =>
+  checkForDesktopUpdates(Boolean(opts?.userInitiated)),
+);
 ipcMain.handle('autovideo:download-update', downloadDesktopUpdate);
 ipcMain.handle('autovideo:install-update', installDesktopUpdate);
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('vn.infix1.autovideo-studio');
+  }
+  if (desktopIcon) {
+    app.dock?.setIcon?.(desktopIcon);
+  }
   createWindow().catch((error) => {
     console.error(error);
     showStartupError(error);
@@ -626,9 +872,23 @@ app.whenReady().then(() => {
   });
 });
 
+if (gotSingleInstanceLock) {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+      return;
+    }
+    createWindow().catch((error) => {
+      console.error(error);
+      showStartupError(error);
+    });
+  });
+}
+
 app.on('before-quit', () => {
   stopWorker();
-  stopNextServer();
 });
 
 app.on('window-all-closed', () => {
@@ -636,6 +896,11 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
+  if (mainWindow) {
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow().catch((error) => {
       console.error(error);

@@ -23,7 +23,8 @@
     "./lib/directory-fixed-column-css": "./src/lib/directory-fixed-column-css.mjs",
     "./lib/hub-workspace-role-vanilla": "./src/lib/hub-workspace-role-vanilla.mjs",
     "./lib/hub-route-status-vanilla": "./src/lib/hub-route-status-vanilla.mjs",
-    "./lib/hub-route-status-icons-vanilla": "./src/lib/hub-route-status-icons-vanilla.mjs"
+    "./lib/hub-route-status-icons-vanilla": "./src/lib/hub-route-status-icons-vanilla.mjs",
+    "./hub-user-zoom": "./src/hub-user-zoom.ts"
   },
   "peerDependencies": {
     "lucide-react": ">=0.451.0",
