@@ -39,6 +39,7 @@ export function VoiceRailDisplaySettings({
       getScreen={() => 'studio'}
       showPageSize={false}
       tableSectionFirst
+      triggerIconOnly
       tableSectionLabel={voiceMode ? 'Table columns' : 'Subtitle'}
       tablePanel={
         <>

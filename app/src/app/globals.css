@@ -649,6 +649,10 @@ body {
   padding-right: 0.25rem;
 }
 
+.studio-voice-directory-frame table.studio-voice-rail-table thead th .hub-users-th-btn {
+  justify-content: flex-start;
+}
+
 .studio-voice-directory-frame.hub-split-directory-pane--fixed-rows table.hub-users-table--directory-6 {
   min-width: 0;
 }
@@ -956,12 +960,7 @@ body {
   white-space: nowrap;
 }
 
-/* Studio directory rails — P0005 Orders filter/bulk glyph↔label SSOT (NBSP spacing, no double flex gap). */
-.studio-keyframe-scene-directory-frame .hub-filter-bar .hub-filter-trigger,
-.studio-voice-directory-frame .hub-filter-bar .hub-filter-trigger {
-  gap: 0 !important;
-}
-
+/* Studio directory rails — P0005 Orders bulk glyph↔label SSOT (flex gap via hub-inline-gap-name in hub-ui). */
 .studio-keyframe-scene-directory-frame .hub-filter-bar .hub-bulk-action-btn,
 .studio-voice-directory-frame .hub-filter-bar .hub-bulk-action-btn {
   gap: 0;
@@ -972,28 +971,24 @@ body {
   content: '\00a0';
 }
 
-/* Keyframe scene directory — P0005 Orders header glyph↔label SSOT (NBSP spacing, no double flex gap). */
-.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji) .hub-users-th-heading,
-.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji) .hub-users-th-label {
-  flex: 0 1 auto;
-  min-width: max-content;
-  width: auto;
-  overflow: visible;
-  gap: 0;
+/* Row-2 chips — icon-only (Favorites / Upload) so filters stay on one line. */
+.studio-voice-directory-frame .hub-filter-bar .hub-filter-chip--icon-only {
+  gap: 0.25rem;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
 }
 
-.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji) .hub-users-th-text:not(.hub-users-th-text--measure) {
-  flex: 0 0 auto;
-  min-width: max-content;
-  overflow: visible;
+.studio-voice-directory-frame .hub-filter-bar__row-band {
+  flex-wrap: nowrap;
 }
 
-.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] .hub-users-th-emoji {
-  margin-right: 0;
+.studio-voice-directory-frame .hub-filter-bar__row-filters {
+  flex-shrink: 1;
+  min-width: 0;
 }
 
-.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select] .hub-users-th-heading > .hub-users-th-emoji + .hub-users-th-text {
-  padding-left: 0;
+.studio-voice-directory-frame .hub-filter-bar__actions {
+  flex-shrink: 0;
 }
 
 .studio-panel-label-icon {

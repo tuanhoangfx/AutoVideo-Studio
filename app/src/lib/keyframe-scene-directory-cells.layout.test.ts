@@ -27,17 +27,23 @@ describe('keyframe header chrome', () => {
 });
 
 describe('keyframe directory filter trigger spacing', () => {
-  it('matches P0005 Orders NBSP-only filter/bulk spacing', () => {
-    expect(globalsCss).toContain('.studio-keyframe-scene-directory-frame .hub-filter-bar .hub-filter-trigger');
+  it('bulk select uses NBSP spacing; filter gap owned by hub-ui toolbarChrome', () => {
     expect(globalsCss).toContain('.studio-keyframe-scene-directory-frame .hub-filter-bar .hub-bulk-action-btn__label::before');
-    expect(globalsCss).toMatch(/\.hub-filter-bar \.hub-filter-trigger[\s\S]*gap:\s*0/);
+    expect(globalsCss).not.toMatch(/\.hub-filter-trigger[\s\S]*gap:\s*0\s*!important/);
   });
 });
 
 describe('keyframe directory header glyph spacing', () => {
-  it('matches P0005 Orders NBSP-only header spacing', () => {
-    expect(globalsCss).toContain('.studio-keyframe-scene-directory-frame table.studio-keyframe-scene-table[data-hub-directory-select]');
-    expect(globalsCss).toMatch(/gap:\s*0;/);
-    expect(globalsCss).toContain('padding-left: 0');
+  it('inherits hub-ui NBSP-only emoji header SSOT (no P0021 globals override)', () => {
+    const hubDirectoryTableCss = readFileSync(
+      path.resolve(here, '../../../../../packages/hub-ui/src/styles/hub-directory-table.css'),
+      'utf8',
+    );
+    expect(hubDirectoryTableCss).toContain('table.hub-users-table.hub-users-table--directory');
+    expect(hubDirectoryTableCss).toMatch(/gap:\s*0;/);
+    expect(hubDirectoryTableCss).toContain('padding-left: 0');
+    expect(globalsCss).not.toContain(
+      'studio-keyframe-scene-table[data-hub-directory-select] thead th:has(.hub-users-th-emoji)',
+    );
   });
 });

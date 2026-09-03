@@ -3,10 +3,15 @@
 /* body-only-directory — FilterBar lives in VoiceFilterPane. */
 /* read-only-directory — single active voice picker; no bulk checkbox column. */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Star } from 'lucide-react';
 import { voicePreviewUrl } from '@/lib/api';
 import { voiceListPreviewText } from '@/lib/voice-preview-text';
+import {
+  isVoicePreviewPrefetched,
+  scheduleVoicePreviewPrefetch,
+  subscribeVoicePreviewReady,
+} from '@/lib/voice-preview-prefetch';
 import {
   DirectoryTableBodyCell,
   HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS,
@@ -95,6 +100,36 @@ function renderVoiceDirectoryBodyCell(
   }
 }
 
+function VoicePreviewButton({
+  voice,
+  rate,
+  activeVoiceId,
+  previewNonce,
+}: {
+  voice: VoiceDirectoryRow;
+  rate: string;
+  activeVoiceId: string;
+  previewNonce: number;
+}) {
+  const src = voicePreviewUrl(voiceListPreviewText(voice.id, voice.label), voice.id, rate);
+  const [warm, setWarm] = useState(() => isVoicePreviewPrefetched(src));
+
+  useEffect(() => {
+    setWarm(isVoicePreviewPrefetched(src));
+    return subscribeVoicePreviewReady(src, () => setWarm(true));
+  }, [src]);
+
+  return (
+    <AudioPreview
+      key={voice.id}
+      src={src}
+      compact
+      warm={warm}
+      autoPlayKey={voice.id === activeVoiceId ? previewNonce : undefined}
+    />
+  );
+}
+
 export const VoiceDirectoryTable = memo(function VoiceDirectoryTable({
   items,
   activeVoiceId,
@@ -106,6 +141,7 @@ export const VoiceDirectoryTable = memo(function VoiceDirectoryTable({
   onToggleFavorite,
 }: VoiceDirectoryTableProps) {
   const [visibleKeys, setVisibleKeys] = useState(() => readVoiceRailDirectoryColumns());
+  const hoverCancelRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const sync = () => setVisibleKeys(readVoiceRailDirectoryColumns());
@@ -153,6 +189,15 @@ export const VoiceDirectoryTable = memo(function VoiceDirectoryTable({
     [columns],
   );
 
+  const handleRowMouseEnter = useCallback(
+    (voice: VoiceDirectoryRow) => {
+      hoverCancelRef.current?.();
+      const src = voicePreviewUrl(voiceListPreviewText(voice.id, voice.label), voice.id, rate);
+      hoverCancelRef.current = scheduleVoicePreviewPrefetch(src);
+    },
+    [rate],
+  );
+
   const renderRowCells = useCallback(
     (voice: VoiceDirectoryRow) => <>{columns.map((col) => renderVoiceDirectoryBodyCell(col, voice))}</>,
     [columns],
@@ -180,11 +225,11 @@ export const VoiceDirectoryTable = memo(function VoiceDirectoryTable({
             >
               <Star size={12} className={favorite ? 'fill-amber-300' : ''} />
             </button>
-            <AudioPreview
-              key={voice.id}
-              src={voicePreviewUrl(voiceListPreviewText(voice.id, voice.label), voice.id, rate)}
-              compact
-              autoPlayKey={voice.id === activeVoiceId ? previewNonce : undefined}
+            <VoicePreviewButton
+              voice={voice}
+              rate={rate}
+              activeVoiceId={activeVoiceId}
+              previewNonce={previewNonce}
             />
           </div>
         </td>
@@ -213,6 +258,7 @@ export const VoiceDirectoryTable = memo(function VoiceDirectoryTable({
       onSort={onSort}
       getRowKey={(voice) => voice.id}
       onRowClick={(voice) => onSelect(voice.id)}
+      onRowMouseEnter={handleRowMouseEnter}
       getRowClassName={getRowClassName}
       emptyMessage="No matching voices."
       pageSize={VOICE_RAIL_PAGE_SIZE}

@@ -31,7 +31,7 @@ import { ImageLibrary, type LibraryImage, type LibraryImageInput } from '@/compo
 import { SequencePreview } from '@/components/studio/SequencePreview';
 import type { ScriptLine, SequenceTiming, Effect, Transition } from '@/types/studio';
 import { FlagBadge } from '@/components/studio/FlagBadge';
-import { VOICE_OPTIONS } from '@/lib/voice-options';
+import { useStudioVoiceCatalog } from '@/lib/use-studio-voice-catalog';
 
 /** Heavy directory rails — keep out of the first StudioPage module graph. */
 const VoiceSelector = lazy(() =>
@@ -103,6 +103,7 @@ export default function StudioPage() {
     closeJobTab,
   } = useStudioJobs(showToast);
   const jobKpis = useStudioJobKpis();
+  const { voices: voiceCatalog } = useStudioVoiceCatalog();
   const [jobStatusFilter, setJobStatusFilter] = useState<StudioJobStatusFilterKey | null>(null);
   const toggleJobStatusFilter = useCallback((key: StudioJobStatusFilterKey) => {
     setJobStatusFilter((current) => toggleStudioJobStatusFilter(current, key));
@@ -744,7 +745,16 @@ export default function StudioPage() {
       : null;
   const canRender =
     renderLines.length > 0 && canStartAnotherExport(jobs, concurrentLimit) && serverOk !== false;
-  const selectedVoice = VOICE_OPTIONS.find((v) => v.id === voice) ?? VOICE_OPTIONS[0];
+  const selectedVoice =
+    voiceCatalog.find((v) => v.id === voice) ??
+    voiceCatalog.find((v) => v.id === DEFAULT_STUDIO_VOICE) ??
+    voiceCatalog[0] ?? {
+      id: DEFAULT_STUDIO_VOICE,
+      label: DEFAULT_STUDIO_VOICE,
+      gender: '♀',
+      locale: 'EN-US',
+      tone: 'natural',
+    };
   const voicePreviewText = clampVoicePreviewText(
     selectedLine?.text.trim() ||
       scriptText.trim().slice(0, 200) ||

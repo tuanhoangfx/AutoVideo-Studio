@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Download, RefreshCw } from "lucide-react";
+import { CheckCircle2, Download, RefreshCw } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
+import { HUB_RELEASE_CHIP_CLASS } from "../lib/hub-release-chip-ssot";
 import {
   HUB_DESKTOP_UPDATE_BADGE_LABEL,
   hubDesktopUpdateActionShouldPulse,
@@ -36,8 +37,8 @@ export function HubReleaseUpdateProgressRing({ progress }: { progress: number })
 /** Timeline card badge when GitHub has a newer build than the running app. */
 export function HubReleaseUpdateAvailableBadge() {
   return (
-    <span className="hub-release-update-available-badge">
-      <Download size={compactIconSize(11)} className="shrink-0" aria-hidden />
+    <span className={`${HUB_RELEASE_CHIP_CLASS} hub-release-update-available-badge`}>
+      <Download size={compactIconSize(12)} className="shrink-0" aria-hidden />
       <span>{HUB_DESKTOP_UPDATE_BADGE_LABEL}</span>
     </span>
   );
@@ -45,6 +46,7 @@ export function HubReleaseUpdateAvailableBadge() {
 
 function resolveReleaseUpdateIcon(state: HubVersionUpdateState, Icon: LucideIcon): LucideIcon {
   if (state === "available" || state === "downloaded") return Icon;
+  if (state === "latest") return CheckCircle2;
   return RefreshCw;
 }
 
@@ -75,14 +77,14 @@ export function HubReleaseUpdateActionButton({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`hub-release-update-action ${hubDesktopUpdateActionToneClass(state)}${
+      className={`${HUB_RELEASE_CHIP_CLASS} hub-release-update-action ${hubDesktopUpdateActionToneClass(state)}${
         pulse ? " is-pulse" : ""
       }${busy ? " is-busy" : ""}${showRing ? " has-progress-ring" : ""}`}
     >
       {showRing ? (
         <HubReleaseUpdateProgressRing progress={progress} />
       ) : (
-        <Glyph size={compactIconSize(11)} className="hub-release-update-action__icon shrink-0" aria-hidden />
+        <Glyph size={compactIconSize(12)} className="hub-release-update-action__icon shrink-0" aria-hidden />
       )}
       <span className="hub-release-update-action__label">{label}</span>
     </button>

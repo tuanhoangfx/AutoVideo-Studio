@@ -19,7 +19,17 @@ export const STUDIO_VOICE_ALIASES: Record<string, string> = {
   'en-AU-WilliamNeural': 'en-AU-WilliamMultilingualNeural',
 };
 
-const KNOWN_VOICE_IDS = new Set(VOICE_OPTIONS.map((voice) => voice.id));
+const STATIC_VOICE_IDS = new Set(VOICE_OPTIONS.map((voice) => voice.id));
+let runtimeVoiceIds: Set<string> | null = null;
+
+export function setRuntimeVoiceIds(ids: readonly string[]) {
+  runtimeVoiceIds = new Set(ids);
+}
+
+function isKnownVoiceId(voice: string): boolean {
+  if (runtimeVoiceIds?.has(voice)) return true;
+  return STATIC_VOICE_IDS.has(voice);
+}
 
 /** Map retired/unknown voice ids to a live edge voice before preview/export. */
 export function resolveStudioVoiceId(voice: string): string {
@@ -29,10 +39,10 @@ export function resolveStudioVoiceId(voice: string): string {
     seen.add(current);
     current = STUDIO_VOICE_ALIASES[current]!;
   }
-  if (KNOWN_VOICE_IDS.has(current)) return current;
+  if (isKnownVoiceId(current)) return current;
   return DEFAULT_STUDIO_VOICE;
 }
 
 export function isKnownStudioVoiceId(voice: string): boolean {
-  return KNOWN_VOICE_IDS.has(voice);
+  return isKnownVoiceId(voice);
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { VoiceDirectoryRow } from '@/components/studio/VoiceDirectoryTable';
 import { flagsApiUrl } from '@/lib/hub-ui';
-import { GENDER_FILTER_ICON_SRC, GENDER_FILTER_TRIGGER_ICON_SRC } from '@/lib/gender-filter-icons';
+import { GENDER_FILTER_ICON_SRC } from '@/lib/gender-filter-icons';
 import {
   buildVoiceFilters,
   matchesVoiceDirectoryFilters,
@@ -25,19 +25,21 @@ const sampleVoice: VoiceDirectoryRow = {
 describe('voiceLocaleFacet', () => {
   it('keeps the catalog locale code (one option per region, like P0020 country)', () => {
     expect(voiceLocaleFacet(sampleVoice)).toBe('VI');
-    expect(voiceLocaleFacet({ ...sampleVoice, locale: 'EN-US' })).toBe('EN-US');
-    expect(voiceLocaleFacet({ ...sampleVoice, locale: 'EN-GB' })).toBe('EN-GB');
-    expect(voiceLocaleFacet({ ...sampleVoice, locale: 'JA' })).toBe('JA');
+    expect(voiceLocaleFacet({ ...sampleVoice, locale: 'en-US' })).toBe('en-US');
+    expect(voiceLocaleFacet({ ...sampleVoice, locale: 'en-GB' })).toBe('en-GB');
+    expect(voiceLocaleFacet({ ...sampleVoice, locale: 'ja-JP' })).toBe('ja-JP');
   });
 });
 
 describe('voiceLocaleFilterLabel', () => {
   it('splits English regions instead of one English bucket', () => {
     expect(voiceLocaleFilterLabel('VI')).toBe('Vietnamese');
-    expect(voiceLocaleFilterLabel('EN-US')).toBe('English (US)');
-    expect(voiceLocaleFilterLabel('EN-GB')).toBe('English (GB)');
-    expect(voiceLocaleFilterLabel('EN-IE')).toBe('English (IE)');
-    expect(voiceLocaleFilterLabel('JA')).toBe('Japanese');
+    expect(voiceLocaleFilterLabel('vi-VN')).toBe('Vietnamese');
+    expect(voiceLocaleFilterLabel('en-US')).toBe('English (US)');
+    expect(voiceLocaleFilterLabel('en-GB')).toBe('English (GB)');
+    expect(voiceLocaleFilterLabel('en-IE')).toBe('English (IE)');
+    expect(voiceLocaleFilterLabel('ja-JP')).toMatch(/Japanese/i);
+    expect(voiceLocaleFilterLabel('de-DE')).toMatch(/German/i);
   });
 });
 
@@ -46,10 +48,10 @@ describe('matchesVoiceDirectoryFilters', () => {
 
   it('matches exact locale and gender facets', () => {
     expect(
-      matchesVoiceDirectoryFilters(sampleVoice, '', { locale: ['VI'], gender: ['female'] }, false, favorites),
+      matchesVoiceDirectoryFilters(sampleVoice, '', { locale: ['vi-VN'], gender: ['female'] }, false, favorites),
     ).toBe(true);
     expect(
-      matchesVoiceDirectoryFilters(sampleVoice, '', { locale: ['EN-US'], gender: ['female'] }, false, favorites),
+      matchesVoiceDirectoryFilters(sampleVoice, '', { locale: ['en-US'], gender: ['female'] }, false, favorites),
     ).toBe(false);
     expect(
       matchesVoiceDirectoryFilters(sampleVoice, '', { locale: ['VI'], gender: ['male'] }, false, favorites),
@@ -58,9 +60,10 @@ describe('matchesVoiceDirectoryFilters', () => {
 
   it('still honors legacy vi / en / asia buckets', () => {
     expect(voiceLocaleMatchesFilter('VI', 'vi')).toBe(true);
-    expect(voiceLocaleMatchesFilter('EN-GB', 'en')).toBe(true);
-    expect(voiceLocaleMatchesFilter('JA', 'asia')).toBe(true);
-    expect(voiceLocaleMatchesFilter('EN-US', 'asia')).toBe(false);
+    expect(voiceLocaleMatchesFilter('vi-VN', 'vi')).toBe(true);
+    expect(voiceLocaleMatchesFilter('en-GB', 'en')).toBe(true);
+    expect(voiceLocaleMatchesFilter('ja-JP', 'asia')).toBe(true);
+    expect(voiceLocaleMatchesFilter('en-US', 'asia')).toBe(false);
   });
 
   it('requires favorite when favoriteOnly is on', () => {
@@ -107,13 +110,11 @@ describe('voice filter value helpers', () => {
     expect(filters[0]?.key).toBe('locale');
     expect(filters[0]?.triggerEmoji).toBe('🌍');
     expect(filters[1]?.key).toBe('gender');
-    expect(filters[1]?.triggerEmoji).toBeUndefined();
-    expect(filters[1]?.allRowIconSrc).toBe(GENDER_FILTER_TRIGGER_ICON_SRC);
-    expect(filters[1]?.allRowIconShell).toBe('bare');
-    const vi = filters[0]?.options.find((option) => option.value === 'VI');
-    const us = filters[0]?.options.find((option) => option.value === 'EN-US');
-    const gb = filters[0]?.options.find((option) => option.value === 'EN-GB');
-    const ie = filters[0]?.options.find((option) => option.value === 'EN-IE');
+    expect(filters[1]?.triggerEmoji).toBe('🧬');
+    const vi = filters[0]?.options.find((option) => option.value === 'vi-VN');
+    const us = filters[0]?.options.find((option) => option.value === 'en-US');
+    const gb = filters[0]?.options.find((option) => option.value === 'en-GB');
+    const ie = filters[0]?.options.find((option) => option.value === 'en-IE');
     const female = filters[1]?.options.find((option) => option.value === 'female');
     expect(vi?.iconSrc).toBe(flagsApiUrl('VN', 'flat', 24));
     expect(vi?.iconShell).toBe('bare');

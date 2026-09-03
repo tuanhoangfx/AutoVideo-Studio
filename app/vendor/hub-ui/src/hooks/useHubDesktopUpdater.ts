@@ -98,7 +98,8 @@ export function useHubDesktopUpdater(
     busy ||
     currentState === "checking" ||
     currentState === "downloading" ||
-    currentState === "installing";
+    currentState === "installing" ||
+    currentState === "dev";
 
   const onAction = useCallback(async () => {
     const api = bridge;

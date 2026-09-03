@@ -30,7 +30,23 @@ export type HubReleaseNoteEntry = {
 };
 
 /** Feed written by `Tool/scripts/generate-release-notes.mjs` into each product `public/`. */
-export const HUB_RELEASE_NOTES_URL = "/release-notes.json";
+export const HUB_RELEASE_NOTES_FILENAME = "release-notes.json";
+
+/** @deprecated Prefer `hubReleaseNotesFetchUrl()` — absolute `/` breaks Electron `file://` dist loads. */
+export const HUB_RELEASE_NOTES_URL = `/${HUB_RELEASE_NOTES_FILENAME}`;
+
+/** Resolve fetch URL — respects Vite `base` (`./` desktop dist vs `/` dev server). */
+export function hubReleaseNotesFetchUrl(baseUrl?: string): string {
+  const fromEnv =
+    typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    typeof import.meta.env.BASE_URL === "string"
+      ? import.meta.env.BASE_URL
+      : "";
+  const base = (baseUrl ?? fromEnv) || "/";
+  const normalized = base.endsWith("/") ? base : `${base}/`;
+  return `${normalized}${HUB_RELEASE_NOTES_FILENAME}`;
+}
 
 export function hubReleaseNotesSeenKey(code: string): string {
   return `hub:release-notes-seen:${code}`;

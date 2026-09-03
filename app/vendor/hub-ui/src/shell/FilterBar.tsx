@@ -885,14 +885,17 @@ function FilterTriggerLabel({
   label,
   filter,
   triggerIcon,
+  useFlexGap = false,
 }: {
   label: string;
   filter: FilterDef;
   triggerIcon: FilterIconMeta | null;
+  /** Directory toolbar — flex `hub-inline-gap-name` only (P0005 Orders SSOT). */
+  useFlexGap?: boolean;
 }) {
   const labelNode = (
     <span className="hub-filter-trigger__label min-w-0 truncate leading-none">
-      {`\u00A0${label}`}
+      {useFlexGap ? label : `\u00A0${label}`}
     </span>
   );
   if (!filter.labelHint) return labelNode;
@@ -1316,8 +1319,8 @@ export function HubMultiFilterDropdown({
           selected.length > 0 && !isStickyDefaultOnly(filter, selected),
           triggerClassName,
           triggerTypo,
+          toolbarChrome ? "hub-inline-gap-name" : "hub-inline-gap-comfort",
         )}
-        style={{ gap: "var(--hub-inline-gap-name, 8px)" }}
       >
         {(() => {
           const triggerSlotStyle = { width: compactIconSize(glyphPx), height: compactIconSize(glyphPx) };
@@ -1385,7 +1388,7 @@ export function HubMultiFilterDropdown({
           }
           return null;
         })()}
-        <FilterTriggerLabel label={buttonLabel} filter={filter} triggerIcon={triggerIcon} />
+        <FilterTriggerLabel label={buttonLabel} filter={filter} triggerIcon={triggerIcon} useFlexGap={toolbarChrome} />
 
         <ChevronDown size={compactIconSize(glyphPx)} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>

@@ -88,6 +88,13 @@ export default defineConfig(async () => {
       host: "127.0.0.1",
       port: 3021,
       strictPort: true,
+      proxy: {
+        "/bgm": {
+          target: "https://www.soundhelix.com/examples/mp3",
+          changeOrigin: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/bgm\//, "/"),
+        },
+      },
       fs: {
         allow: [toolRoot, productRoot, hubUiSrc, hubIdentitySrc, devRoot],
       },

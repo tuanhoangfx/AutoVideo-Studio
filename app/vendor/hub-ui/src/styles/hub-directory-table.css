@@ -447,13 +447,19 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
  * Glyph column headers — keep short labels sized to content so flex+ellipsis does not
  * clip before JS measures the real <th> budget. Long text-only headers stay default flex.
  */
-table.hub-users-table[data-hub-directory-select] thead th:has(
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) thead th:has(
   .hub-users-th-emoji,
   .hub-users-th-icon,
   .hub-chrome-brand-icon-bare,
   img.hub-users-th-icon--image
 ) .hub-users-th-heading,
-table.hub-users-table[data-hub-directory-select] thead th:has(
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) thead th:has(
   .hub-users-th-emoji,
   .hub-users-th-icon,
   .hub-chrome-brand-icon-bare,
@@ -465,7 +471,10 @@ table.hub-users-table[data-hub-directory-select] thead th:has(
   width: auto;
 }
 
-table.hub-users-table[data-hub-directory-select] thead th:has(
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) thead th:has(
   .hub-users-th-emoji,
   .hub-users-th-icon,
   .hub-chrome-brand-icon-bare,
@@ -475,6 +484,35 @@ table.hub-users-table[data-hub-directory-select] thead th:has(
   min-width: max-content;
   overflow: visible;
   text-overflow: clip;
+}
+
+/*
+ * Emoji directory headers — glyph↔label spacing is NBSP-only (HubTableColumnHeader).
+ * No flex gap, emoji margin, or text padding — avoids double/triple spacing (P0005/P0021).
+ */
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) thead th:has(.hub-users-th-emoji) .hub-users-th-heading,
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) thead th:has(.hub-users-th-emoji) .hub-users-th-label {
+  gap: 0;
+}
+
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) .hub-users-th-emoji {
+  margin-right: 0;
+}
+
+:is(
+  table.hub-users-table.hub-users-table--directory,
+  table.hub-users-table[data-hub-directory-select]
+) .hub-users-th-heading > .hub-users-th-emoji + .hub-users-th-text {
+  padding-left: 0;
 }
 
 /* JS fit — never clip header labels; icon-only when measured overflow. */

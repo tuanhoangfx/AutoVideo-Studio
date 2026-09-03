@@ -1,7 +1,7 @@
 'use client';
 
-import { memo } from 'react';
-import { Mic2, Music, Star } from 'lucide-react';
+import { memo, useRef } from 'react';
+import { Mic2, Music, Star, Upload } from 'lucide-react';
 import {
   HubSegmentToggle,
   HubSplitDirectoryFilterBar,
@@ -32,6 +32,7 @@ export const VoiceFilterPane = memo(function VoiceFilterPane({
   onToggleFavoriteOnly,
   subtitleStyle,
   onSubtitleStyleChange,
+  onUploadBgm,
 }: {
   audioMode: StudioAudioRailMode;
   onAudioModeChange: (mode: StudioAudioRailMode) => void;
@@ -45,16 +46,17 @@ export const VoiceFilterPane = memo(function VoiceFilterPane({
   onToggleFavoriteOnly: () => void;
   subtitleStyle: SubtitleStyle;
   onSubtitleStyleChange: (style: SubtitleStyle) => void;
+  onUploadBgm?: (file: File) => void;
 }) {
   const voiceMode = audioMode === 'voice';
   const iconSize = hubSegmentIconSize();
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   return (
     <HubSplitDirectoryFilterBar
-      shortcutScope="voice-rail"
-      placeholder="Search voice, code, locale..."
-      hideSearch={!voiceMode}
-      filters={voiceMode ? filters : []}
+      shortcutScope={voiceMode ? 'voice-rail' : 'bgm-rail'}
+      placeholder={voiceMode ? 'Search voice, code, locale...' : 'Search track, mood, genre...'}
+      filters={filters}
       query={query}
       onQueryChange={onQueryChange}
       values={filterValues}
@@ -87,22 +89,51 @@ export const VoiceFilterPane = memo(function VoiceFilterPane({
         />
       }
       row2Actions={
-        voiceMode ? (
+        <>
           <button
             type="button"
             onClick={onToggleFavoriteOnly}
-            className={`hub-filter-chip shrink-0 ${favoriteOnly ? 'active' : ''}`}
-            title="Show favorite voices only"
-            aria-label="Favorites"
+            className={`hub-filter-chip hub-filter-chip--icon-only shrink-0 ${favoriteOnly ? 'active' : ''}`}
+            title={
+              voiceMode
+                ? `Favorites (${favoriteCount})`
+                : `Favorite tracks (${favoriteCount})`
+            }
+            aria-label={`Favorites (${favoriteCount})`}
             aria-pressed={favoriteOnly}
           >
             <Star size={12} className={favoriteOnly ? 'fill-amber-300 text-amber-200' : 'text-[var(--muted)]'} />
-            <span className="studio-voice-chip-label">Favorites</span>
-            <span className="grid h-4 min-w-[var(--hub-count-badge-min-w)] place-items-center rounded-full bg-black/20 px-1 font-mono text-[9px] text-[var(--muted)]">
-              {favoriteCount}
-            </span>
+            {favoriteCount > 0 ? (
+              <span className="grid h-4 min-w-[var(--hub-count-badge-min-w)] place-items-center rounded-full bg-black/20 px-1 font-mono text-[9px] text-[var(--muted)]">
+                {favoriteCount}
+              </span>
+            ) : null}
           </button>
-        ) : undefined
+          {!voiceMode && onUploadBgm ? (
+            <button
+              type="button"
+              onClick={() => uploadRef.current?.click()}
+              className="hub-filter-chip hub-filter-chip--icon-only shrink-0"
+              title="Upload custom BGM (mp3/wav)"
+              aria-label="Upload BGM"
+            >
+              <Upload size={12} className="text-[var(--muted)]" />
+            </button>
+          ) : null}
+          {!voiceMode && onUploadBgm ? (
+            <input
+              ref={uploadRef}
+              type="file"
+              accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac,audio/m4a"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUploadBgm(file);
+                e.target.value = '';
+              }}
+            />
+          ) : null}
+        </>
       }
     />
   );

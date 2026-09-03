@@ -78,10 +78,10 @@ export function hubDesktopUpdateActionLabel(
     case "installing":
       return "Installing";
     case "latest":
+      return "Latest";
     case "idle":
     case "dev":
-      // Unpackaged Electron still wires desktopUpdate — show Check (P0010 SSOT), not a blank header slot.
-      return "Check";
+      return state === "dev" ? "Dev" : "Check";
     default:
       return null;
   }
@@ -144,6 +144,10 @@ export function hubDesktopUpdateActionToneClass(state: HubVersionUpdateState): s
       return "hub-release-update-action--progress";
     case "error":
       return "hub-release-update-action--error";
+    case "latest":
+      return "hub-release-update-action--latest";
+    case "dev":
+      return "hub-release-update-action--dev";
     default:
       return "hub-release-update-action--check";
   }

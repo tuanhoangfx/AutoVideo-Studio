@@ -13,10 +13,11 @@ export const VOICE_DIRECTORY_COLUMN_META = {
   gender: col('', 'hub-users-col--icon studio-voice-col--gender', 'tools', 'col.directory.account', '3.25rem', {
     columnKind: 'compact',
     headerAlign: 'center',
-    headerEmoji: '⚧',
+    headerEmoji: '🧬',
   }),
   name: col('Voice', 'hub-users-col--name studio-voice-col--name', 'name', 'col.directory.name', '7rem', {
     headerEmoji: '🎙️',
+    headerAlign: 'start',
   }),
   locale: col('Locale', 'hub-users-col--created studio-voice-col--locale', 'created', 'col.directory.region', '4.25rem', {
     columnKind: 'compact',

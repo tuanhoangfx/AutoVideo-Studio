@@ -2065,6 +2065,8 @@ export {
 } from "./shell/HubVersionReleaseNotes";
 export {
   HUB_RELEASE_NOTES_URL,
+  HUB_RELEASE_NOTES_FILENAME,
+  hubReleaseNotesFetchUrl,
   buildHubReleaseUserSummary,
   ensureHubReleaseNotesIncludeCurrent,
   ensureHubReleaseNotesIncludePendingUpdate,

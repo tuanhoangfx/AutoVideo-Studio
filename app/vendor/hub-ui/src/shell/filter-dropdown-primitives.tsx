@@ -17,8 +17,9 @@ export function hubFilterTriggerClass(
   active: boolean,
   extra = "",
   typoClass: string = HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
+  gapClass: "hub-inline-gap-comfort" | "hub-inline-gap-name" = "hub-inline-gap-comfort",
 ) {
-  return `hub-filter-trigger inline-flex h-[var(--hub-control-h)] max-w-full items-center hub-inline-gap-comfort rounded-lg border px-3 ${typoClass} transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+  return `hub-filter-trigger inline-flex h-[var(--hub-control-h)] max-w-full items-center ${gapClass} rounded-lg border px-3 ${typoClass} transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
     active
       ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
       : "border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5"

@@ -14,6 +14,7 @@ import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "./hubToolDetailModalChrome";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { compactIconSize } from "../ui-scale";
+import { HUB_RELEASE_CHIP_CLASS } from "../lib/hub-release-chip-ssot";
 import {
   HubVersionUpdateStatusIcon,
   HubReleaseUpdateActionButton,
@@ -26,7 +27,7 @@ import {
 } from "./HubVersionUpdateStatusIcon";
 import { useHubDesktopUpdateToasts } from "./useHubDesktopUpdateToasts";
 import {
-  HUB_RELEASE_NOTES_URL,
+  hubReleaseNotesFetchUrl,
   ensureHubReleaseNotesIncludeCurrent,
   ensureHubReleaseNotesIncludePendingUpdate,
   hasUnseenHubReleaseNotes,
@@ -48,7 +49,7 @@ let hubReleaseNotesPromise: Promise<HubReleaseNoteEntry[]> | null = null;
 function loadHubReleaseNotes(): Promise<HubReleaseNoteEntry[]> {
   if (hubReleaseNotesCache) return Promise.resolve(hubReleaseNotesCache);
   if (!hubReleaseNotesPromise) {
-    hubReleaseNotesPromise = fetch(HUB_RELEASE_NOTES_URL, { cache: "no-store" })
+    hubReleaseNotesPromise = fetch(hubReleaseNotesFetchUrl(), { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
       .then((json) => {
         hubReleaseNotesCache = parseHubReleaseNotesPayload(json);
@@ -180,8 +181,8 @@ function ReleaseTimelineKindBadge({
       : KIND_META[entry.kind as HubReleaseNoteKind] ?? KIND_META.improve;
   const Icon = meta.Icon;
   return (
-    <span className={`hub-release-kind-badge ${meta.chip}`}>
-      <Icon size={compactIconSize(11)} className={`shrink-0 ${meta.className}`} aria-hidden />
+    <span className={`${HUB_RELEASE_CHIP_CLASS} hub-release-kind-badge ${meta.chip}`}>
+      <Icon size={compactIconSize(12)} className={`shrink-0 ${meta.className}`} aria-hidden />
       {meta.label}
     </span>
   );
@@ -518,7 +519,7 @@ export function HubVersionReleaseNotes({
         onClose={() => setOpen(false)}
         ariaLabel="Update Release"
         headerTrailing={
-          <div className="hub-release-header-version app-tab-header__chrome-text inline-flex min-w-0 items-center gap-2">
+          <div className="hub-release-header-version inline-flex min-w-0 items-center gap-2">
             <ReleaseVersionMeta
               version={currentVersion || headerEntry?.version || "—"}
               date={headerEntry?.date || ""}

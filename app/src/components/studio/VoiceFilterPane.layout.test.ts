@@ -22,30 +22,38 @@ describe('voice filter pane searchbar layout SSOT', () => {
     expect(voiceFilterPaneSource).toContain('<VoiceRailDisplaySettings');
     expect(voiceFilterPaneSource).toContain('toolbar={');
     expect(voiceFilterPaneSource).toContain('<HubSegmentToggle');
+    expect(voiceFilterPaneSource).not.toContain('hideSearch={!voiceMode}');
+    expect(voiceFilterPaneSource).toContain("shortcutScope={voiceMode ? 'voice-rail' : 'bgm-rail'}");
   });
 
-  it('row 2 keeps bulk favorites only (display/subtitle moved to row 1)', () => {
+  it('row 2 keeps icon-only favorites (+ upload on bgm)', () => {
     const row2Block = voiceFilterPaneSource.slice(voiceFilterPaneSource.indexOf('row2Actions='));
-    expect(row2Block).toContain('Favorites');
+    expect(row2Block).toContain('hub-filter-chip--icon-only');
+    expect(row2Block).toContain('Upload');
+    expect(row2Block).not.toContain('studio-voice-chip-label');
     expect(row2Block).not.toContain('VoiceRailColumnSettings');
     expect(row2Block).not.toContain('SubtitleRailSettings');
     expect(voiceFilterPaneSource).not.toContain('VoiceRailColumnSettings');
     expect(voiceFilterPaneSource).not.toContain('SubtitleRailSettings');
   });
 
-  it('icon-only rail hides chip labels below 22rem', () => {
+  it('icon-only rail hides segment toggle labels below 22rem', () => {
     expect(globalsCss).toContain('@container studio-voice-directory (max-width: 22rem)');
-    expect(globalsCss).toContain('.studio-voice-chip-label');
+    expect(globalsCss).toContain('.hub-segment-toggle__label');
   });
 
-  it('filter and bulk triggers use NBSP-only glyph↔label spacing (no double flex gap)', () => {
-    expect(globalsCss).toContain('.studio-voice-directory-frame .hub-filter-bar .hub-filter-trigger');
-    expect(globalsCss).toContain('.hub-bulk-action-btn__label::before');
-    expect(globalsCss).toMatch(/\.hub-filter-bar \.hub-filter-trigger[\s\S]*gap:\s*0/);
+  it('row-2 favorites/upload use icon-only chips', () => {
+    expect(voiceFilterPaneSource).toContain('hub-filter-chip--icon-only');
+    expect(voiceFilterPaneSource).not.toContain('studio-voice-chip-label');
+  });
+
+  it('filter triggers use hub-ui flex gap SSOT (not P0021 gap:0 override)', () => {
+    expect(globalsCss).not.toMatch(/\.hub-filter-trigger[\s\S]*gap:\s*0\s*!important/);
   });
 
   it('Audio Display uses HubDirectoryDisplayPanel without a hidden-count badge', () => {
     expect(voiceDisplaySource).toContain('HubDirectoryDisplayPanel');
+    expect(voiceDisplaySource).toContain('triggerIconOnly');
     expect(voiceDisplaySource).not.toContain('hiddenCount');
     expect(voiceDisplaySource).not.toContain('LayoutGrid');
   });

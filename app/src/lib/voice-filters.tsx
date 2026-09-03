@@ -2,7 +2,7 @@
 
 import type { FilterDef, FilterOption, FilterValues } from '@/lib/hub-ui';
 import { colHint, hubLocaleFlagFilterOption, withFilterLabelHints } from '@/lib/hub-ui';
-import { GENDER_FILTER_ICON_SRC, GENDER_FILTER_TRIGGER_ICON_SRC } from '@/lib/gender-filter-icons';
+import { GENDER_FILTER_ICON_SRC } from '@/lib/gender-filter-icons';
 import type { VoiceDirectoryRow } from '@/components/studio/VoiceDirectoryTable';
 import { VOICE_OPTIONS } from '@/lib/voice-options';
 
@@ -17,8 +17,14 @@ export function voiceGenderFacet(voice: VoiceDirectoryRow): VoiceGenderFacet {
 }
 
 export function voiceLocaleFilterLabel(locale: string): string {
-  if (locale === 'VI') return 'Vietnamese';
-  if (locale.startsWith('EN-')) return `English (${locale.slice(3)})`;
+  const normalized = locale.trim();
+  if (normalized === 'VI' || normalized === 'vi-VN') return 'Vietnamese';
+  if (normalized.startsWith('EN-')) return `English (${normalized.slice(3)})`;
+  if (normalized.startsWith('en-')) {
+    const region = normalized.split('-')[1]?.toUpperCase() ?? normalized;
+    return `English (${region})`;
+  }
+
   const names: Record<string, string> = {
     JA: 'Japanese',
     KO: 'Korean',
@@ -26,15 +32,35 @@ export function voiceLocaleFilterLabel(locale: string): string {
     TH: 'Thai',
     ID: 'Indonesian',
   };
-  return names[locale] ?? locale;
+  if (names[normalized]) return names[normalized]!;
+
+  const parts = normalized.split('-');
+  if (parts.length >= 2) {
+    const [lang, region] = parts;
+    try {
+      const language = new Intl.DisplayNames(['en'], { type: 'language' }).of(lang);
+      const regionName = new Intl.DisplayNames(['en'], { type: 'region' }).of(region);
+      if (language && regionName) return `${language} (${regionName})`;
+    } catch {
+      /* Intl unavailable — fall through */
+    }
+    return `${lang}-${region}`.toUpperCase();
+  }
+
+  return normalized;
 }
 
 /** Legacy vi / en / asia buckets from the previous 3-facet UI. */
 export function voiceLocaleMatchesFilter(voiceLocale: string, optionValue: string): boolean {
   if (voiceLocale === optionValue) return true;
-  if (optionValue === 'vi') return voiceLocale === 'VI';
-  if (optionValue === 'en') return voiceLocale.startsWith('EN');
-  if (optionValue === 'asia') return voiceLocale !== 'VI' && !voiceLocale.startsWith('EN');
+  const lower = voiceLocale.toLowerCase();
+  if (optionValue === 'vi') return lower === 'vi' || lower === 'vi-vn';
+  if (optionValue === 'en') return lower.startsWith('en');
+  if (optionValue === 'asia') return !lower.startsWith('vi') && !lower.startsWith('en');
+  if (voiceLocale === 'VI' && optionValue === 'vi-VN') return true;
+  if (voiceLocale.startsWith('EN-') && optionValue.startsWith('en-')) {
+    return voiceLocale.slice(3).toLowerCase() === optionValue.split('-')[1]?.toLowerCase();
+  }
   return false;
 }
 
@@ -68,8 +94,7 @@ export function buildVoiceFilters(
         key: 'gender',
         label: 'Gender',
         showAllLabel: false,
-        allRowIconSrc: GENDER_FILTER_TRIGGER_ICON_SRC,
-        allRowIconShell: 'bare',
+        triggerEmoji: '🧬',
         options: [
           {
             value: 'female',

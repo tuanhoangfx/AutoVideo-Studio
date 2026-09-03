@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { Loader2, Pause, Play } from 'lucide-react';
+import { takeVoicePreviewPrefetch } from '@/lib/voice-preview-prefetch';
 
 function mediaErrorLabel(audio: HTMLAudioElement | null): string {
   const code = audio?.error?.code;
@@ -21,6 +22,7 @@ export function AudioPreview({
   className = '',
   compact = false,
   autoPlayKey,
+  warm = false,
 }: {
   src: string | null;
   label?: string;
@@ -28,6 +30,8 @@ export function AudioPreview({
   compact?: boolean;
   /** Increment to request play (keyboard Enter on active row). */
   autoPlayKey?: number;
+  /** Hover prefetch warmed worker cache — subtle play-button hint. */
+  warm?: boolean;
 }) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -76,15 +80,23 @@ export function AudioPreview({
       setError(null);
       setWarning(null);
 
-      const resp = await fetch(src);
-      if (!resp.ok) {
-        throw new Error(`Preview failed (${resp.status})`);
+      const cached = takeVoicePreviewPrefetch(src);
+      let blob: Blob;
+      let provider: string | null = null;
+      if (cached) {
+        blob = cached.blob;
+        provider = cached.provider;
+      } else {
+        const resp = await fetch(src);
+        if (!resp.ok) {
+          throw new Error(`Preview failed (${resp.status})`);
+        }
+        provider = resp.headers.get('X-TTS-Provider');
+        blob = await resp.blob();
       }
-      const provider = resp.headers.get('X-TTS-Provider');
       if (provider === 'gtts') {
         setWarning('Generic fallback — edge voice unavailable');
       }
-      const blob = await resp.blob();
       if (blob.size < 64) {
         throw new Error('Worker did not return audio');
       }
@@ -141,12 +153,12 @@ export function AudioPreview({
         disabled={!src?.trim() || loading}
         className={`grid place-items-center rounded-full bg-[var(--accent)]/20 text-[var(--accent-2)] ring-1 ring-[var(--accent)]/40 transition hover:bg-[var(--accent)]/30 disabled:opacity-30 ${
           compact ? 'h-6 w-6' : 'h-7 w-7'
-        }`}
+        } ${warm && !loading && !playing ? 'ring-emerald-400/50' : ''}`}
         aria-label={playing ? 'Pause' : 'Play preview'}
         title={playing ? 'Pause' : 'Preview'}
       >
         {loading ? (
-          <span className="animate-spin">⋯</span>
+          <Loader2 size={compact ? 10 : 12} className="animate-spin" aria-hidden />
         ) : playing ? (
           <Pause size={compact ? 10 : 12} fill="currentColor" />
         ) : (
