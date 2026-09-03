@@ -1,13 +1,34 @@
 {
   "schemaVersion": 1,
-  "label": "stable-2.1.1",
-  "version": "2.1.1",
-  "gitCommit": null,
-  "gitTag": "v2.1.1-stable",
+  "label": "stable-2.2.143",
+  "version": "2.2.143",
+  "gitCommit": "2eb31b7fd8015aee9c47a55069082822525ca0ab",
+  "gitTag": "v2.2.143-stable",
   "productType": "Web",
-  "backup": {
-    "dir": null,
-    "capturedAt": "2026-07-31T08:03:08.620Z"
+  "notes": "Lenovo+CF production pin — rollback via deploy-lenovo-static / provision-lenovo-spa-hosting (not Vercel).",
+  "deploy": {
+    "provider": "lenovo-static",
+    "productionUrl": "https://p0021.infi.io.vn",
+    "remoteDir": "D:/projects/p0021-autovideo/dist",
+    "customDomains": [
+      "p0021.infi.io.vn"
+    ],
+    "liveAppVersion": "2.2.143",
+    "packageVersion": "2.2.143",
+    "dnsRecord": "CNAME p0021.infi.io.vn → Lenovo CF tunnel (provision-lenovo-spa-hosting)",
+    "capturedAt": "2026-09-03T19:41:23.290Z",
+    "source": "lenovo-prod-probe"
   },
-  "notes": "Web tool — add deploy.deploymentId after Vercel ship"
+  "envKeys": [],
+  "restore": {
+    "rollback": "node Tool/scripts/deploy-lenovo-static.mjs --code P0021",
+    "dns": "node Tool/scripts/provision-lenovo-spa-hosting.mjs --code P0021",
+    "smoke": "curl -fsS https://p0021.infi.io.vn/"
+  },
+  "checklist": [
+    "https://p0021.infi.io.vn/ loads",
+    "Manifest deployTarget is lenovo-static",
+    "Live app-version matches pin (2.2.143)",
+    "gitCommit recorded when repo is clean"
+  ]
 }
