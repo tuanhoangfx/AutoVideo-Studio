@@ -3,16 +3,16 @@
   "code": "P0021",
   "id": "autovideo-studio",
   "name": "AutoVideo Studio",
-  "deployTarget": "vercel",
+  "deployTarget": "lenovo-static",
   "release": {
-    "version": "2.2.130",
+    "version": "2.2.131",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
     "latestPublished": {
-      "tag": "v2.2.37",
-      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.37",
-      "publishedAt": "2026-09-02T21:22:01.010Z"
+      "tag": "v2.2.130",
+      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.130",
+      "publishedAt": "2026-09-03T15:31:18.173Z"
     }
   },
   "urls": {
@@ -22,7 +22,17 @@
     "customStatus": "verified",
     "workerLocal": "http://127.0.0.1:8021",
     "localSetupAt": "2026-08-26T22:09:56.475Z",
-    "appSetupAt": "2026-05-26T15:12:00.000+07:00"
+    "appSetupAt": "2026-05-26T15:12:00.000+07:00",
+    "preview": "https://p0021.infi.io.vn",
+    "prodProbe": "https://p0021.infi.io.vn"
   },
-  "manifestUpdatedAt": "2026-09-03T15:17:30.758Z"
+  "manifestUpdatedAt": "2026-09-03T15:31:44.495Z",
+  "deploy": {
+    "target": "lenovo-static",
+    "domain": "p0021.infi.io.vn",
+    "ship": "node ../scripts/deploy-lenovo-static.mjs --code P0021",
+    "pnpm": "ship:lenovo",
+    "playbook": "Tool/docs/playbooks/_cards/deploy-ssot.md",
+    "notes": "Prod = CF Tunnel → Lenovo nginx. Env baked at local build (.env.shared). git push does NOT deploy. vercelLegacy = archive only."
+  }
 }

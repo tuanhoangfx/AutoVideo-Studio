@@ -3,6 +3,7 @@ import type { HubGlyphComponent } from "../types/filter-badge";
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem, hubMetaActivityAtString } from "./AppTabHeader";
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
 import { applyHubListVersionReleaseNotesMeta } from "./hub-list-chrome-version-meta";
+import { extractHubReleaseNotesSemver } from "../lib/hub-version-release-notes-core";
 import { useHubChromePrefs } from "./HubTabChrome";
 import type { HubVersionDesktopUpdate } from "./HubVersionUpdateStatusIcon";
 
@@ -58,7 +59,7 @@ export function HubListChromeHeader({
     const badge = (
       <HubVersionReleaseNotes
         code={versionReleaseNotesCode}
-        version={metaItems[0].value}
+        version={extractHubReleaseNotesSemver(metaItems[0].value)}
         publishedAt={hubMetaActivityAtString(metaItems[0].activityAt)}
         bundleStale={versionReleaseNotesBundleStale}
         onBundleReload={versionReleaseNotesOnBundleReload}

@@ -5,7 +5,6 @@ import type { HubActivityKindFilter } from "./HubActivityFeed";
 import {
   HubOpsPanelSearch,
   HubOpsTypeTocNav,
-  HubOpsKindBadge,
   useHubOpsTypeToc,
   type HubOpsTypeTocChrome,
 } from "./HubOpsPanelChrome";
@@ -35,6 +34,7 @@ import {
   hubReleaseSummaryIsRedundant,
   markHubReleaseNotesSeen,
   normalizeReleaseNotesVersion,
+  extractHubReleaseNotesSemver,
   parseHubReleaseNotesPayload,
   readHubReleaseNotesSeen,
   type HubReleaseNoteEntry,
@@ -109,9 +109,9 @@ const KIND_META: Record<
   },
 };
 
-/** Running bundle row — green Stable chip (P0010 release modal SSOT). */
-const RELEASE_STABLE_BADGE = {
-  label: "Stable",
+/** Running bundle row — green Latest chip (P0010 release modal SSOT). */
+const RELEASE_LATEST_BADGE = {
+  label: "Latest",
   Icon: CheckCircle2,
   className: "text-emerald-400",
   chip: "border-emerald-400/35 bg-emerald-500/15 text-emerald-100",
@@ -144,7 +144,47 @@ function releaseHeadline(entry: HubReleaseNoteEntry): string | null {
   if (/^release\s+v?[\d.]+$/i.test(raw)) return null;
   if (raw.toLowerCase() === `v${entry.version}`.toLowerCase()) return null;
   if (raw.toLowerCase() === entry.version.toLowerCase()) return null;
+  if (raw.toLowerCase() === "current version") return null;
   return raw;
+}
+
+/** Compare feed semver vs running bundle (tolerates header noise). */
+function releaseVersionsMatch(entryVersion: string, runningVersion: string): boolean {
+  const entryVer = extractHubReleaseNotesSemver(entryVersion);
+  const runVer = extractHubReleaseNotesSemver(runningVersion);
+  if (entryVer && runVer && entryVer === runVer) return true;
+  return normalizeReleaseNotesVersion(entryVersion) === normalizeReleaseNotesVersion(runningVersion);
+}
+
+/** Timeline kind chip — Lucide SSOT (Latest for running bundle, else New/Update/Fixed). */
+function ReleaseTimelineKindBadge({
+  entry,
+  entryIndex,
+  currentVersion,
+  showUpdateAvailableBadge = false,
+}: {
+  entry: HubReleaseNoteEntry;
+  entryIndex: number;
+  currentVersion: string;
+  showUpdateAvailableBadge?: boolean;
+}) {
+  const isRunningBundle =
+    !showUpdateAvailableBadge && releaseVersionsMatch(entry.version, currentVersion);
+  const isCurrentStub =
+    !showUpdateAvailableBadge &&
+    entryIndex === 0 &&
+    entry.userTitle?.trim() === "Current version";
+  const meta =
+    isRunningBundle || isCurrentStub
+      ? RELEASE_LATEST_BADGE
+      : KIND_META[entry.kind as HubReleaseNoteKind] ?? KIND_META.improve;
+  const Icon = meta.Icon;
+  return (
+    <span className={`hub-release-kind-badge ${meta.chip}`}>
+      <Icon size={compactIconSize(11)} className={`shrink-0 ${meta.className}`} aria-hidden />
+      {meta.label}
+    </span>
+  );
 }
 
 /** Version + activity age — hub header chrome scale (`vX.Y.Z` · dot · `2h ago`). */
@@ -166,9 +206,13 @@ function ReleaseVersionMeta({ version, date, at }: { version: string; date: stri
 
 function ReleaseTimelineCard({
   entry,
+  entryIndex,
+  currentVersion,
   showUpdateAvailableBadge = false,
 }: {
   entry: HubReleaseNoteEntry;
+  entryIndex: number;
+  currentVersion: string;
   showUpdateAvailableBadge?: boolean;
 }) {
   const headline = releaseHeadline(entry);
@@ -182,7 +226,12 @@ function ReleaseTimelineCard({
       className={`hub-release-timeline-card${showUpdateAvailableBadge ? " hub-release-timeline-card--update-available" : ""}`}
     >
       <div className="hub-release-timeline-card__head app-tab-header__chrome-text">
-        <HubOpsKindBadge kind={entry.kind} />
+        <ReleaseTimelineKindBadge
+          entry={entry}
+          entryIndex={entryIndex}
+          currentVersion={currentVersion}
+          showUpdateAvailableBadge={showUpdateAvailableBadge}
+        />
         <ReleaseVersionMeta version={entry.version} date={entry.date} at={entry.at} />
         {showUpdateAvailableBadge ? <HubReleaseUpdateAvailableBadge /> : null}
         {headline ? (
@@ -266,7 +315,7 @@ export function HubVersionReleaseNotes({
 
   useHubDesktopUpdateToasts(desktopUpdate);
 
-  const currentVersion = normalizeReleaseNotesVersion(version);
+  const currentVersion = extractHubReleaseNotesSemver(version);
 
   useEffect(() => {
     if (!open) return;
@@ -386,7 +435,12 @@ export function HubVersionReleaseNotes({
               <span className="hub-release-timeline-dot" />
               {index < filtered.length - 1 ? <span className="hub-release-timeline-line" /> : null}
             </div>
-            <ReleaseTimelineCard entry={entry} showUpdateAvailableBadge={showUpdateBadge} />
+            <ReleaseTimelineCard
+              entry={entry}
+              entryIndex={index}
+              currentVersion={currentVersion}
+              showUpdateAvailableBadge={showUpdateBadge}
+            />
           </div>
         </HubToolDetailSection>,
       );

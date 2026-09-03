@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-03T15:21:13.069Z",
+  "generatedAt": "2026-09-03T15:55:54.636Z",
   "entries": [
     {
-      "version": "2.2.130",
+      "version": "2.2.131",
       "date": "2026-09-03",
-      "at": "2026-09-03T22:17:00+07:00",
+      "at": "2026-09-03T22:31:00+07:00",
       "title": "Patch bump for completed agent task",
       "bullets": [
         "Automatic patch bump after completed P0021 task."

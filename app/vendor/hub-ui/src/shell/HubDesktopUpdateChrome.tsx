@@ -3,13 +3,11 @@ import { Download, RefreshCw } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
 import {
   HUB_DESKTOP_UPDATE_BADGE_LABEL,
-  hubDesktopUpdateActionBulkTone,
   hubDesktopUpdateActionShouldPulse,
   hubDesktopUpdateActionToneClass,
   hubDesktopUpdateIsBusy,
   type HubVersionUpdateState,
 } from "../lib/hub-desktop-update-ssot";
-import { HubBulkActionButton } from "./HubBulkActionButton";
 
 /** Circular download progress — release modal header CTA SSOT. */
 export function HubReleaseUpdateProgressRing({ progress }: { progress: number }) {
@@ -19,7 +17,7 @@ export function HubReleaseUpdateProgressRing({ progress }: { progress: number })
   const offset = circumference - (pct / 100) * circumference;
   return (
     <span className="hub-release-update-progress-ring" aria-hidden>
-      <svg viewBox="0 0 18 18" width={18} height={18} className="hub-release-update-progress-ring__svg">
+      <svg viewBox="0 0 18 18" width={14} height={14} className="hub-release-update-progress-ring__svg">
         <circle className="hub-release-update-progress-ring__track" cx="9" cy="9" r={radius} />
         <circle
           className="hub-release-update-progress-ring__fill"
@@ -50,7 +48,7 @@ function resolveReleaseUpdateIcon(state: HubVersionUpdateState, Icon: LucideIcon
   return RefreshCw;
 }
 
-/** Release modal header CTA — HubBulkActionButton (P0010 Checking pulse, no spin). */
+/** Release modal header CTA — compact chip (P0010 SSOT, same scale as kind badge). */
 export function HubReleaseUpdateActionButton({
   state,
   label,
@@ -71,23 +69,22 @@ export function HubReleaseUpdateActionButton({
   const showRing = state === "downloading";
   const Glyph = resolveReleaseUpdateIcon(state, Icon);
   return (
-    <HubBulkActionButton
-      icon={
-        showRing ? (
-          <HubReleaseUpdateProgressRing progress={progress} />
-        ) : (
-          <Glyph size={compactIconSize(14)} className="hub-release-update-action__icon" aria-hidden />
-        )
-      }
-      label={label}
-      title={label}
-      tone={hubDesktopUpdateActionBulkTone(state)}
+    <button
+      type="button"
       disabled={disabled || busy}
-      iconPulsing={pulse}
-      className={`hub-release-update-action ${hubDesktopUpdateActionToneClass(state)}${
-        showRing ? " has-progress-ring" : ""
-      }`}
       onClick={onClick}
-    />
+      title={label}
+      aria-label={label}
+      className={`hub-release-update-action ${hubDesktopUpdateActionToneClass(state)}${
+        pulse ? " is-pulse" : ""
+      }${busy ? " is-busy" : ""}${showRing ? " has-progress-ring" : ""}`}
+    >
+      {showRing ? (
+        <HubReleaseUpdateProgressRing progress={progress} />
+      ) : (
+        <Glyph size={compactIconSize(11)} className="hub-release-update-action__icon shrink-0" aria-hidden />
+      )}
+      <span className="hub-release-update-action__label">{label}</span>
+    </button>
   );
 }

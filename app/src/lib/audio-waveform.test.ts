@@ -21,7 +21,7 @@ describe('audio-waveform', () => {
     for (let i = 0; i < data.length; i += 1) data[i] = Math.sin(i * 0.1);
     const buffer = {
       getChannelData: () => data,
-    } as AudioBuffer;
+    } as unknown as AudioBuffer;
     const peaks = bufferToWaveform(buffer, 16);
     expect(peaks).toHaveLength(16);
     expect(Math.max(...peaks)).toBeGreaterThan(0.2);

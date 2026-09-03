@@ -94,7 +94,7 @@
     "url": "https://github.com/tuanhoangfx/AutoVideo-Studio",
     "manifestPath": "tool.manifest.json"
   },
-  "deployTarget": "vercel",
+  "deployTarget": "lenovo-static",
   "desktopRelease": {
     "deployTarget": "github-release",
     "nestedPackage": "app/package.json",
@@ -105,41 +105,20 @@
   "cssGate": {
     "minBytes": 60000
   },
-  "vercel": {
-    "project": "p0021-autovideo-studio",
-    "projectId": "prj_D3mGWyF74tTvQEZf3eA89Vacw6yb",
-    "rootDirectory": "app",
-    "productionUrl": "https://p0021.infi.io.vn",
-    "customDomain": "https://p0021.infi.io.vn",
-    "customDomainStatus": "verified",
-    "dnsRequired": "A p0021.infi.io.vn 76.76.21.21",
-    "productionBranch": "main",
-    "team": "tuan-hoangs-projects-ad21fb52",
-    "previewUrl": "https://p0021.infi.io.vn",
-    "customDomains": [
-      "p0021.infi.io.vn"
-    ],
-    "teamId": "team_L9Vj1YDi9IbNjOZO5nZADaPb",
-    "deployHookUrl": "https://api.vercel.com/v1/integrations/deploy/prj_D3mGWyF74tTvQEZf3eA89Vacw6yb/LnGL0MThV6",
-    "deployHookName": "ship-production",
-    "migratedAt": "2026-08-02T20:42:47.547Z",
-    "migratedFromTeam": "tuanhoangfxs-projects",
-    "oldProjectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ"
-  },
   "release": {
-    "version": "2.2.130",
+    "version": "2.2.131",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
     "latestPublished": {
-      "tag": "v2.2.37",
-      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.37",
-      "publishedAt": "2026-09-02T21:22:01.010Z"
+      "tag": "v2.2.130",
+      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.130",
+      "publishedAt": "2026-09-03T15:31:18.173Z"
     }
   },
   "health": {
     "status": "Ready",
-    "note": "Render on this PC only: Desktop app or local uvicorn :8021. Vercel UI optional; no VPS worker required."
+    "note": "Web companion @ p0021.infi.io.vn (lenovo-static). Render local via Desktop app or uvicorn :8021."
   },
   "urls": {
     "local": "http://127.0.0.1:3021",
@@ -148,7 +127,9 @@
     "customStatus": "verified",
     "workerLocal": "http://127.0.0.1:8021",
     "localSetupAt": "2026-08-26T22:09:56.475Z",
-    "appSetupAt": "2026-05-26T15:12:00.000+07:00"
+    "appSetupAt": "2026-05-26T15:12:00.000+07:00",
+    "preview": "https://p0021.infi.io.vn",
+    "prodProbe": "https://p0021.infi.io.vn"
   },
   "designDecision": {
     "chosen": "S2 Workspace Tabs",
@@ -206,12 +187,12 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-09-03T15:17:30.756Z",
+  "manifestUpdatedAt": "2026-09-03T15:31:44.493Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Deploy",
     "releasePath": "Release",
-    "deployTarget": "vercel",
+    "deployTarget": "lenovo-static",
     "desktopReleaseDeployTarget": "github-release",
     "desktopReleaseEntry": "powershell -File E:\\Dev\\Tool\\scripts\\ship-desktop.ps1",
     "playbook": "Tool/docs/playbooks/release-fast-path.md",
@@ -233,5 +214,37 @@
       "hub-workspace-chrome-ssot": "node E:\\Dev\\Tool\\scripts\\audit-hub-workspace-chrome-ssot.mjs --json"
     },
     "syncedAt": "2026-08-19T22:47:58.021Z"
+  },
+  "vercelLegacy": {
+    "project": "p0021-autovideo-studio",
+    "projectId": "prj_D3mGWyF74tTvQEZf3eA89Vacw6yb",
+    "rootDirectory": "app",
+    "productionUrl": "https://p0021.infi.io.vn",
+    "customDomain": "https://p0021.infi.io.vn",
+    "customDomainStatus": "verified",
+    "dnsRequired": "A p0021.infi.io.vn 76.76.21.21",
+    "productionBranch": "main",
+    "team": "tuan-hoangs-projects-ad21fb52",
+    "previewUrl": "https://p0021.infi.io.vn",
+    "customDomains": [
+      "p0021.infi.io.vn"
+    ],
+    "teamId": "team_L9Vj1YDi9IbNjOZO5nZADaPb",
+    "deployHookUrl": "https://api.vercel.com/v1/integrations/deploy/prj_D3mGWyF74tTvQEZf3eA89Vacw6yb/LnGL0MThV6",
+    "deployHookName": "ship-production",
+    "migratedAt": "2026-08-02T20:42:47.547Z",
+    "migratedFromTeam": "tuanhoangfxs-projects",
+    "oldProjectId": "prj_Bjb5YGT9OM2tsfYfCZ4bBHBSgsQJ",
+    "legacy": true,
+    "status": "archived-402-paused",
+    "notes": "ARCHIVED — Vercel 402-paused. Prod = CF Tunnel → Lenovo nginx (lenovo-static). git push does NOT deploy. Deploy: ship-product.ps1 -Keyword Deploy (or pnpm run ship:lenovo). Do not use this block for hosting."
+  },
+  "deploy": {
+    "target": "lenovo-static",
+    "domain": "p0021.infi.io.vn",
+    "ship": "node ../scripts/deploy-lenovo-static.mjs --code P0021",
+    "pnpm": "ship:lenovo",
+    "playbook": "Tool/docs/playbooks/_cards/deploy-ssot.md",
+    "notes": "Prod = CF Tunnel → Lenovo nginx. Env baked at local build (.env.shared). git push does NOT deploy. vercelLegacy = archive only."
   }
 }

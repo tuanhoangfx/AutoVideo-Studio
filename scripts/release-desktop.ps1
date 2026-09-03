@@ -5,9 +5,8 @@ param(
   [switch]$Publish,
   [switch]$Fast,
   [switch]$SkipInstall,
-  [switch]$SkipUiBuild,
   [Alias("SkipNextBuild")]
-  [switch]$SkipNextBuild,
+  [switch]$SkipUiBuild,
   [switch]$SkipWorker
 )
 
@@ -65,7 +64,7 @@ try {
   if ($Fast) {
     $env:DESKTOP_RELEASE_SIGN = if ($env:DESKTOP_RELEASE_SIGN) { $env:DESKTOP_RELEASE_SIGN } else { "0" }
     if ($SkipWorker) { $env:DESKTOP_FORCE_WORKER = "0" }
-    $skipUi = $SkipUiBuild -or $SkipNextBuild
+    $skipUi = $SkipUiBuild
     if ($skipUi) { $env:DESKTOP_FORCE_UI = "0"; $env:DESKTOP_FORCE_NEXT = "0" }
     Invoke-Step "Fast desktop pack (worker fingerprint + dir/nsis)" {
       $fastArgs = @((Join-Path $RepoRoot "scripts\run-desktop-dist-fast.mjs"))
@@ -79,7 +78,7 @@ try {
   } else {
     Invoke-Step "Build Vite desktop UI" {
       $prepareArgs = @("-ExecutionPolicy", "Bypass", "-File", (Join-Path $RepoRoot "scripts\prepare-desktop-build.ps1"))
-      if ($SkipUiBuild -or $SkipNextBuild) { $prepareArgs += "-SkipUiBuild" }
+      if ($SkipUiBuild) { $prepareArgs += "-SkipUiBuild" }
       & powershell -NoProfile @prepareArgs
       if ($LASTEXITCODE -ne 0) { throw "desktop:prepare failed" }
     }

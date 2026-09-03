@@ -42,6 +42,13 @@ export function normalizeReleaseNotesVersion(version: string | null | undefined)
     .replace(/^v/i, "");
 }
 
+/** Strip header meta noise (`v1.2.3 · 3m ago`) → semver token for running-bundle match. */
+export function extractHubReleaseNotesSemver(version: string | null | undefined): string {
+  const raw = normalizeReleaseNotesVersion(version);
+  const match = raw.match(/^(\d+(?:\.\d+)*(?:-[0-9A-Za-z.]+)?)/);
+  return match?.[1] ?? raw.split(/\s+/)[0] ?? raw;
+}
+
 const CONVENTIONAL_PREFIX =
   /^(fix|feat|feature|chore|refactor|perf|docs|style|test|build|ci)(\([^)]*\))?:\s*/i;
 
