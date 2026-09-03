@@ -6,5 +6,5 @@
     "open": "node ../scripts/open-tool.cjs --open",
     "desktop:dev": "run-desktop-dev.bat"
   },
-  "version": "2.2.131"
+  "version": "2.2.132"
 }
