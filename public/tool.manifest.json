@@ -10,9 +10,9 @@
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
     "latestPublished": {
-      "tag": "v2.2.134",
-      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.134",
-      "publishedAt": "2026-09-03T18:35:44.764Z"
+      "tag": "v2.2.143",
+      "url": "https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v2.2.143",
+      "publishedAt": "2026-09-03T19:31:09.155Z"
     }
   },
   "urls": {
@@ -26,5 +26,5 @@
     "preview": "https://p0021.infi.io.vn",
     "prodProbe": "https://p0021.infi.io.vn"
   },
-  "manifestUpdatedAt": "2026-09-03T19:26:18.837Z"
+  "manifestUpdatedAt": "2026-09-03T19:31:09.155Z"
 }

@@ -5,7 +5,8 @@
 - Version: `2.2.143`
 - Timestamp: 2026-09-04 02:26 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://p0021.infi.io.vn
 
 ### Changes
 
