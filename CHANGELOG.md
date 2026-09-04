@@ -5,7 +5,8 @@
 - Version: `3.1.1`
 - Timestamp: 2026-09-04 15:57 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/AutoVideo-Studio/releases/tag/v3.1.1
 
 ### Changes
 
