@@ -106,7 +106,7 @@
     "minBytes": 60000
   },
   "release": {
-    "version": "2.2.143",
+    "version": "3.1.1",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
@@ -187,7 +187,7 @@
     "Persistent jobs (lưu JSON file thay vì in-memory dict — survive worker restart)",
     "Deploy production: VPS Hetzner + Vercel khi muốn share URL public (xem DEPLOY.md)"
   ],
-  "manifestUpdatedAt": "2026-09-03T19:31:09.155Z",
+  "manifestUpdatedAt": "2026-09-04T08:57:31.491Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Deploy",

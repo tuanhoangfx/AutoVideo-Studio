@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-04 - Patch bump for completed agent task (release)
+
+- Version: `3.1.1`
+- Timestamp: 2026-09-04 15:57 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0021): 2.2.143 → 3.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
 ## 2026-09-04 - Patch bump for completed agent task
 
 - Version: `2.2.143`

@@ -4,8 +4,12 @@ import { promiseWithTimeout } from "./promise-timeout";
 import { subscribeHubIdentity } from "./hub-identity-cache";
 import { shouldAcceptHubIdentityRelay } from "./workspace-sign-out";
 
-/** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
-export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
+/**
+ * Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait.
+ * Home Server `setSession` → GET /auth/v1/user often takes 5–10s; 5s left P0004 on
+ * HubAuthBootPanel forever (optimistic JWT + toolAccess null, grant probe skipped).
+ */
+export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 12_000;
 
 /** Dual sign-in (Hub + data plane) — User ID may resolve + try several auth emails sequentially.
  * Home Server GoTrue password grants often take 5–8s each; dual identity→data needs headroom. */

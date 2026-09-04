@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-09-03T19:31:09.331Z",
+  "generatedAt": "2026-09-04T08:57:32.131Z",
   "entries": [
+    {
+      "version": "3.1.1",
+      "date": "2026-09-04",
+      "at": "2026-09-04T15:57:00+07:00",
+      "title": "Patch bump for completed agent task (release)",
+      "bullets": [
+        "Release Major bump (P0021): 2.2.143 → 3.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Release Major bump : 2.2.143 → 3.1.1 ."
+      ]
+    },
     {
       "version": "2.2.143",
       "date": "2026-09-04",
@@ -173,21 +188,6 @@
       "userSummary": "",
       "userHighlights": [
         "Worker: desktop worker.py guards sys.stdout stderr = None � uvicorn formatter crashed with Attrib…"
-      ]
-    },
-    {
-      "version": "1.2.10",
-      "date": "2026-07-24",
-      "at": "2026-07-24",
-      "title": "preShip SSOT: verify-untracked + verify-no-sibling-tool-imports",
-      "bullets": [
-        "preShip SSOT: verify-untracked + verify-no-sibling-tool-imports"
-      ],
-      "kind": "improve",
-      "userTitle": "Pre Ship shared UI: verify-untracked + verify",
-      "userSummary": "",
-      "userHighlights": [
-        "Pre Ship shared UI: verify-untracked + verify"
       ]
     }
   ]

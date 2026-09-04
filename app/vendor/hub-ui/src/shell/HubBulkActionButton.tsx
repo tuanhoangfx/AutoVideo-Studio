@@ -125,7 +125,7 @@ export function HubBulkActionButton({
       className={`${shellClass} ${toneClass}${className ? ` ${className}` : ""}`}
     >
       <span
-        className={`shrink-0 [&_svg]:size-[13px] [&_svg]:opacity-100 ${disabled ? "" : "opacity-90"} ${iconSpinning ? "[&_svg]:animate-spin" : ""}${iconPulsing ? " hub-bulk-action-btn__icon--pulse" : ""}`}
+        className={`hub-bulk-action-btn__icon shrink-0 [&_svg]:size-[13px] [&_svg]:opacity-100 ${disabled ? "" : "opacity-90"} ${iconSpinning ? "[&_svg]:animate-spin" : ""}${iconPulsing ? " hub-bulk-action-btn__icon--pulse" : ""}`}
       >
         {icon}
       </span>

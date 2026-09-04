@@ -11,9 +11,21 @@
 
 .hub-filter-option-emoji,
 .hub-analytics-caption__emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
   line-height: 1;
   flex-shrink: 0;
+}
+
+/*
+ * Windows Segoe color emoji sit low in the em-box vs Latin labels (leading-none).
+ * Filter triggers: -1.5px. Clear 🧹: stronger nudge in hub-fields (.hub-filter-clear-btn__icon).
+ * Nudge only color presentation — sticker/text dingbats stay unshifted.
+ */
+.hub-filter-trigger .hub-filter-option-emoji--color {
+  transform: translateY(-1.5px);
 }
 
 /*

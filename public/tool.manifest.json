@@ -5,7 +5,7 @@
   "name": "AutoVideo Studio",
   "deployTarget": "lenovo-static",
   "release": {
-    "version": "2.2.143",
+    "version": "3.1.1",
     "updatedAt": "2026-06-03",
     "readiness": [],
     "desktopAutoUpdate": "GitHub Releases via electron-updater. Publish with app/scripts/release-desktop.ps1. Fast release scripts support patch/minor/major version bumps.",
@@ -26,5 +26,5 @@
     "preview": "https://p0021.infi.io.vn",
     "prodProbe": "https://p0021.infi.io.vn"
   },
-  "manifestUpdatedAt": "2026-09-03T19:31:09.155Z"
+  "manifestUpdatedAt": "2026-09-04T08:57:31.495Z"
 }
